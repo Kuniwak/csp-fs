@@ -16,6 +16,7 @@ type Val<'C when 'C: comparison> =
     | ValMap of Map<Val<'C>, Val<'C>>
     | ValUnion of Ctor<'C> * Val<'C>
     | Error
-and Ctor<'C when 'C : comparison> =
+
+and Ctor<'C when 'C: comparison> =
     | UDCtor of 'C
     | BCtor of BuiltinCtor<'C>

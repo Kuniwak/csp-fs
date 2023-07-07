@@ -39,31 +39,33 @@ let rec range (n1: uint32) (n2: uint32) : Set<Val<'C>> =
     if n1 > n2 then failwith "n1 > n2"
     else if n1 = n2 then Set.empty
     else Set.add (ValNat n1) (range (n1 + 1u) n2)
-    
-let addAll (m: Map<'K, 'V>) (ps: List<'K * 'V>): Map<'K, 'V> = List.fold (fun acc (k, v) -> Map.add k v acc) m ps
+
+let addAll (m: Map<'K, 'V>) (ps: List<'K * 'V>) : Map<'K, 'V> =
+    List.fold (fun acc (k, v) -> Map.add k v acc) m ps
 
 let rec eval (env: Map<'V, Val<'C>>) (expr: Expr<'P, 'E, 'V, 'C>) : Val<'C> =
     match expr with
     | LitNat n -> ValNat n
     | LitBool b -> ValBool b
-    | LitTuple (l, r) -> ValTuple (eval env l, eval env r)
+    | LitTuple(l, r) -> ValTuple(eval env l, eval env r)
     | Throw -> Error
-    | IfExpr (e1, e2, e3) ->
+    | IfExpr(e1, e2, e3) ->
         match eval env e1 with
         | ValBool true -> eval env e2
         | ValBool false -> eval env e3
         | _ -> Error
-    | MatchExpr (e, m, d) ->
+    | MatchExpr(e, m, d) ->
         match eval env e with
-        | ValUnion (c, v) ->
+        | ValUnion(c, v) ->
             match Map.tryFind c m with
-            | Some (x, e1) ->
-                if Map.containsKey x env
-                then Error // NOTE: 変数シャドウはとりあえず落とす
-                else eval (Map.add x v env) e1
+            | Some(x, e1) ->
+                if Map.containsKey x env then
+                    Error // NOTE: 変数シャドウはとりあえず落とす
+                else
+                    eval (Map.add x v env) e1
             | None ->
                 match d with
-                | Some (x, e2) -> eval (Map.add x (ValUnion (c, v)) env) e2
+                | Some(x, e2) -> eval (Map.add x (ValUnion(c, v)) env) e2
                 | None -> Error
         | _ -> Error
     | VarRef v -> Map.find v env
@@ -91,11 +93,11 @@ let rec eval (env: Map<'V, Val<'C>>) (expr: Expr<'P, 'E, 'V, 'C>) : Val<'C> =
         | _ -> Error
     | TupleFst e ->
         match eval env e with
-        | ValTuple (l, _) -> l
+        | ValTuple(l, _) -> l
         | _ -> Error
     | TupleSnd e ->
         match eval env e with
-        | ValTuple (_, r) -> r
+        | ValTuple(_, r) -> r
         | _ -> Error
     | ListEmpty -> ValList []
     | ListCons(e1, e2) ->
@@ -173,6 +175,46 @@ let rec eval (env: Map<'V, Val<'C>>) (expr: Expr<'P, 'E, 'V, 'C>) : Val<'C> =
         match eval env e1, eval env e2 with
         | k, ValMap m ->
             match Map.tryFind k m with
-            | Some v -> ValUnion (BCtor BSome, v)
-            | None -> ValUnion (BCtor BNone, ValUnit)
+            | Some v -> ValUnion(BCtor BSome, v)
+            | None -> ValUnion(BCtor BNone, ValUnit)
         | _ -> Error
+
+let rec format (expr: Expr<'P, 'E, 'V, 'C>) : string =
+    match expr with
+    | LitNat n -> n.ToString()
+    | LitBool b -> b.ToString()
+    | LitTuple(l, r) -> $"({format l}, {format r})"
+    | Throw -> "throw"
+    | IfExpr(e1, e2, e3) -> $"if {format e1} then {format e2} else {format e3}"
+    | MatchExpr(e, cs, d) ->
+        let sep = " | " in
+        let cs' = List.map (fun (c, (v, e')) -> $"{c} {v} -> {format e'}") (Map.toList cs) in
+
+        match d with
+        | Some(v, e') -> $"(match {format e} with {String.concat sep cs'} | {v} -> {format e'})"
+        | None -> $"(match {format e} with {String.concat sep cs'})"
+    | VarRef v -> $"{v}"
+    | Ctor(c, e) -> $"({c} {format e})"
+    | Not e -> $"(not ({format e}))"
+    | And(e1, e2) -> $"({format e1} && {format e2})"
+    | Or(e1, e2) -> $"({format e1} || {format e2})"
+    | Eq(e1, e2) -> $"({format e1} = {format e2})"
+    | Less(e1, e2) -> $"({format e1} < {format e2})"
+    | TupleFst e -> $"(fst {format e})"
+    | TupleSnd e -> $"(snd {format e})"
+    | ListEmpty -> "List.empty"
+    | ListCons(e1, e2) -> $"({format e1} :: {format e2})"
+    | ListNth(e1, e2) -> $"(List.nth {format e1} {format e2})"
+    | ListLen e -> $"(List.length {format e})"
+    | SetEmpty -> "Set.empty"
+    | SetRange(e1, e2) -> $"(Set.range {format e1} {format e2})"
+    | SetInsert(e1, e2) -> $"(Set.add {format e1} {format e2})"
+    | SetUnion(e1, e2) -> $"(Set.union {format e1} {format e2})"
+    | SetInter(e1, e2) -> $"(Set.intersect {format e1} {format e2})"
+    | SetDiff(e1, e2) -> $"(Set.difference {format e1} {format e2})"
+    | SetMem(e1, e2) -> $"(Set.contains {format e1} {format e2})"
+    | SetFilter(v, e1, e2) -> $"(Set.filter (fun {v} -> {format e1}) {format e2})"
+    | SetExists(v, e1, e2) -> $"(Set.exists (fun {v} -> {format e1}) {format e2})"
+    | MapEmpty -> "Map.empty"
+    | MapAdd(k, v, m) -> $"(Map.add {format k} {format v} {format m})"
+    | MapFindOpt(e1, e2) -> $"(Map.findOpt {format e1} {format e2})"
