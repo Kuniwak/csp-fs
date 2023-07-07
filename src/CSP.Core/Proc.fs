@@ -79,6 +79,7 @@ let format (m: Map<'P, Proc<'P, 'E, 'V, 'C>>) (p0: Proc<'P, 'E, 'V, 'C>) : strin
 
 type Event<'E> =
     | Vis of 'E
+    | Hid of 'E
     | Tau
     | Tick
 
@@ -137,6 +138,7 @@ let rec trans
                         acc
                     else
                         (Vis ev', InterfaceParallel(p1', evs, p2)) :: acc // Para1
+                | Hid e -> (Hid e, InterfaceParallel(p1', evs, p2)) :: acc // Para1
                 | Tick ->
                     if p1' = Omega then
                         (Tau, InterfaceParallel(Omega, evs, p2)) :: acc // Para4
@@ -153,6 +155,7 @@ let rec trans
                         acc
                     else
                         (Vis ev', InterfaceParallel(p1, evs, p2')) :: acc // Para2
+                | Hid e -> (Hid e, InterfaceParallel(p1, evs, p2')) :: acc // Para1
                 | Tick ->
                     if p2' = Omega then
                         (Tau, InterfaceParallel(p1, evs, Omega)) :: acc // Para5
@@ -172,6 +175,7 @@ let rec trans
                             acc
                     | Tick -> acc
                     | Tau -> acc
+                    | Hid _ -> acc
                 else
                     acc)
             []
@@ -180,7 +184,7 @@ let rec trans
         List.map
             (fun (ev, p') ->
                 match ev with
-                | Vis e when Set.contains e evs -> (Tau, Hide(p', evs))
+                | Vis e when Set.contains e evs -> (Hid e, Hide(p', evs))
                 | Tick when p' = Omega -> (Tick, Omega)
                 | _ -> (ev, Hide(p', evs)))
             (trans m env p)

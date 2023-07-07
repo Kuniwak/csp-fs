@@ -216,7 +216,7 @@ let lrh () =
   "((Left ⟦{sync}⟧ Right) \\ sync)" -> "((Left ⟦{sync}⟧ (sync -> Right)) \\ sync)" [label="Vis 'red'"]
   "((Left ⟦{sync}⟧ Right) \\ sync)" -> "(((sync -> Left) ⟦{sync}⟧ Right) \\ sync)" [label="Vis 'blue'"]
   "(((sync -> Left) ⟦{sync}⟧ Right) \\ sync)" -> "(((sync -> Left) ⟦{sync}⟧ (sync -> Right)) \\ sync)" [label="Vis 'red'"]
-  "(((sync -> Left) ⟦{sync}⟧ (sync -> Right)) \\ sync)" -> "((Left ⟦{sync}⟧ Right) \\ sync)" [label="Tau"]
+  "(((sync -> Left) ⟦{sync}⟧ (sync -> Right)) \\ sync)" -> "((Left ⟦{sync}⟧ Right) \\ sync)" [label="Hid 'sync'"]
   "((Left ⟦{sync}⟧ (sync -> Right)) \\ sync)" -> "(((sync -> Left) ⟦{sync}⟧ (sync -> Right)) \\ sync)" [label="Vis 'blue'"]
 }""" =
             actual,
@@ -228,4 +228,7 @@ let hide3 () =
     let m = Map [ ("P", Hide(Prefix("a", Skip), Set [ "a" ])) ] in
     let env = Map.empty in
     let actual = dot m env "P" in
-    Assert.True("""""" = actual, actual)
+    Assert.True("""digraph G {
+  "((a -> SKIP) \\ a)" -> "(SKIP \\ a)" [label="Hid 'a'"]
+  "(SKIP \\ a)" -> "Ω" [label="Tick"]
+}""" = actual, actual)
