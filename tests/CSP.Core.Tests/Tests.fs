@@ -1,6 +1,7 @@
 module CSP.Core.Tests
 
 open Xunit
+open CSP.Core.EventSpec
 open CSP.Core.Val
 open CSP.Core.Expr
 open CSP.Core.ProcMap
@@ -163,8 +164,7 @@ let abs () =
 let lr () =
     let m: ProcMap<string, string, Unit, Unit, Unit> =
         Map
-            [ ("LR",
-               (None, InterfaceParallel(Unwind("Left", None), Set [ EventSpec.Event "sync" ], Unwind("Right", None))))
+            [ ("LR", (None, InterfaceParallel(Unwind("Left", None), Set [ Event "sync" ], Unwind("Right", None))))
               ("Left", (None, Prefix("blue", Prefix("sync", Unwind("Left", None)))))
               ("Right", (None, Prefix("red", Prefix("sync", Unwind("Right", None))))) ] in
 
@@ -200,7 +200,7 @@ let coinToss () =
                (None,
                 InterfaceParallel(
                     Unwind("Coin", None),
-                    Set [ EventSpec.Event "toss"; EventSpec.Event "heads"; EventSpec.Event "tails" ],
+                    Set [ Event "toss"; Event "heads"; Event "tails" ],
                     Unwind("Man", None)
                 ))) ]
 
@@ -228,8 +228,8 @@ let lrh () =
             [ ("LRH",
                (None,
                 Hide(
-                    InterfaceParallel(Unwind("Left", None), Set [ EventSpec.Event "sync" ], Unwind("Right", None)),
-                    Set [ EventSpec.Event "sync" ]
+                    InterfaceParallel(Unwind("Left", None), Set [ Event "sync" ], Unwind("Right", None)),
+                    Set [ Event "sync" ]
                 )))
               ("Left", (None, Prefix("blue", Prefix("sync", Unwind("Left", None)))))
               ("Right", (None, Prefix("red", Prefix("sync", Unwind("Right", None))))) ] in
@@ -251,7 +251,7 @@ let lrh () =
 
 [<Fact>]
 let hide3 () =
-    let m = Map [ ("P", (None, Hide(Prefix("a", Skip), Set [ EventSpec.Event "a" ]))) ] in
+    let m = Map [ ("P", (None, Hide(Prefix("a", Skip), Set [ Event "a" ]))) ] in
     let env = Map.empty in
     let actual = dot m env "P" None in
 
@@ -271,23 +271,62 @@ let count () =
             [ ("COUNT",
                (Some "n",
                 ExtCh(
-                    Guard(Less ((VarRef "n"), (LitNat 10u)), Prefix("push", Unwind("COUNT", Some (Plus((VarRef "n"), (LitNat 1u)))))),
-                    Guard(Eq ((VarRef "n"), (LitNat 10u)), Prefix("reset", Unwind("COUNT", Some (LitNat 0u))))
+                    Guard(
+                        Less((VarRef "n"), (LitNat 10u)),
+                        Prefix("push", Unwind("COUNT", Some(Plus((VarRef "n"), (LitNat 1u)))))
+                    ),
+                    Guard(Eq((VarRef "n"), (LitNat 10u)), Prefix("reset", Unwind("COUNT", Some(LitNat 0u))))
                 ))) ] in
 
     let env = Map.empty in
-    let actual = dot m env "COUNT" (Some (VNat 0u)) in
+    let actual = dot m env "COUNT" (Some(VNat 0u)) in
 
-    Assert.True("""digraph G {
-  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 0u}) env={n=VNat 0u}) else (STOP env={n=VNat 0u}) env={n=VNat 0u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 0u}) env={n=VNat 0u}) else (STOP env={n=VNat 0u}) env={n=VNat 0u}) env={n=VNat 0u})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 1u}) env={n=VNat 1u}) else (STOP env={n=VNat 1u}) env={n=VNat 1u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 1u}) env={n=VNat 1u}) else (STOP env={n=VNat 1u}) env={n=VNat 1u}) env={n=VNat 1u})" [label="push"]
-  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 1u}) env={n=VNat 1u}) else (STOP env={n=VNat 1u}) env={n=VNat 1u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 1u}) env={n=VNat 1u}) else (STOP env={n=VNat 1u}) env={n=VNat 1u}) env={n=VNat 1u})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 2u}) env={n=VNat 2u}) else (STOP env={n=VNat 2u}) env={n=VNat 2u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 2u}) env={n=VNat 2u}) else (STOP env={n=VNat 2u}) env={n=VNat 2u}) env={n=VNat 2u})" [label="push"]
-  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 2u}) env={n=VNat 2u}) else (STOP env={n=VNat 2u}) env={n=VNat 2u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 2u}) env={n=VNat 2u}) else (STOP env={n=VNat 2u}) env={n=VNat 2u}) env={n=VNat 2u})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 3u}) env={n=VNat 3u}) else (STOP env={n=VNat 3u}) env={n=VNat 3u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 3u}) env={n=VNat 3u}) else (STOP env={n=VNat 3u}) env={n=VNat 3u}) env={n=VNat 3u})" [label="push"]
-  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 3u}) env={n=VNat 3u}) else (STOP env={n=VNat 3u}) env={n=VNat 3u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 3u}) env={n=VNat 3u}) else (STOP env={n=VNat 3u}) env={n=VNat 3u}) env={n=VNat 3u})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 4u}) env={n=VNat 4u}) else (STOP env={n=VNat 4u}) env={n=VNat 4u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 4u}) env={n=VNat 4u}) else (STOP env={n=VNat 4u}) env={n=VNat 4u}) env={n=VNat 4u})" [label="push"]
-  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 4u}) env={n=VNat 4u}) else (STOP env={n=VNat 4u}) env={n=VNat 4u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 4u}) env={n=VNat 4u}) else (STOP env={n=VNat 4u}) env={n=VNat 4u}) env={n=VNat 4u})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 5u}) env={n=VNat 5u}) else (STOP env={n=VNat 5u}) env={n=VNat 5u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 5u}) env={n=VNat 5u}) else (STOP env={n=VNat 5u}) env={n=VNat 5u}) env={n=VNat 5u})" [label="push"]
-  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 5u}) env={n=VNat 5u}) else (STOP env={n=VNat 5u}) env={n=VNat 5u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 5u}) env={n=VNat 5u}) else (STOP env={n=VNat 5u}) env={n=VNat 5u}) env={n=VNat 5u})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 6u}) env={n=VNat 6u}) else (STOP env={n=VNat 6u}) env={n=VNat 6u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 6u}) env={n=VNat 6u}) else (STOP env={n=VNat 6u}) env={n=VNat 6u}) env={n=VNat 6u})" [label="push"]
-  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 6u}) env={n=VNat 6u}) else (STOP env={n=VNat 6u}) env={n=VNat 6u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 6u}) env={n=VNat 6u}) else (STOP env={n=VNat 6u}) env={n=VNat 6u}) env={n=VNat 6u})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 7u}) env={n=VNat 7u}) else (STOP env={n=VNat 7u}) env={n=VNat 7u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 7u}) env={n=VNat 7u}) else (STOP env={n=VNat 7u}) env={n=VNat 7u}) env={n=VNat 7u})" [label="push"]
-  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 7u}) env={n=VNat 7u}) else (STOP env={n=VNat 7u}) env={n=VNat 7u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 7u}) env={n=VNat 7u}) else (STOP env={n=VNat 7u}) env={n=VNat 7u}) env={n=VNat 7u})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 8u}) env={n=VNat 8u}) else (STOP env={n=VNat 8u}) env={n=VNat 8u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 8u}) env={n=VNat 8u}) else (STOP env={n=VNat 8u}) env={n=VNat 8u}) env={n=VNat 8u})" [label="push"]
-  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 8u}) env={n=VNat 8u}) else (STOP env={n=VNat 8u}) env={n=VNat 8u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 8u}) env={n=VNat 8u}) else (STOP env={n=VNat 8u}) env={n=VNat 8u}) env={n=VNat 8u})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 9u}) env={n=VNat 9u}) else (STOP env={n=VNat 9u}) env={n=VNat 9u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 9u}) env={n=VNat 9u}) else (STOP env={n=VNat 9u}) env={n=VNat 9u}) env={n=VNat 9u})" [label="push"]
-  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 9u}) env={n=VNat 9u}) else (STOP env={n=VNat 9u}) env={n=VNat 9u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 9u}) env={n=VNat 9u}) else (STOP env={n=VNat 9u}) env={n=VNat 9u}) env={n=VNat 9u})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 10u}) env={n=VNat 10u}) else (STOP env={n=VNat 10u}) env={n=VNat 10u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 10u}) env={n=VNat 10u}) else (STOP env={n=VNat 10u}) env={n=VNat 10u}) env={n=VNat 10u})" [label="push"]
-  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 10u}) env={n=VNat 10u}) else (STOP env={n=VNat 10u}) env={n=VNat 10u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 10u}) env={n=VNat 10u}) else (STOP env={n=VNat 10u}) env={n=VNat 10u}) env={n=VNat 10u})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=VNat 0u}) env={n=VNat 0u}) else (STOP env={n=VNat 0u}) env={n=VNat 0u}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=VNat 0u}) env={n=VNat 0u}) else (STOP env={n=VNat 0u}) env={n=VNat 0u}) env={n=VNat 0u})" [label="reset"]
-}""" = actual, actual)
+    Assert.True(
+        """digraph G {
+  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=0}) env={n=0}) else (STOP env={n=0}) env={n=0}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=0}) env={n=0}) else (STOP env={n=0}) env={n=0}) env={n=0})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=1}) env={n=1}) else (STOP env={n=1}) env={n=1}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=1}) env={n=1}) else (STOP env={n=1}) env={n=1}) env={n=1})" [label="push"]
+  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=1}) env={n=1}) else (STOP env={n=1}) env={n=1}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=1}) env={n=1}) else (STOP env={n=1}) env={n=1}) env={n=1})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=2}) env={n=2}) else (STOP env={n=2}) env={n=2}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=2}) env={n=2}) else (STOP env={n=2}) env={n=2}) env={n=2})" [label="push"]
+  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=2}) env={n=2}) else (STOP env={n=2}) env={n=2}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=2}) env={n=2}) else (STOP env={n=2}) env={n=2}) env={n=2})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=3}) env={n=3}) else (STOP env={n=3}) env={n=3}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=3}) env={n=3}) else (STOP env={n=3}) env={n=3}) env={n=3})" [label="push"]
+  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=3}) env={n=3}) else (STOP env={n=3}) env={n=3}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=3}) env={n=3}) else (STOP env={n=3}) env={n=3}) env={n=3})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=4}) env={n=4}) else (STOP env={n=4}) env={n=4}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=4}) env={n=4}) else (STOP env={n=4}) env={n=4}) env={n=4})" [label="push"]
+  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=4}) env={n=4}) else (STOP env={n=4}) env={n=4}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=4}) env={n=4}) else (STOP env={n=4}) env={n=4}) env={n=4})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=5}) env={n=5}) else (STOP env={n=5}) env={n=5}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=5}) env={n=5}) else (STOP env={n=5}) env={n=5}) env={n=5})" [label="push"]
+  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=5}) env={n=5}) else (STOP env={n=5}) env={n=5}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=5}) env={n=5}) else (STOP env={n=5}) env={n=5}) env={n=5})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=6}) env={n=6}) else (STOP env={n=6}) env={n=6}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=6}) env={n=6}) else (STOP env={n=6}) env={n=6}) env={n=6})" [label="push"]
+  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=6}) env={n=6}) else (STOP env={n=6}) env={n=6}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=6}) env={n=6}) else (STOP env={n=6}) env={n=6}) env={n=6})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=7}) env={n=7}) else (STOP env={n=7}) env={n=7}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=7}) env={n=7}) else (STOP env={n=7}) env={n=7}) env={n=7})" [label="push"]
+  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=7}) env={n=7}) else (STOP env={n=7}) env={n=7}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=7}) env={n=7}) else (STOP env={n=7}) env={n=7}) env={n=7})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=8}) env={n=8}) else (STOP env={n=8}) env={n=8}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=8}) env={n=8}) else (STOP env={n=8}) env={n=8}) env={n=8})" [label="push"]
+  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=8}) env={n=8}) else (STOP env={n=8}) env={n=8}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=8}) env={n=8}) else (STOP env={n=8}) env={n=8}) env={n=8})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=9}) env={n=9}) else (STOP env={n=9}) env={n=9}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=9}) env={n=9}) else (STOP env={n=9}) env={n=9}) env={n=9})" [label="push"]
+  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=9}) env={n=9}) else (STOP env={n=9}) env={n=9}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=9}) env={n=9}) else (STOP env={n=9}) env={n=9}) env={n=9})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=10}) env={n=10}) else (STOP env={n=10}) env={n=10}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=10}) env={n=10}) else (STOP env={n=10}) env={n=10}) env={n=10})" [label="push"]
+  "((if (n < 10) then (push -> (COUNT (n + 1) env={n=10}) env={n=10}) else (STOP env={n=10}) env={n=10}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=10}) env={n=10}) else (STOP env={n=10}) env={n=10}) env={n=10})" -> "((if (n < 10) then (push -> (COUNT (n + 1) env={n=0}) env={n=0}) else (STOP env={n=0}) env={n=0}) □ (if (n = 10) then (reset -> (COUNT 0 env={n=0}) env={n=0}) else (STOP env={n=0}) env={n=0}) env={n=0})" [label="reset"]
+}""" =
+            actual,
+        actual
+    )
+
+[<Fact>]
+let roVarSys1 () =
+    let syncR = Set [ Chan "read" ]
+
+    let m: ProcMap<string, Unit, string, string, Unit> =
+        Map
+            [ ("ROVarSys1",
+               (None,
+                InterfaceParallel(
+                    Unwind("ROVar", Some (LitNat 0u)),
+                    syncR,
+                    InterfaceParallel(
+                        Unwind("Reader1", None),
+                        syncR,
+                        InterfaceParallel(Unwind("Reader2", None), syncR, Unwind("Reader3", None))
+                    )
+                )))
+              ("ROVar",
+               (Some "x",
+                PrefixSend(
+                    "read",
+                    VarRef "x",
+                    Unwind("ROVar", Some(Expr.If(Less(VarRef "x", LitNat 4u), Plus(VarRef "x", LitNat 1u), LitNat 0u)))
+                )))
+              ("Reader1", (None, PrefixRecv("read", "x", Stop)))
+              ("Reader2", (None, PrefixRecv("read", "x", Stop)))
+              ("Reader3", (None, PrefixRecv("read", "x", Stop))) ] in
+
+    let env = Map.empty in
+    let actual = dot m env "ROVarSys1" None in
+    Assert.True("""""" = actual, actual)

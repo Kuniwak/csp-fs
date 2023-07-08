@@ -10,8 +10,8 @@ type Expr<'Var, 'Ctor when 'Var: comparison and 'Ctor: comparison> =
     | LitTuple of Expr<'Var, 'Ctor> * Expr<'Var, 'Ctor>
     | LitUnion of Ctor<'Ctor> * Expr<'Var, 'Ctor>
     | Throw
-    | IfExpr of Expr<'Var, 'Ctor> * Expr<'Var, 'Ctor> * Expr<'Var, 'Ctor>
-    | MatchExpr of Expr<'Var, 'Ctor> * Map<Ctor<'Ctor>, 'Var * Expr<'Var, 'Ctor>> * ('Var * Expr<'Var, 'Ctor>) option
+    | If of Expr<'Var, 'Ctor> * Expr<'Var, 'Ctor> * Expr<'Var, 'Ctor>
+    | Match of Expr<'Var, 'Ctor> * Map<Ctor<'Ctor>, 'Var * Expr<'Var, 'Ctor>> * ('Var * Expr<'Var, 'Ctor>) option
     | VarRef of 'Var
     | Ctor of Ctor<'Ctor> * Expr<'Var, 'Ctor>
     | Not of Expr<'Var, 'Ctor>
@@ -66,12 +66,12 @@ let rec eval (env: Env<'Var, 'Ctor>) (expr: Expr<'Var, 'Ctor>) : Val<'Ctor> =
     | LitTuple(l, r) -> VTuple(eval env l, eval env r)
     | LitUnion(c, e) -> VUnion(c, eval env e)
     | Throw -> VError
-    | IfExpr(e1, e2, e3) ->
+    | If(e1, e2, e3) ->
         match eval env e1 with
         | VBool true -> eval env e2
         | VBool false -> eval env e3
         | _ -> VError
-    | MatchExpr(e, m, d) ->
+    | Match(e, m, d) ->
         match eval env e with
         | VUnion(c, v) ->
             match Map.tryFind c m with
@@ -110,16 +110,19 @@ let rec eval (env: Env<'Var, 'Ctor>) (expr: Expr<'Var, 'Ctor>) : Val<'Ctor> =
         | _ -> VError
     | Plus(e1, e2) ->
         match eval env e1, eval env e2 with
+        | VBool b1, VBool b2 -> VBool(b1 || b2)
         | VNat n1, VNat n2 -> VNat(n1 + n2)
         | VSet v1, VSet v2 -> VSet(Set.union v1 v2)
         | _ -> VError
     | Time(e1, e2) ->
         match eval env e1, eval env e2 with
+        | VBool b1, VBool b2 -> VBool(b1 && b2)
         | VNat n1, VNat n2 -> VNat(n1 * n2)
         | VSet v1, VSet v2 -> VSet(Set.intersect v1 v2)
         | _ -> VError
     | Sub(e1, e2) ->
         match eval env e1, eval env e2 with
+        | VBool b1, VBool b2 -> VBool(if b2 then false else b1)
         | VNat n1, VNat n2 -> VNat(if n1 < n2 then 0u else n1 - n2)
         | VSet v1, VSet v2 -> VSet(Set.difference v1 v2)
         | _ -> VError
@@ -207,8 +210,8 @@ let rec format (expr: Expr<'V, 'C>) : string =
     | LitTuple(l, r) -> $"({format l}, {format r})"
     | LitUnion(c, e) -> $"({c} {format e})"
     | Throw -> "throw"
-    | IfExpr(e1, e2, e3) -> $"if {format e1} then {format e2} else {format e3}"
-    | MatchExpr(e, cs, d) ->
+    | If(e1, e2, e3) -> $"(if {format e1} then {format e2} else {format e3})"
+    | Match(e, cs, d) ->
         let sep = " | " in
         let cs' = List.map (fun (c, (v, e')) -> $"{c} {v} -> {format e'}") (Map.toList cs) in
 

@@ -11,7 +11,7 @@ type Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor when 'Ev: comparison and 'Var: comparison an
     | Stop
     | Skip
     | Prefix of 'Ev * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>
-    | PrefixSend of 'Ch * Val<'Ctor> * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>
+    | PrefixSend of 'Ch * Expr<'Var, 'Ctor> * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>
     | PrefixRecv of 'Ch * 'Var * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>
     | IntCh of Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor> * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>
     | ExtCh of Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor> * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>

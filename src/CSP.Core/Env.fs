@@ -9,6 +9,6 @@ let format (env: Env<'Var, 'Ctor>) : string =
         ""
     else
         let s =
-            String.concat ", " (List.map (fun (var, v) -> $"{var}={v}") (Map.toList env)) in
+            String.concat ", " (List.map (fun (var, v) -> $"{var}={format v}") (Map.toList env)) in
 
         $" env={{{s}}}"
