@@ -112,6 +112,7 @@ let init
         | (None, _), None -> (genv, None)
         | (None, _), Some _ -> failwith "given a value to Unwind, but not needed at init"
         | (Some _, _), None -> failwith "needed a value by Unwind, but not given at init"
+
     ofProc m env (Proc.Unwind(n, Option.map VarRef varOpt))
 
 let unwind
@@ -126,15 +127,14 @@ let unwind
             else
                 match (Map.find n m, eOpt) with
                 | (Some var, p), Some e ->
-                    let env = Map.add var (eval env e) env in
-                    loop (ofProc m env p) (Set.add s visited)
+                    let env = Map.add var (eval env e) env in loop (ofProc m env p) (Set.add s visited)
                 | (None, p), None -> loop (ofProc m env p) (Set.add s visited)
                 | (None, _), Some _ -> Error("given a value to Unwind, but not needed at unwind", s)
                 | (Some _, _), None -> Error("needed a value by Unwind, but not given at unwind", s)
         | _ -> s
 
     loop s0 Set.empty
-    
+
 let rec trans
     (m: ProcMap<'P, 'Ev, 'Ch, 'Var, 'Ctor>)
     (genv: Map<'Var, Val<'Ctor>>)
@@ -373,7 +373,7 @@ let edges
                     ((s1, ev, s1') :: rAcc @ rAcc', sAcc'))
             ([], Set.add (unwind m s) visited)
             (List.map (fun (ev, s') -> (s, ev, s')) (trans m genv s))
-    
+
     fst (loop (init m genv n vOpt) Set.empty)
 
 let format (m: ProcMap<'P, 'Ev, 'Ch, 'Var, 'Ctor>) (s0: State<'P, 'Ev, 'Ch, 'Var, 'Ctor>) : string =
@@ -400,12 +400,14 @@ let format (m: ProcMap<'P, 'Ev, 'Ch, 'Var, 'Ctor>) (s0: State<'P, 'Ev, 'Ch, 'Var
             let cs' = List.map (fun (c, (v, p')) -> $"{c} {v} -> {f p' false}") (Map.toList sm) in
 
             match ds with
-            | Some(v, p') -> $"(match {Expr.format e} with {String.concat sep cs'} | {v} -> {f p' false} env={Env.format env})"
+            | Some(v, p') ->
+                $"(match {Expr.format e} with {String.concat sep cs'} | {v} -> {f p' false} env={Env.format env})"
             | None -> $"(match {Expr.format e} with {String.concat sep cs'} env={Env.format env})"
         | InterfaceParallel(s1, evs, s2) -> $"({f s1 false} ⟦{EventSpec.format evs}⟧ {f s2 false})"
         | Hide(s, evs) -> $"({f s false} \\\\ {EventSpec.format evs})"
         | Omega -> "Ω"
         | Error(msg, s) -> $"(ERROR: {msg} at {f s false})"
+
     f s0 true
 
 let dot

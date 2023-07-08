@@ -28,7 +28,11 @@ let rec format (v: Val<'Ctor>) : string =
     | VTuple(l, r) -> $"({format l}, {format r})"
     | VSet(s) -> let s' = String.concat ", " (List.map format (Set.toList s)) in $"{{{s'}}}"
     | VList(vs) -> let s' = String.concat ", " (List.map format vs) in $"[{s'}]"
-    | VMap(m) -> let s' = String.concat ", " (List.map (fun (k, v) -> $"{format k}: {format v}") (Map.toList m)) in $"{{{s'}}}"
+    | VMap(m) ->
+        let s' =
+            String.concat ", " (List.map (fun (k, v) -> $"{format k}: {format v}") (Map.toList m)) in
+
+        $"{{{s'}}}"
     | VUnion(c, v) -> $"({c} {format v})"
     | VAny -> "*"
     | VError -> "ERROR"

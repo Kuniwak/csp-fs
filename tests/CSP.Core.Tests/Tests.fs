@@ -280,7 +280,8 @@ let count () =
     let env = Map.empty in
     let actual = dot m env "COUNT" (Some(VNat 0u)) in
 
-    Assert.True("""digraph G {
+    Assert.True(
+        """digraph G {
   "((if (n < 10) then (push -> COUNT (n + 1)) else STOP) env={n=0}) □ (if (n = 10) then (reset -> COUNT 0) else STOP) env={n=0}))" -> "((if (n < 10) then (push -> COUNT (n + 1)) else STOP) env={n=1}) □ (if (n = 10) then (reset -> COUNT 0) else STOP) env={n=1}))" [label="push"]
   "((if (n < 10) then (push -> COUNT (n + 1)) else STOP) env={n=1}) □ (if (n = 10) then (reset -> COUNT 0) else STOP) env={n=1}))" -> "((if (n < 10) then (push -> COUNT (n + 1)) else STOP) env={n=2}) □ (if (n = 10) then (reset -> COUNT 0) else STOP) env={n=2}))" [label="push"]
   "((if (n < 10) then (push -> COUNT (n + 1)) else STOP) env={n=2}) □ (if (n = 10) then (reset -> COUNT 0) else STOP) env={n=2}))" -> "((if (n < 10) then (push -> COUNT (n + 1)) else STOP) env={n=3}) □ (if (n = 10) then (reset -> COUNT 0) else STOP) env={n=3}))" [label="push"]
@@ -292,7 +293,10 @@ let count () =
   "((if (n < 10) then (push -> COUNT (n + 1)) else STOP) env={n=8}) □ (if (n = 10) then (reset -> COUNT 0) else STOP) env={n=8}))" -> "((if (n < 10) then (push -> COUNT (n + 1)) else STOP) env={n=9}) □ (if (n = 10) then (reset -> COUNT 0) else STOP) env={n=9}))" [label="push"]
   "((if (n < 10) then (push -> COUNT (n + 1)) else STOP) env={n=9}) □ (if (n = 10) then (reset -> COUNT 0) else STOP) env={n=9}))" -> "((if (n < 10) then (push -> COUNT (n + 1)) else STOP) env={n=10}) □ (if (n = 10) then (reset -> COUNT 0) else STOP) env={n=10}))" [label="push"]
   "((if (n < 10) then (push -> COUNT (n + 1)) else STOP) env={n=10}) □ (if (n = 10) then (reset -> COUNT 0) else STOP) env={n=10}))" -> "((if (n < 10) then (push -> COUNT (n + 1)) else STOP) env={n=0}) □ (if (n = 10) then (reset -> COUNT 0) else STOP) env={n=0}))" [label="reset"]
-}""" = actual, actual)
+}""" =
+            actual,
+        actual
+    )
 
 [<Fact>]
 let roVarSys1 () =

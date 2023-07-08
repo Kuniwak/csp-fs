@@ -29,9 +29,8 @@ type Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor when 'Ev: comparison and 'Var: comparison an
 let format (m: Map<'P, 'Var option * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>>) (p0: Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>) : string =
     let rec f p isTop =
         match p with
-        | Unwind (n, eOpt) ->
-            if isTop
-            then
+        | Unwind(n, eOpt) ->
+            if isTop then
                 match (Map.find n m, eOpt) with
                 | (Some var, p), Some e -> $"{f p false} ({var} = {Expr.format e})"
                 | (None, p), None -> f p false
@@ -62,9 +61,10 @@ let format (m: Map<'P, 'Var option * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>>) (p0: Proc
             let es' = List.map (fun ev -> $"{ev}") (Set.toList evs) in
             $"({f p1 false} ⟦{{{String.concat sep es'}}}⟧ {f p2 false})"
         | Interleave(p1, p2) -> $"({f p1 false} ||| {f p2 false})"
-        | Hide(p, evs) -> 
+        | Hide(p, evs) ->
             let evs' = List.map (fun ev -> $"{ev}") (Set.toList evs) in
             let sep = ", "
             $"({f p false} \\\\ {String.concat sep evs'})"
         | Guard(e, p) -> $"({Expr.format e}&{f p false})"
+
     f p0 true

@@ -38,17 +38,18 @@ type Expr<'Var, 'Ctor when 'Var: comparison and 'Ctor: comparison> =
     | MapAdd of Expr<'Var, 'Ctor> * Expr<'Var, 'Ctor> * Expr<'Var, 'Ctor>
     | MapFindOpt of Expr<'Var, 'Ctor> * Expr<'Var, 'Ctor>
 
-let rec ofVal (v: Val<'Ctor>): Expr<'Var, 'Ctor> =
+let rec ofVal (v: Val<'Ctor>) : Expr<'Var, 'Ctor> =
     match v with
     | VUnit -> LitUnit
     | VNat n -> LitNat n
     | VBool b -> LitBool b
     | VTuple(l, r) -> LitTuple(ofVal l, ofVal r)
-    | VSet s -> Set.fold (fun acc v -> SetInsert (ofVal v, acc)) SetEmpty s
-    | VList vs -> List.fold (fun acc v -> ListCons (ofVal v, acc)) ListEmpty vs
-    | VMap m -> Map.fold (fun acc k v -> MapAdd ((ofVal k), (ofVal v), acc)) MapEmpty m
-    | VUnion (c, v) -> LitUnion (c, ofVal v)
+    | VSet s -> Set.fold (fun acc v -> SetInsert(ofVal v, acc)) SetEmpty s
+    | VList vs -> List.fold (fun acc v -> ListCons(ofVal v, acc)) ListEmpty vs
+    | VMap m -> Map.fold (fun acc k v -> MapAdd((ofVal k), (ofVal v), acc)) MapEmpty m
+    | VUnion(c, v) -> LitUnion(c, ofVal v)
     | VError -> Throw
+    | VAny -> failwith "ofVal VAny is not allowed"
 
 let rec range (n1: uint32) (n2: uint32) : Set<Val<'C>> =
     if n1 > n2 then failwith "n1 > n2"
