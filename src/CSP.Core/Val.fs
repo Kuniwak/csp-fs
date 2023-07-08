@@ -1,22 +1,20 @@
 module CSP.Core.Val
 
-type BuiltinCtor<'C when 'C: comparison> =
-    | BSome
-    | BNone
-    | BLeft
-    | BRight
 
-type Val<'C when 'C: comparison> =
-    | ValUnit
-    | ValNat of uint
-    | ValBool of bool
-    | ValTuple of Val<'C> * Val<'C>
-    | ValSet of Set<Val<'C>>
-    | ValList of Val<'C> list
-    | ValMap of Map<Val<'C>, Val<'C>>
-    | ValUnion of Ctor<'C> * Val<'C>
-    | Error
+type Val<'Ctor when 'Ctor: comparison> =
+    | VUnit
+    | VNat of uint
+    | VBool of bool
+    | VTuple of Val<'Ctor> * Val<'Ctor>
+    | VSet of Set<Val<'Ctor>>
+    | VList of Val<'Ctor> list
+    | VMap of Map<Val<'Ctor>, Val<'Ctor>>
+    | VUnion of Ctor<'Ctor> * Val<'Ctor>
+    | VError
 
-and Ctor<'C when 'C: comparison> =
-    | UDCtor of 'C
-    | BCtor of BuiltinCtor<'C>
+and Ctor<'Ctor when 'Ctor: comparison> =
+    | Ctor of 'Ctor
+    | CtorSome
+    | CtorNone
+    | CtorLeft
+    | CtorRight
