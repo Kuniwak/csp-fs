@@ -22,6 +22,7 @@ type Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor when 'Ev: comparison and 'Var: comparison an
         Map<Ctor<'Ctor>, 'Var * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>> *
         ('Var * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>) option
     | InterfaceParallel of Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor> * Set<EventSpec<'Ev, 'Ch>> * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>
+    | Interleave of Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor> * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>
     | Hide of Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor> * Set<EventSpec<'Ev, 'Ch>>
     | Guard of Expr<'Var, 'Ctor> * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>
 
@@ -60,7 +61,8 @@ let format (m: Map<'P, 'Var option * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>>) (p0: Proc
             let sep = ", "
             let es' = List.map (fun ev -> $"{ev}") (Set.toList evs) in
             $"({f p1 false} ⟦{{{String.concat sep es'}}}⟧ {f p2 false})"
-        | Hide(p, evs) ->
+        | Interleave(p1, p2) -> $"({f p1 false} ||| {f p2 false})"
+        | Hide(p, evs) -> 
             let evs' = List.map (fun ev -> $"{ev}") (Set.toList evs) in
             let sep = ", "
             $"({f p false} \\\\ {String.concat sep evs'})"
