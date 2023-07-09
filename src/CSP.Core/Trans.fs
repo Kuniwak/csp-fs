@@ -32,7 +32,7 @@ let rec trans
     | Stop _ -> []
     | Prefix(ev, s) -> [ (Vis ev, s) ]
     | PrefixSend(env, ch, e, s) -> [ (VisChan(ch, eval env e), s) ]
-    | PrefixRecv(ch, v, s) -> [ (VisRecv(ch, v), s) ]
+    | PrefixRecv(ch, var, s) -> [ (VisRecv(ch, var), bind var VAny s) ]
     | IntCh(s1, s2) -> [ (Tau, s1); (Tau, s2) ]
     | ExtCh(s1, s2) ->
         (List.fold
