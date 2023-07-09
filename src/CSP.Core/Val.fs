@@ -33,6 +33,12 @@ let rec format (v: Val<'Ctor>) : string =
             String.concat ", " (List.map (fun (k, v) -> $"{format k}: {format v}") (Map.toList m)) in
 
         $"{{{s'}}}"
-    | VUnion(c, v) -> $"({c} {format v})"
+    | VUnion(c, v) ->
+        match c with
+        | Ctor c' -> if v = VUnit then $"{c'}" else $"({c'} {format v})"
+        | CtorSome -> $"(Some {format v})"
+        | CtorNone -> "None"
+        | CtorLeft -> $"(Left {format v})"
+        | CtorRight -> $"(Right {format v})"
     | VAny -> "*"
     | VError -> "ERROR"

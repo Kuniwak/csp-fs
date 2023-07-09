@@ -207,7 +207,13 @@ let rec format (expr: Expr<'V, 'C>) : string =
     | LitNat n -> n.ToString()
     | LitBool b -> b.ToString()
     | LitTuple(l, r) -> $"({format l}, {format r})"
-    | LitUnion(c, e) -> $"({c} {format e})"
+    | LitUnion(c, e) ->
+        match c with
+        | Ctor c' -> if e = LitUnit then $"{c'}" else $"({c'} {format e})"
+        | CtorSome -> $"(Some {format e})"
+        | CtorNone -> "None"
+        | CtorLeft -> $"(Left {format e})"
+        | CtorRight -> $"(Right {format e})"
     | Throw -> "throw"
     | If(e1, e2, e3) -> $"(if {format e1} then {format e2} else {format e3})"
     | Match(e, cs, d) ->
