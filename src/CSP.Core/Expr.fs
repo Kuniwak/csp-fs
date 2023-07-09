@@ -13,7 +13,6 @@ type Expr<'Var, 'Ctor when 'Var: comparison and 'Ctor: comparison> =
     | If of Expr<'Var, 'Ctor> * Expr<'Var, 'Ctor> * Expr<'Var, 'Ctor>
     | Match of Expr<'Var, 'Ctor> * Map<Ctor<'Ctor>, 'Var * Expr<'Var, 'Ctor>> * ('Var * Expr<'Var, 'Ctor>) option
     | VarRef of 'Var
-    | Ctor of Ctor<'Ctor> * Expr<'Var, 'Ctor>
     | Not of Expr<'Var, 'Ctor>
     | And of Expr<'Var, 'Ctor> * Expr<'Var, 'Ctor>
     | Or of Expr<'Var, 'Ctor> * Expr<'Var, 'Ctor>
@@ -87,7 +86,6 @@ let rec eval (env: Env<'Var, 'Ctor>) (expr: Expr<'Var, 'Ctor>) : Val<'Ctor> =
                 | None -> VError
         | _ -> VError
     | VarRef v -> Map.find v env
-    | Ctor(c, e) -> VUnion(c, eval env e)
     | Not e ->
         match eval env e with
         | VBool b -> VBool(not b)
@@ -220,7 +218,6 @@ let rec format (expr: Expr<'V, 'C>) : string =
         | Some(v, e') -> $"(match {format e} with {String.concat sep cs'} | {v} -> {format e'})"
         | None -> $"(match {format e} with {String.concat sep cs'})"
     | VarRef v -> $"{v}"
-    | Ctor(c, e) -> $"({c} {format e})"
     | Not e -> $"(not ({format e}))"
     | And(e1, e2) -> $"({format e1} && {format e2})"
     | Or(e1, e2) -> $"({format e1} || {format e2})"
