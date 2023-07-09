@@ -6,18 +6,21 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="Val.fs"/>
-        <Compile Include="Env.fs"/>
-        <Compile Include="Expr.fs"/>
-        <Compile Include="Event.fs"/>
-        <Compile Include="EventSpec.fs"/>
-        <Compile Include="Proc.fs"/>
-        <Compile Include="ProcMap.fs"/>
-        <Compile Include="State.fs"/>
+        <Compile Include="Val.fs" />
+        <Compile Include="Env.fs" />
+        <Compile Include="Expr.fs" />
+        <Compile Include="Event.fs" />
+        <Compile Include="EventSpec.fs" />
+        <Compile Include="Proc.fs" />
+        <Compile Include="ProcMap.fs" />
+        <Compile Include="State.fs" />
+        <Compile Include="Trans.fs" />
+        <Compile Include="Search.fs" />
+        <Compile Include="Graph.fs" />
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="FSharpx.Collections" Version="3.1.0"/>
+        <PackageReference Include="FSharpx.Collections" Version="3.1.0" />
     </ItemGroup>
 
 </Project>

@@ -20,7 +20,7 @@ type Expr<'Var, 'Ctor when 'Var: comparison and 'Ctor: comparison> =
     | Eq of Expr<'Var, 'Ctor> * Expr<'Var, 'Ctor>
     | Plus of Expr<'Var, 'Ctor> * Expr<'Var, 'Ctor>
     | Time of Expr<'Var, 'Ctor> * Expr<'Var, 'Ctor>
-    | Sub of Expr<'Var, 'Ctor> * Expr<'Var, 'Ctor>
+    | Minus of Expr<'Var, 'Ctor> * Expr<'Var, 'Ctor>
     | Less of Expr<'Var, 'Ctor> * Expr<'Var, 'Ctor>
     | TupleFst of Expr<'Var, 'Ctor>
     | TupleSnd of Expr<'Var, 'Ctor>
@@ -121,7 +121,7 @@ let rec eval (env: Env<'Var, 'Ctor>) (expr: Expr<'Var, 'Ctor>) : Val<'Ctor> =
         | VNat n1, VNat n2 -> VNat(n1 * n2)
         | VSet v1, VSet v2 -> VSet(Set.intersect v1 v2)
         | _ -> VError
-    | Sub(e1, e2) ->
+    | Minus(e1, e2) ->
         match eval env e1, eval env e2 with
         | VBool b1, VBool b2 -> VBool(if b2 then false else b1)
         | VNat n1, VNat n2 -> VNat(if n1 < n2 then 0u else n1 - n2)
@@ -228,7 +228,7 @@ let rec format (expr: Expr<'V, 'C>) : string =
     | Less(e1, e2) -> $"({format e1} < {format e2})"
     | Plus(e1, e2) -> $"({format e1} + {format e2})"
     | Time(e1, e2) -> $"({format e1} * {format e2})"
-    | Sub(e1, e2) -> $"({format e1} - {format e2})"
+    | Minus(e1, e2) -> $"({format e1} - {format e2})"
     | TupleFst e -> $"(fst {format e})"
     | TupleSnd e -> $"(snd {format e})"
     | ListEmpty -> "List.empty"

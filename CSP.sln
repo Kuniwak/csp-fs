@@ -11,6 +11,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{AC69AFD3
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "CSP.Core.Tests", "tests\CSP.Core.Tests\CSP.Core.Tests.fsproj", "{88B222E0-BB11-4036-B0A2-A84912829A10}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "CSP.Graphviz", "src\CSP.Graphviz\CSP.Graphviz.fsproj", "{6C57FF69-58F3-46F4-900E-B38C54BE5F40}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -28,9 +30,14 @@ Global
 		{88B222E0-BB11-4036-B0A2-A84912829A10}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{88B222E0-BB11-4036-B0A2-A84912829A10}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{88B222E0-BB11-4036-B0A2-A84912829A10}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6C57FF69-58F3-46F4-900E-B38C54BE5F40}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6C57FF69-58F3-46F4-900E-B38C54BE5F40}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6C57FF69-58F3-46F4-900E-B38C54BE5F40}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6C57FF69-58F3-46F4-900E-B38C54BE5F40}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{E73371BE-4B33-4C7F-AEF2-D008544F4CB7} = {B6921114-0968-434D-8C03-4308CEAC9365}
 		{88B222E0-BB11-4036-B0A2-A84912829A10} = {AC69AFD3-6A70-4BAA-9F53-7D3FD7C9D8D0}
+		{6C57FF69-58F3-46F4-900E-B38C54BE5F40} = {B6921114-0968-434D-8C03-4308CEAC9365}
 	EndGlobalSection
 EndGlobal
