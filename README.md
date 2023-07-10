@@ -47,34 +47,34 @@ printf (dot max m env "P" None)
 プロセス式
 ----------
 
-| プロセス（CSP）                         | 書き方                                                                                                                 |
-|:----------------------------------------|:-----------------------------------------------------------------------------------------------------------------------|
-| `A`                                     | `Unwind(procName, paramOpt)` （`paramOpt` はプロセスに渡す引数。なければ `None` を、あれば `Some v` のように指定する） |
-| `STOP`                                  | `Stop`                                                                                                                 |
-| `SKIP`                                  | `Skip`                                                                                                                 |
-| `a -> P`                                | `Prefix(evName, proc)`                                                                                                 |
-| `a!x -> P`                              | `PrefixSend(chName, expr, proc)`                                                                                       |
-| `a?x -> P`                              | `PrefixRecv(chName, varName, type, proc)`                                                                              |
-| `P [] Q`                                | `ExtCh(proc1, proc2)`                                                                                                  |
-| `P |~| Q`                               | `IntCh(proc1, proc2)`                                                                                                  |
-| `if c then P else Q`                    | `If(expr, procTrue, procFalse)`                                                                                        |
-| `match v with X -> P | Y -> Q | _ -> R` | `Match(expr, Map [(ctor1, (var1, proc1)); (ctor2, (var2, proc2)); ...], Some (varOther, procOther))`                   |
-| `P; Q`                                  | `Seq(proc1, proc2)`                                                                                                    |
-| `P [| X |] Q`                           | `InterfaceParallel(proc1, evSpecs, proc2)` (`evSpecs` はイベント指定子の集合)                                          |
-| `P \ X`                                 | `Hide(proc, evSpecs)` (`evSpecs` はイベント指定子の集合)                                                               |
-| `P[[a ←b]]`                            | 未実装                                                                                                                 |
-| `[] x:S @ P(x)`                         | 実装予定                                                                                                               |
-| `⨅ x:S @ P(x)`                          | 実装予定                                                                                                               |
-| `[|X|] x:S @ P(x)`                      | 実装予定                                                                                                               |
-| `P ||| Q`                               | `Interleave(proc1, proc2)`                                                                                             |
-| `||| x:S @ P(x)`                        | 実装予定                                                                                                               |
+| プロセス（CSP）                            | 書き方                                                                                                                 |
+|:-------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------|
+| `A`                                        | `Unwind(procName, paramOpt)` （`paramOpt` はプロセスに渡す引数。なければ `None` を、あれば `Some v` のように指定する） |
+| `STOP`                                     | `Stop`                                                                                                                 |
+| `SKIP`                                     | `Skip`                                                                                                                 |
+| `a -> P`                                   | `Prefix(evName, proc)`                                                                                                 |
+| `a!x -> P`                                 | `PrefixSend(chName, expr, proc)`                                                                                       |
+| `a?x -> P`                                 | `PrefixRecv(chName, varName, type, proc)`                                                                              |
+| `P [] Q`                                   | `ExtCh(proc1, proc2)`                                                                                                  |
+| `P \|~\| Q`                                | `IntCh(proc1, proc2)`                                                                                                  |
+| `if c then P else Q`                       | `If(expr, procTrue, procFalse)`                                                                                        |
+| `match v with X -> P \| Y -> Q \| _ -> R`  | `Match(expr, Map [(ctor1, (var1, proc1)); (ctor2, (var2, proc2)); ...], Some (varOther, procOther))`                   |
+| `P; Q`                                     | `Seq(proc1, proc2)`                                                                                                    |
+| `P [\| X \|] Q`                            | `InterfaceParallel(proc1, evSpecs, proc2)` (`evSpecs` はイベント指定子の集合)                                          |
+| `P \\ X`                                   | `Hide(proc, evSpecs)` (`evSpecs` はイベント指定子の集合)                                                               |
+| `P[[a ←b]]`                               | 未実装                                                                                                                 |
+| `[] x:S @ P(x)`                            | 実装予定                                                                                                               |
+| `\|~\| x:S @ P(x)`                             | 実装予定                                                                                                               |
+| `[\|X\|] x:S @ P(x)`                       | 実装予定                                                                                                               |
+| `P \|\|\| Q`                               | `Interleave(proc1, proc2)`                                                                                             |
+| `\|\|\| x:S @ P(x)`                        | 実装予定                                                                                                               |
 
 
 
 式
 --
 
-[`Expr.fs`](./src/CSP.Core/Expr.fs) を参照してください。
+真偽値、自然数、集合、列、辞書に対する一部の演算を表現できます。量が多いので [`Expr.fs`](./src/CSP.Core/Expr.fs) を参照してください。
 
 
 
@@ -83,7 +83,7 @@ printf (dot max m env "P" None)
 
 イベントまたはチャンネルを指定するための構文です。
 
-| イベント指定子 | 書き方 |
-|:-|:-|
-| イベント | `Event ev` |
-| チャンネル | `Chan ch` （送受信される値を特定する記法は実装していません） |
+| イベント指定子 | 書き方                                                       |
+|:---------------|:-------------------------------------------------------------|
+| イベント       | `Event ev`                                                   |
+| チャンネル     | `Chan ch` （送受信される値を特定する記法は実装していません） |
