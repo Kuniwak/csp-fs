@@ -1,6 +1,7 @@
 ﻿module CSP.Core.Proc
 
 open CSP.Core.Val
+open CSP.Core.Type
 open CSP.Core.Expr
 open CSP.Core.EventSpec
 open FSharpx.Collections
@@ -12,7 +13,7 @@ type Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor when 'Ev: comparison and 'Var: comparison an
     | Skip
     | Prefix of 'Ev * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>
     | PrefixSend of 'Ch * Expr<'Var, 'Ctor> * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>
-    | PrefixRecv of 'Ch * 'Var * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>
+    | PrefixRecv of 'Ch * 'Var * Type<'Ctor> * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>
     | IntCh of Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor> * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>
     | ExtCh of Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor> * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>
     | Seq of Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor> * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>
@@ -44,7 +45,7 @@ let format (m: Map<'P, 'Var option * Proc<'P, 'Ev, 'Ch, 'Var, 'Ctor>>) (p0: Proc
         | Skip -> "SKIP"
         | Prefix(ev, p') -> $"({ev} -> {f p' false})"
         | PrefixSend(ev, v, p') -> $"({ev}!{v} -> {f p' false})"
-        | PrefixRecv(ev, v, p') -> $"({ev}?{v} -> {f p' false})"
+        | PrefixRecv(ev, v, t, p') -> $"({ev}?({v}: {Type.format t}) -> {f p' false})"
         | IntCh(p1, p2) -> $"({f p1 false} ⨅ {f p2 false})"
         | ExtCh(p1, p2) -> $"({f p1 false} □ {f p2 false})"
         | Seq(p1, p2) -> $"({f p1 false} ; {f p2 false})"

@@ -2,6 +2,7 @@ module CSP.Core.Trans
 
 open CSP.Core.ProcMap
 open CSP.Core.Val
+open CSP.Core.Type
 open CSP.Core.Event
 open CSP.Core.EventSpec
 open CSP.Core.Expr
@@ -32,7 +33,7 @@ let rec trans
     | Stop _ -> []
     | Prefix(ev, s) -> [ (Vis ev, s) ]
     | PrefixSend(env, ch, e, s) -> [ (VisChan(ch, eval env e), s) ]
-    | PrefixRecv(ch, var, s) -> [ (VisRecv(ch, var), bind var VAny s) ]
+    | PrefixRecv(ch, var, t, s) -> List.map (fun v -> (VisChan(ch, v), bind var v s) ) (univ t)
     | IntCh(s1, s2) -> [ (Tau, s1); (Tau, s2) ]
     | ExtCh(s1, s2) ->
         (List.fold
@@ -96,11 +97,6 @@ let rec trans
                         acc
                     else
                         (VisChan(ch', v), InterfaceParallel(p1', evs, p2)) :: acc // Para1
-                | VisRecv(ch', v) ->
-                    if Set.contains (Chan ch') evs then
-                        acc
-                    else
-                        (VisRecv(ch', v), InterfaceParallel(p1', evs, p2)) :: acc // Para1
                 | Tick ->
                     match p1' with
                     | Omega _ -> (Tau, InterfaceParallel(p1', evs, p2)) :: acc // Para4
@@ -108,7 +104,6 @@ let rec trans
                 | Tau -> (Tau, InterfaceParallel(p1', evs, p2)) :: acc // Para1
                 | Hid ev' -> (Hid ev', InterfaceParallel(p1', evs, p2)) :: acc // para1
                 | HidChan(ch', v) -> (HidChan(ch', v), InterfaceParallel(p1', evs, p2)) :: acc // Para1
-                | HidRecv(ch', v) -> (HidRecv(ch', v), InterfaceParallel(p1', evs, p2)) :: acc // Para1
                 | Event.Error -> (Event.Error, Error("lhs error", s0)) :: acc)
             []
             t1)
@@ -125,11 +120,6 @@ let rec trans
                         acc
                     else
                         (VisChan(ch', v), InterfaceParallel(p1, evs, p2')) :: acc
-                | VisRecv(ch', v) ->
-                    if Set.contains (Chan ch') evs then
-                        acc
-                    else
-                        (VisRecv(ch', v), InterfaceParallel(p1, evs, p2')) :: acc // Para1
                 | Tick ->
                     match p2' with
                     | Omega _ -> (Tau, InterfaceParallel(p1, evs, p2')) :: acc // Para5
@@ -137,7 +127,6 @@ let rec trans
                 | Tau -> (Tau, InterfaceParallel(p1, evs, p2')) :: acc // Para2
                 | Hid ev' -> (Hid ev', InterfaceParallel(p1, evs, p2')) :: acc // para1
                 | HidChan(ch', v) -> (HidChan(ch', v), InterfaceParallel(p1, evs, p2')) :: acc // Para1
-                | HidRecv(ch', v) -> (HidRecv(ch', v), InterfaceParallel(p1, evs, p2')) :: acc // Para1
                 | Event.Error -> (Event.Error, Error("rhs error", s0)) :: acc)
             []
             t2)
@@ -149,25 +138,10 @@ let rec trans
                         (ev1, InterfaceParallel(s1', evs, s2')) :: acc // Para3
                     else
                         acc
-                | VisChan(ch1, v1), VisChan(ch2, v2) when ch1 = ch2 && (v1 = v2 || v1 = VAny || v2 = VAny) ->
+                | VisChan(ch1, v1), VisChan(ch2, v2) when ch1 = ch2 && v1 = v2 ->
                     if Set.contains (Chan ch1) evs then
-                        (VisChan(ch1, (if v1 = VAny then v2 else v1)), InterfaceParallel(s1', evs, s2'))
+                        (VisChan(ch1, v1), InterfaceParallel(s1', evs, s2'))
                         :: acc // Para3
-                    else
-                        acc
-                | VisChan(ch1, v), VisRecv(ch2, var) when ch1 = ch2 ->
-                    if Set.contains (Chan ch1) evs then
-                        (VisChan(ch1, v), InterfaceParallel(s1', evs, bind var v s2')) :: acc // Para3
-                    else
-                        acc
-                | VisRecv(ch1, var), VisChan(ch2, v) when ch1 = ch2 ->
-                    if Set.contains (Chan ch1) evs then
-                        (VisChan(ch1, v), InterfaceParallel(bind var v s1', evs, s2')) :: acc // Para3
-                    else
-                        acc
-                | VisRecv(ch1, _), VisRecv(ch2, _) when ch1 = ch2 ->
-                    if Set.contains (Chan ch1) evs then
-                        (VisChan(ch1, VAny), InterfaceParallel(s1', evs, s2')) :: acc // Para3
                     else
                         acc
                 | Event.Error, Event.Error -> (Event.Error, Error("both lhs and rhs errors", s0)) :: acc
@@ -182,7 +156,6 @@ let rec trans
                 match ev with
                 | Vis e when Set.contains (Event e) evs -> (Hid e, Hide(s', evs))
                 | VisChan(ch, v) when Set.contains (Chan ch) evs -> (HidChan(ch, v), Hide(s', evs))
-                | VisRecv(ch, v) when Set.contains (Chan ch) evs -> (HidRecv(ch, v), Hide(s', evs))
                 | Tick ->
                     match s' with
                     | Omega _ -> (Tick, s')

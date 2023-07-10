@@ -1,7 +1,8 @@
 module CSP.Core.State
 
-open CSP.Core.ProcMap
 open FSharpx.Collections
+open CSP.Core.ProcMap
+open CSP.Core.Type
 open CSP.Core.EventSpec
 open CSP.Core.Expr
 open CSP.Core.Proc
@@ -14,7 +15,7 @@ type State<'P, 'Ev, 'Ch, 'Var, 'Ctor when 'Ev: comparison and 'Var: comparison a
     | Skip
     | Prefix of 'Ev * State<'P, 'Ev, 'Ch, 'Var, 'Ctor>
     | PrefixSend of Map<'Var, Val<'Ctor>> * 'Ch * Expr<'Var, 'Ctor> * State<'P, 'Ev, 'Ch, 'Var, 'Ctor>
-    | PrefixRecv of 'Ch * 'Var * State<'P, 'Ev, 'Ch, 'Var, 'Ctor>
+    | PrefixRecv of 'Ch * 'Var * Type<'Ctor> * State<'P, 'Ev, 'Ch, 'Var, 'Ctor>
     | IntCh of State<'P, 'Ev, 'Ch, 'Var, 'Ctor> * State<'P, 'Ev, 'Ch, 'Var, 'Ctor>
     | ExtCh of State<'P, 'Ev, 'Ch, 'Var, 'Ctor> * State<'P, 'Ev, 'Ch, 'Var, 'Ctor>
     | Seq of State<'P, 'Ev, 'Ch, 'Var, 'Ctor> * State<'P, 'Ev, 'Ch, 'Var, 'Ctor>
@@ -43,7 +44,7 @@ let rec bind (var: 'Var) (v: Val<'Ctor>) (s: State<'P, 'Ev, 'Ch, 'Var, 'Ctor>) =
     | Skip -> Skip
     | Prefix(ev, s') -> Prefix(ev, bind var v s')
     | PrefixSend(env, ch, e, s') -> PrefixSend(Map.add var v env, ch, e, bind var v s')
-    | PrefixRecv(ch, v', s') -> PrefixRecv(ch, v', bind var v s')
+    | PrefixRecv(ch, v', t, s') -> PrefixRecv(ch, v', t, bind var v s')
     | IntCh(s1, s2) -> IntCh(bind var v s1, bind var v s2)
     | ExtCh(s1, s2) -> ExtCh(bind var v s1, bind var v s2)
     | Seq(s1, s2) -> Seq(bind var v s1, bind var v s2)
@@ -71,7 +72,7 @@ let rec ofProc
     | Proc.Skip -> Skip
     | Proc.Prefix(ev, p') -> Prefix(ev, ofProc m env p')
     | Proc.PrefixSend(ch, e, p') -> PrefixSend(env, ch, e, ofProc m env p')
-    | Proc.PrefixRecv(ch, v, p') -> PrefixRecv(ch, v, ofProc m env p')
+    | Proc.PrefixRecv(ch, v, t, p') -> PrefixRecv(ch, v, t, ofProc m env p')
     | Proc.IntCh(p1, p2) -> IntCh(ofProc m env p1, ofProc m env p2)
     | Proc.ExtCh(p1, p2) -> ExtCh(ofProc m env p1, ofProc m env p2)
     | Proc.Seq(p1, p2) -> Seq(ofProc m env p1, ofProc m env p2)
@@ -121,7 +122,7 @@ let format (m: ProcMap<'P, 'Ev, 'Ch, 'Var, 'Ctor>) (s0: State<'P, 'Ev, 'Ch, 'Var
         | Skip -> "SKIP"
         | Prefix(ev, s') -> $"({ev} -> {f s' false})"
         | PrefixSend(env, ev, e, s') -> $"({ev}!{Expr.format e} -> {f s' false} env={Env.format env})"
-        | PrefixRecv(ev, var, s') -> $"({ev}?{var} -> {f s' false})"
+        | PrefixRecv(ev, var, t, s') -> $"({ev}?({var}: {Type.format t}) -> {f s' false})"
         | IntCh(s1, s2) -> $"({f s1 false} ⨅ {f s2 false})"
         | ExtCh(s1, s2) -> $"({f s1 false} □ {f s2 false})"
         | Seq(s1, s2) -> $"({f s1 false} ; {f s2 false})"

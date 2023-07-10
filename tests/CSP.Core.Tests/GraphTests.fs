@@ -3,6 +3,7 @@ module CSP.Core.Tests.GraphTests
 open Xunit
 open CSP.Core.EventSpec
 open CSP.Core.Val
+open CSP.Core.Type
 open CSP.Core.Expr
 open CSP.Core.ProcMap
 open CSP.Core.Proc
@@ -397,9 +398,9 @@ let roVarSys1 () =
                     VarRef "x",
                     Unwind("ROVar", Some(Expr.If(Less(VarRef "x", LitNat 4u), Plus(VarRef "x", LitNat 1u), LitNat 0u)))
                 )))
-              ("Reader1", (None, PrefixRecv("read", "x", Stop)))
-              ("Reader2", (None, PrefixRecv("read", "x", Stop)))
-              ("Reader3", (None, PrefixRecv("read", "x", Stop))) ] in
+              ("Reader1", (None, PrefixRecv("read", "x", TNat, Stop)))
+              ("Reader2", (None, PrefixRecv("read", "x", TNat, Stop)))
+              ("Reader3", (None, PrefixRecv("read", "x", TNat, Stop))) ] in
 
     let env = Map.empty in
     let actual = dot max m env "ROVarSys1" None in
@@ -434,9 +435,9 @@ let roVarSys2 () =
                     VarRef "x",
                     Unwind("ROVar", Some(Expr.If(Less(VarRef "x", LitNat 4u), Plus(VarRef "x", LitNat 1u), LitNat 0u)))
                 )))
-              ("Reader1", (None, PrefixRecv("read", "x", Stop)))
-              ("Reader2", (None, PrefixRecv("read", "x", Stop)))
-              ("Reader3", (None, PrefixRecv("read", "x", Stop))) ] in
+              ("Reader1", (None, PrefixRecv("read", "x", TNat, Stop)))
+              ("Reader2", (None, PrefixRecv("read", "x", TNat, Stop)))
+              ("Reader3", (None, PrefixRecv("read", "x", TNat, Stop))) ] in
 
     let env = Map.empty in
     let actual = dot max m env "ROVarSys2" None in

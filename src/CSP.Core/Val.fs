@@ -10,7 +10,6 @@ type Val<'Ctor when 'Ctor: comparison> =
     | VList of Val<'Ctor> list
     | VMap of Map<Val<'Ctor>, Val<'Ctor>>
     | VUnion of Ctor<'Ctor> * Val<'Ctor>
-    | VAny
     | VError
 
 and Ctor<'Ctor when 'Ctor: comparison> =
