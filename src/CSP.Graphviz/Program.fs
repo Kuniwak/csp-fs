@@ -29,7 +29,7 @@ type ChName =
     | ChkStarBtn
     | StarBtn
     | UnstarBtn
-    
+
 type CtorName =
     | GHAuthError
     | GHSearchError
@@ -44,7 +44,6 @@ type CtorName =
     | AppChkStarError
     | AppStarError
     | AppUnstarError
-    | AppSearch
     | PAT1
     | PAT2
     | PATEmpty
@@ -55,17 +54,51 @@ type CtorName =
     | Repo1
     | Repo2
     | Repo3
-    
-let tPAT = TUnion("pat", Map [(Ctor PAT1, TUnit); (Ctor PAT2, TUnit); (Ctor PATEmpty, TUnit)])
-let tQuery = TUnion("query", Map [(Ctor Query1, TUnit); (Ctor Query2, TUnit); (Ctor QueryEmpty, TUnit)])
-let tUser = TUnion("user", Map [(Ctor User1, TUnit)])
-let tRepo = TUnion("repo", Map [(Ctor Repo1, TUnit); (Ctor Repo2, TUnit); (Ctor Repo3, TUnit)])
-let tGHAuthError = TUnion("ghAuthError", Map [(Ctor GHAuthError, TUnit)])
-let tGHSearchError = TUnion("ghSearchError", Map [(Ctor GHSearchError, TUnit)])
-let tGHSearchMoreError = TUnion("ghSearchMoreError", Map [(Ctor GHSearchMoreError, TUnit)])
-let tGHChkStarError = TUnion("ghChkStarError", Map [(Ctor GHChkStarError, TUnit)])
-let tGHStarError = TUnion("ghStarError", Map [(Ctor GHStarError, TUnit)])
-let tGHUnstarError = TUnion("ghUnstarError", Map [(Ctor GHUnstarError, TUnit)])
+
+let tPAT =
+    TUnion("pat", Map [ (Ctor PAT1, TUnit); (Ctor PAT2, TUnit); (Ctor PATEmpty, TUnit) ])
+
+let tQuery =
+    TUnion("query", Map [ (Ctor Query1, TUnit); (Ctor Query2, TUnit); (Ctor QueryEmpty, TUnit) ])
+
+let tUser = TUnion("user", Map [ (Ctor User1, TUnit) ])
+
+let tRepo =
+    TUnion("repo", Map [ (Ctor Repo1, TUnit); (Ctor Repo2, TUnit); (Ctor Repo3, TUnit) ])
+
+let tGHAuthError = TUnion("ghAuthError", Map [ (Ctor GHAuthError, TUnit) ])
+let tGHSearchError = TUnion("ghSearchError", Map [ (Ctor GHSearchError, TUnit) ])
+
+let tGHSearchMoreError =
+    TUnion("ghSearchMoreError", Map [ (Ctor GHSearchMoreError, TUnit) ])
+
+let tGHChkStarError = TUnion("ghChkStarError", Map [ (Ctor GHChkStarError, TUnit) ])
+let tGHStarError = TUnion("ghStarError", Map [ (Ctor GHStarError, TUnit) ])
+let tGHUnstarError = TUnion("ghUnstarError", Map [ (Ctor GHUnstarError, TUnit) ])
+
+let tDispLoginError =
+    TUnion("tDispLoginError", Map [ (Ctor AppAuthError, TUnit); (Ctor AppAuthFailed, TUnit) ])
+
+let tDispLogin =
+    TUnion("either", Map [ (CtorLeft, tDispLoginError); (CtorRight, tOption tUser) ])
+let tDispSearchError =
+    TUnion(
+        "tDispSearchError",
+        Map
+            [ (Ctor AppSearchError, TUnit)
+              (Ctor AppSearchMoreError, TUnit)
+              (Ctor AppChkStarError, TUnit)
+              (Ctor AppStarError, TUnit)
+              (Ctor AppUnstarError, TUnit) ]
+    )
+
+let tDispSearchResp =
+    TUnion(
+        "either",
+        Map
+            [ (CtorLeft, tDispSearchError)
+              (CtorRight, TTuple(TList tRepo, TTuple(TMap(tRepo, tOption TBool), TBool))) ]
+    )
 
 type VarName =
     | OptP
@@ -144,12 +177,12 @@ let m: ProcMap<ProcName, EvName, ChName, VarName, CtorName> =
            (Some P, PrefixSend(AuthRes, LitUnion(CtorRight, MapFindOpt(VarRef P, VarRef PATRel)), Unwind(GHAuth, None))))
 
           (GHSearch, (None, PrefixRecv(SearchReq, R, TTuple(tQuery, TNat), Unwind(GHSearchRecv, Some(VarRef R)))))
-          (GHSearchRecv, (Some R, IntCh(Unwind(GHSearchWillFail, None), Unwind(GHSearchWillResp, Some(VarRef P)))))
-          (GHAuthWillFail,
+          (GHSearchRecv, (Some R, IntCh(Unwind(GHSearchWillFail, None), Unwind(GHSearchWillResp, Some(VarRef R)))))
+          (GHSearchWillFail,
            (None,
             PrefixSend(SearchRes, LitUnion(CtorLeft, LitUnion(Ctor GHSearchError, LitUnit)), Unwind(GHSearch, None))))
-          (GHAuthWillResp,
-           (Some P,
+          (GHSearchWillResp,
+           (Some R,
             PrefixSend(
                 SearchRes,
                 LitUnion(
@@ -265,7 +298,7 @@ let m: ProcMap<ProcName, EvName, ChName, VarName, CtorName> =
           (AppDispLogin,
            (Some P1,
             ExtCh(
-                PrefixRecv(PATField, P2, Unwind(AppDispLogin, Some(VarRef P2))),
+                PrefixRecv(PATField, P2, tDispLogin, Unwind(AppDispLogin, Some(VarRef P2))),
                 Guard(
                     Not(Eq(VarRef P1, LitUnion(Ctor PATEmpty, LitUnit))),
                     Prefix(LoginBtn, Unwind(AppDidPressLoginBtn, Some(VarRef P1)))
@@ -295,7 +328,7 @@ let m: ProcMap<ProcName, EvName, ChName, VarName, CtorName> =
            (Some P,
             PrefixSend(
                 DispLogin,
-                LitUnion(Ctor AppSearch, LitUnit),
+                LitUnion(CtorRight, LitUnion(CtorNone, LitUnit)),
                 Unwind(AppDispSearch, Some(LitUnion(Ctor QueryEmpty, LitUnit)))
             )))
           (AppDispSearch,
@@ -303,7 +336,7 @@ let m: ProcMap<ProcName, EvName, ChName, VarName, CtorName> =
             ExtCh(
                 Prefix(LoginBtn, Unwind(AppDispLogin, Some(LitUnion(Ctor PATEmpty, LitUnit)))),
                 ExtCh(
-                    PrefixRecv(SearchField, Q, Unwind(AppDispSearch, Some(VarRef Q))),
+                    PrefixRecv(SearchField, Q, tQuery, Unwind(AppDispSearch, Some(VarRef Q))),
                     Guard(
                         Not(Eq(VarRef Q, LitUnion(Ctor QueryEmpty, LitUnit))),
                         Prefix(SearchBtn, Unwind(AppDidPressSearchBtn, Some(VarRef Q)))
@@ -316,7 +349,7 @@ let env: Env<VarName, CtorName> =
         [ (PATRel, VMap(Map [ (VUnion(Ctor PAT1, VUnit), VUnion(Ctor User1, VUnit)) ]))
           (Pages1,
            VList
-               [ VList [ VUnion(Ctor Repo, VNat 0u); VUnion(Ctor Repo, VNat 1u) ]
-                 VList [ VUnion(Ctor Repo, VNat 2u) ] ]) ]
+               [ VList [ VUnion(Ctor Repo1, VUnit); VUnion(Ctor Repo2, VUnit) ]
+                 VList [ VUnion(Ctor Repo3, VUnit) ] ]) ]
 
-printf "%s" (dot 100 m env GHStar (Some(VSet(Set []))))
+printf $"%s{dot 100 m env GHSearch None}"
