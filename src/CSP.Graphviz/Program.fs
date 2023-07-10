@@ -1,5 +1,6 @@
 ﻿open CSP.Core.Env
 open CSP.Core.Val
+open CSP.Core.Type
 open CSP.Core.Expr
 open CSP.Core.Proc
 open CSP.Core.Graph
@@ -28,10 +29,11 @@ type ChName =
     | ChkStarBtn
     | StarBtn
     | UnstarBtn
-
+    
 type CtorName =
     | GHAuthError
     | GHSearchError
+    | GHSearchMoreError
     | GHChkStarError
     | GHStarError
     | GHUnstarError
@@ -50,7 +52,20 @@ type CtorName =
     | Query1
     | Query2
     | QueryEmpty
-    | Repo
+    | Repo1
+    | Repo2
+    | Repo3
+    
+let tPAT = TUnion("pat", Map [(Ctor PAT1, TUnit); (Ctor PAT2, TUnit); (Ctor PATEmpty, TUnit)])
+let tQuery = TUnion("query", Map [(Ctor Query1, TUnit); (Ctor Query2, TUnit); (Ctor QueryEmpty, TUnit)])
+let tUser = TUnion("user", Map [(Ctor User1, TUnit)])
+let tRepo = TUnion("repo", Map [(Ctor Repo1, TUnit); (Ctor Repo2, TUnit); (Ctor Repo3, TUnit)])
+let tGHAuthError = TUnion("ghAuthError", Map [(Ctor GHAuthError, TUnit)])
+let tGHSearchError = TUnion("ghSearchError", Map [(Ctor GHSearchError, TUnit)])
+let tGHSearchMoreError = TUnion("ghSearchMoreError", Map [(Ctor GHSearchMoreError, TUnit)])
+let tGHChkStarError = TUnion("ghChkStarError", Map [(Ctor GHChkStarError, TUnit)])
+let tGHStarError = TUnion("ghStarError", Map [(Ctor GHStarError, TUnit)])
+let tGHUnstarError = TUnion("ghUnstarError", Map [(Ctor GHUnstarError, TUnit)])
 
 type VarName =
     | OptP
@@ -121,14 +136,14 @@ type ProcName =
 
 let m: ProcMap<ProcName, EvName, ChName, VarName, CtorName> =
     Map
-        [ (GHAuth, (None, PrefixRecv(AuthReq, P, Unwind(GHAuthRecv, Some(VarRef P)))))
+        [ (GHAuth, (None, PrefixRecv(AuthReq, P, tPAT, Unwind(GHAuthRecv, Some(VarRef P)))))
           (GHAuthRecv, (Some P, IntCh(Unwind(GHAuthWillFail, Some(VarRef P)), Unwind(GHAuthWillResp, Some(VarRef P)))))
           (GHAuthWillFail,
            (Some P, PrefixSend(AuthRes, LitUnion(CtorLeft, LitUnion(Ctor GHAuthError, LitUnit)), Unwind(GHAuth, None))))
           (GHAuthWillResp,
            (Some P, PrefixSend(AuthRes, LitUnion(CtorRight, MapFindOpt(VarRef P, VarRef PATRel)), Unwind(GHAuth, None))))
 
-          (GHSearch, (None, PrefixRecv(SearchReq, R, Unwind(GHSearchRecv, Some(VarRef R)))))
+          (GHSearch, (None, PrefixRecv(SearchReq, R, TTuple(tQuery, TNat), Unwind(GHSearchRecv, Some(VarRef R)))))
           (GHSearchRecv, (Some R, IntCh(Unwind(GHSearchWillFail, None), Unwind(GHSearchWillResp, Some(VarRef P)))))
           (GHAuthWillFail,
            (None,
@@ -162,10 +177,10 @@ let m: ProcMap<ProcName, EvName, ChName, VarName, CtorName> =
           (GHStar,
            (Some StarRel,
             ExtCh(
-                PrefixRecv(ChkStarReq, T, Unwind(GHChkStarRecv1, Some(VarRef T))),
+                PrefixRecv(ChkStarReq, T, TTuple(tPAT, tRepo), Unwind(GHChkStarRecv1, Some(VarRef T))),
                 ExtCh(
-                    PrefixRecv(StarReq, T, Unwind(GHStarRecv1, Some(VarRef T))),
-                    PrefixRecv(UnstarReq, T, Unwind(GHUnstarRecv1, Some(VarRef T)))
+                    PrefixRecv(StarReq, T, TTuple(tPAT, tRepo), Unwind(GHStarRecv1, Some(VarRef T))),
+                    PrefixRecv(UnstarReq, T, TTuple(tPAT, tRepo), Unwind(GHUnstarRecv1, Some(VarRef T)))
                 )
             )))
           (GHChkStarRecv1,
@@ -296,7 +311,7 @@ let m: ProcMap<ProcName, EvName, ChName, VarName, CtorName> =
                 )
             ))) ]
 
-let env: Env<Var, Ctor> =
+let env: Env<VarName, CtorName> =
     Map
         [ (PATRel, VMap(Map [ (VUnion(Ctor PAT1, VUnit), VUnion(Ctor User1, VUnit)) ]))
           (Pages1,
