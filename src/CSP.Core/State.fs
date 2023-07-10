@@ -99,15 +99,32 @@ let unwind
             if Set.contains s visited then
                 failwith "circular definition"
             else
-                match (Map.find n m, eOpt) with
-                | (Some var, p), Some e ->
-                    let env = Map.add var (eval env e) env in loop (ofProc m env p) (Set.add s visited)
-                | (None, p), None -> loop (ofProc m env p) (Set.add s visited)
-                | (None, _), Some _ -> Error("given a value to Unwind, but not needed at unwind", s)
-                | (Some _, _), None -> Error("needed a value by Unwind, but not given at unwind", s)
+                match Map.tryFind n m with
+                | Some t ->
+                    match (t, eOpt) with
+                    | (Some var, p), Some e ->
+                        let env = Map.add var (eval env e) env in loop (ofProc m env p) (Set.add s visited)
+                    | (None, p), None -> loop (ofProc m env p) (Set.add s visited)
+                    | (None, _), Some _ -> Error("given a value to Unwind, but not needed at unwind", s)
+                    | (Some _, _), None -> Error("needed a value by Unwind, but not given at unwind", s)
+                | None ->
+                    let sep = ", " in
+
+                    let ms =
+                        String.concat
+                            sep
+                            (Seq.map
+                                (fun (n, (varOpt, _)) ->
+                                    match varOpt with
+                                    | Some var -> $"{n} {var}"
+                                    | None -> $"{n}")
+                                (Map.toList m)) in
+
+                    failwith $"no such process: {n} in [{ms}]"
         | _ -> s
 
     loop s0 Set.empty
+
 let format (m: ProcMap<'P, 'Ev, 'Ch, 'Var, 'Ctor>) (s0: State<'P, 'Ev, 'Ch, 'Var, 'Ctor>) : string =
     let rec f s isTop =
         match s with

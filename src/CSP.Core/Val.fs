@@ -39,5 +39,4 @@ let rec format (v: Val<'Ctor>) : string =
         | CtorNone -> "None"
         | CtorLeft -> $"(Left {format v})"
         | CtorRight -> $"(Right {format v})"
-    | VAny -> "*"
     | VError -> "ERROR"
