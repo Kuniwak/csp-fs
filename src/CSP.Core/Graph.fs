@@ -3,22 +3,21 @@ module CSP.Core.Graph
 open CSP.Core.Env
 open CSP.Core.ProcMap
 open CSP.Core.Val
-open CSP.Core.Event
 open CSP.Core.State
 open CSP.Core.Trans
 open CSP.Core.Search
 
 let graph
     (max: int)
-    (m: ProcMap<'P, 'Ev, 'Ch, 'Var, 'Ctor>)
+    (m: ProcMap<'P, 'Var, 'Ctor>)
     (genv: Env<'Var, 'Ctor>)
     (n: 'P)
     (vOpt: Val<'Ctor> option)
-    : (State<'P, 'Ev, 'Ch, 'Var, 'Ctor> * int) list *
-      (State<'P, 'Ev, 'Ch, 'Var, 'Ctor> * Event<'Ev, 'Ch, 'Var, 'Ctor> * State<'P, 'Ev, 'Ch, 'Var, 'Ctor>) list =
-    let s0: State<'P, 'Ev, 'Ch, 'Var, 'Ctor> = init m genv n vOpt in
-    let mutable ss: (State<'P, 'Ev, 'Ch, 'Var, 'Ctor> * int) list = [] in
-    let mutable es: (State<'P, 'Ev, 'Ch, 'Var, 'Ctor> * Event<'Ev, 'Ch, 'Var, 'Ctor> * State<'P, 'Ev, 'Ch, 'Var, 'Ctor>) list = [] in
+    : (State<'P, 'Var, 'Ctor> * int) list *
+      (State<'P, 'Var, 'Ctor> * Event<'Ctor> * State<'P, 'Var, 'Ctor>) list =
+    let s0: State<'P, 'Var, 'Ctor> = init m genv n vOpt in
+    let mutable ss: (State<'P, 'Var, 'Ctor> * int) list = [] in
+    let mutable es: (State<'P, 'Var, 'Ctor> * Event<'Ctor> * State<'P, 'Var, 'Ctor>) list = [] in
     bfs
         (fun s es' ->
            ss <- (s, List.length es') :: ss
@@ -32,7 +31,7 @@ let graph
 
 let dot
     (max: int)
-    (m: ProcMap<'P, 'Ev, 'Ch, 'Var, 'Ctor>)
+    (m: ProcMap<'P, 'Var, 'Ctor>)
     (genv: Map<'Var, Val<'Ctor>>)
     (n: 'P)
     (vOpt: Val<'Ctor> option)
@@ -52,7 +51,7 @@ let dot
     let r2 =
         List.map
             (fun (s, ev, s') ->
-                $"  \"{(format m s).Replace(dq, sq)}\" -> \"{(format m s').Replace(dq, sq)}\" [label=\"{(Event.format ev).Replace(dq, sq)}\"]")
+                $"  \"{(format m s).Replace(dq, sq)}\" -> \"{(format m s').Replace(dq, sq)}\" [label=\"{(formatEvent ev).Replace(dq, sq)}\"]")
             es
 
     let sep = "\n"

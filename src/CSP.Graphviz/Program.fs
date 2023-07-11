@@ -221,7 +221,7 @@ let m: ProcMap<ProcName, EvName, ChName, VarName, CtorName> =
             Match(
                 MapFindOpt(TupleSnd(VarRef T), VarRef PATRel),
                 Map
-                    [ (CtorSome, (U, Unwind(GHChkStarRecv2, Some(LitTuple(TupleFst(VarRef T), VarRef U)))))
+                    [ (CtorSome, (U, Unwind(GHChkStarRecv2, Some(Tuple(TupleFst(VarRef T), VarRef U)))))
                       (CtorNone, (Any, Unwind(GHChkStarWillFail, None))) ],
                 None
             )))
@@ -241,7 +241,7 @@ let m: ProcMap<ProcName, EvName, ChName, VarName, CtorName> =
             Match(
                 MapFindOpt(TupleSnd(VarRef T), VarRef PATRel),
                 Map
-                    [ (CtorSome, (U, Unwind(GHStarRecv2, Some(LitTuple(TupleFst(VarRef T), VarRef U)))))
+                    [ (CtorSome, (U, Unwind(GHStarRecv2, Some(Tuple(TupleFst(VarRef T), VarRef U)))))
                       (CtorNone, (Any, Unwind(GHStarWillFail, None))) ],
                 None
             )))
@@ -266,7 +266,7 @@ let m: ProcMap<ProcName, EvName, ChName, VarName, CtorName> =
             Match(
                 MapFindOpt(TupleSnd(VarRef T), VarRef PATRel),
                 Map
-                    [ (CtorSome, (U, Unwind(GHUnstarRecv2, Some(LitTuple(TupleFst(VarRef T), VarRef U)))))
+                    [ (CtorSome, (U, Unwind(GHUnstarRecv2, Some(Tuple(TupleFst(VarRef T), VarRef U)))))
                       (CtorNone, (Any, Unwind(GHUnstarWillFail, None))) ],
                 None
             )))
@@ -292,7 +292,7 @@ let m: ProcMap<ProcName, EvName, ChName, VarName, CtorName> =
                 VarRef P,
                 Map
                     [ (CtorSome, (P, Unwind(AppDispSearch, Some(VarRef P))))
-                      (CtorNone, (Any, Unwind(AppDispLogin, Some(LitUnion(Ctor PATEmpty, LitUnit))))) ],
+                      (CtorNone, (Any, Unwind(AppDispLogin, Some(Union(Ctor PATEmpty, LitUnit))))) ],
                 None
             )))
           (AppDispLogin,
@@ -300,7 +300,7 @@ let m: ProcMap<ProcName, EvName, ChName, VarName, CtorName> =
             ExtCh(
                 PrefixRecv(PATField, P2, tDispLogin, Unwind(AppDispLogin, Some(VarRef P2))),
                 Guard(
-                    Not(Eq(VarRef P1, LitUnion(Ctor PATEmpty, LitUnit))),
+                    Not(Eq(VarRef P1, Union(Ctor PATEmpty, LitUnit))),
                     Prefix(LoginBtn, Unwind(AppDidPressLoginBtn, Some(VarRef P1)))
                 )
             )))
@@ -334,11 +334,11 @@ let m: ProcMap<ProcName, EvName, ChName, VarName, CtorName> =
           (AppDispSearch,
            (Some Q,
             ExtCh(
-                Prefix(LoginBtn, Unwind(AppDispLogin, Some(LitUnion(Ctor PATEmpty, LitUnit)))),
+                Prefix(LoginBtn, Unwind(AppDispLogin, Some(Union(Ctor PATEmpty, LitUnit)))),
                 ExtCh(
                     PrefixRecv(SearchField, Q, tQuery, Unwind(AppDispSearch, Some(VarRef Q))),
                     Guard(
-                        Not(Eq(VarRef Q, LitUnion(Ctor QueryEmpty, LitUnit))),
+                        Not(Eq(VarRef Q, Union(Ctor QueryEmpty, LitUnit))),
                         Prefix(SearchBtn, Unwind(AppDidPressSearchBtn, Some(VarRef Q)))
                     )
                 )

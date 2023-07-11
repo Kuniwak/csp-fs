@@ -19,16 +19,16 @@ open CSP.Core.Proc
 open CSP.Core.Graph
 
 // プロセスを宣言する。
-let m: ProcMap<string, string, Unit, Unit, Unit> =
+let m: ProcMap<string, string, string> =
     Map
         [ ("ParABC",
            (None,
             InterfaceParallel(
-                Prefix("a", Skip),
-                Set.empty,
-                InterfaceParallel(Prefix("b", Skip), Set.empty, Prefix("c", Skip))
+                Prefix(Union(Ctor "a", Lit VUnit), Skip),
+                SetEmpty,
+                InterfaceParallel(Prefix(Union(Ctor "b", Lit VUnit), Skip), SetEmpty, Prefix(Union(Ctor "c", Lit VUnit), Skip))
             )))
-          ("P", (None, Seq(Unwind("ParABC", None), Prefix("d", Skip)))) ] in
+          ("P", (None, Seq(Unwind("ParABC", None), Prefix(Union(Ctor "d", Lit VUnit), Skip)))) ] in
 
 // グローバルに参照できる定数を格納した環境を用意する。
 let env = Map.empty in
@@ -47,27 +47,26 @@ printf (dot max m env "P" None)
 プロセス式
 ----------
 
-| プロセス（CSP）                            | 書き方                                                                                                                 |
-|:-------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------|
-| `A`                                        | `Unwind(procName, paramOpt)` （`paramOpt` はプロセスに渡す引数。なければ `None` を、あれば `Some v` のように指定する） |
-| `STOP`                                     | `Stop`                                                                                                                 |
-| `SKIP`                                     | `Skip`                                                                                                                 |
-| `a -> P`                                   | `Prefix(evName, proc)`                                                                                                 |
-| `a!x -> P`                                 | `PrefixSend(chName, expr, proc)`                                                                                       |
-| `a?x -> P`                                 | `PrefixRecv(chName, varName, type, proc)`                                                                              |
-| `P [] Q`                                   | `ExtCh(proc1, proc2)`                                                                                                  |
-| `P \|~\| Q`                                | `IntCh(proc1, proc2)`                                                                                                  |
-| `if c then P else Q`                       | `If(expr, procTrue, procFalse)`                                                                                        |
-| `match v with X -> P \| Y -> Q \| _ -> R`  | `Match(expr, Map [(ctor1, (var1, proc1)); (ctor2, (var2, proc2)); ...], Some (varOther, procOther))`                   |
-| `P; Q`                                     | `Seq(proc1, proc2)`                                                                                                    |
-| `P [\| X \|] Q`                            | `InterfaceParallel(proc1, evSpecs, proc2)` (`evSpecs` はイベント指定子の集合)                                          |
-| `P \\ X`                                   | `Hide(proc, evSpecs)` (`evSpecs` はイベント指定子の集合)                                                               |
-| `P[[a ←b]]`                               | 未実装                                                                                                                 |
-| `[] x:S @ P(x)`                            | 実装予定                                                                                                               |
-| `\|~\| x:S @ P(x)`                             | 実装予定                                                                                                               |
-| `[\|X\|] x:S @ P(x)`                       | 実装予定                                                                                                               |
-| `P \|\|\| Q`                               | `Interleave(proc1, proc2)`                                                                                             |
-| `\|\|\| x:S @ P(x)`                        | 実装予定                                                                                                               |
+| プロセス（CSP）                            | 書き方                                                                                                                      |
+|:-------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------|
+| `A`                                        | `Unwind(procName, paramOpt)` （`paramOpt` はプロセスに渡す引数。なければ `None` を、あれば `Some v` のように指定する）      |
+| `STOP`                                     | `Stop`                                                                                                                      |
+| `SKIP`                                     | `Skip`                                                                                                                      |
+| `a -> P`                                   | `Prefix(expr, proc)` （チャンネル送信は代数的データ型として評価される `expr` で送る）                                       |
+| `a?x -> P`                                 | `PrefixRecv(expr, varName, proc)` （集合として評価される `expr` を渡すとその要素を受信したとき変数 `varName` に束縛される） |
+| `P [] Q`                                   | `ExtCh(proc1, proc2)`                                                                                                       |
+| `P \|~\| Q`                                | `IntCh(proc1, proc2)`                                                                                                       |
+| `if c then P else Q`                       | `If(expr, procTrue, procFalse)`                                                                                             |
+| `match v with X -> P \| Y -> Q \| _ -> R`  | `Match(expr, Map [(ctor1, (var1, proc1)); (ctor2, (var2, proc2)); ...], Some (varOtherOpt, procOther))`                     |
+| `P; Q`                                     | `Seq(proc1, proc2)`                                                                                                         |
+| `P [\| X \|] Q`                            | `InterfaceParallel(proc1, expr, proc2)` (`expr` はイベントの集合として評価される式)                                         |
+| `P \\ X`                                   | `Hide(proc, expr)` (`expr` はイベントの集合として評価される式)                                                              |
+| `P[[a ←b]]`                               | 未実装                                                                                                                      |
+| `[] x:S @ P(x)`                            | 実装予定                                                                                                                    |
+| `\|~\| x:S @ P(x)`                         | 実装予定                                                                                                                    |
+| `[\|X\|] x:S @ P(x)`                       | 実装予定                                                                                                                    |
+| `P \|\|\| Q`                               | `Interleave(proc1, proc2)`                                                                                                  |
+| `\|\|\| x:S @ P(x)`                        | 実装予定                                                                                                                    |
 
 
 
@@ -78,12 +77,33 @@ printf (dot max m env "P" None)
 
 
 
-イベント指定子
---------------
+チャンネルの送受信
+------------------
 
-イベントまたはチャンネルを指定するための構文です。
+チャンネルの送受信は次のようにデータ構築子をただ1つもつ代数的データ型を`univ`関数に与えて次のように表現します：
 
-| イベント指定子 | 書き方                                                       |
-|:---------------|:-------------------------------------------------------------|
-| イベント       | `Event ev`                                                   |
-| チャンネル     | `Chan ch` （送受信される値を特定する記法は実装していません） |
+```f#
+let readEvs = Univ(TUnion("read", Map [ (Ctor "Read", TNat) ])) in
+
+let m: ProcMap<string, string, string> =
+    Map
+        [ ("ROVarSys1",
+           (None,
+            InterfaceParallel(
+                Unwind("ROVar", Some(Lit(VNat 0u))),
+                readEvs,
+                Unwind("Reader1", None))))
+          ("ROVar",
+           (Some "x",
+            Prefix(
+                Union(Ctor "Read", VarRef "x"),
+                Unwind(
+                    "ROVar",
+                    Some(Expr.If(Less(VarRef "x", Lit(VNat 4u)), Plus(VarRef "x", Lit(VNat 1u)), Lit(VNat 0u)))
+                )
+            )))
+          ("Reader", (None, PrefixRecv(readEvs, "x", Stop))) ] in
+
+let env = Map.empty in
+printf (dot max m env "ROVarSys1" None)
+```
