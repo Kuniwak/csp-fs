@@ -369,11 +369,11 @@ let count () =
                (Some "n",
                 ExtCh(
                     Guard(
-                        Less((VarRef "n"), (Lit(VNat 10u))),
+                        Less((VarRef "n"), Lit(VNat 10u)),
                         Prefix(Union(Ctor "push", Lit VUnit), Unwind("COUNT", Some(Plus((VarRef "n"), Lit(VNat 1u)))))
                     ),
                     Guard(
-                        Eq((VarRef "n"), (Lit(VNat 10u))),
+                        Eq((VarRef "n"), Lit(VNat 10u)),
                         Prefix(Union(Ctor "reset", Lit VUnit), Unwind("COUNT", Some(Lit(VNat 0u))))
                     )
                 ))) ] in
