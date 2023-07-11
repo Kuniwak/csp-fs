@@ -397,4 +397,4 @@ let env: Env<VarName, CtorName> =
                [ VList [ VUnion(Ctor Repo1, VUnit); VUnion(Ctor Repo2, VUnit) ]
                  VList [ VUnion(Ctor Repo3, VUnit) ] ]) ]
 
-printf $"%s{dot 100 m env GHSearch None}"
+printfn $"%s{dot 100 m env GHSearch None}"
