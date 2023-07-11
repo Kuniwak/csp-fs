@@ -89,7 +89,7 @@ let rec univ (t: Type<'Ctor>) : Val<'Ctor> list =
     | TUnit -> [ VUnit ]
     | TNat -> List.map VNat (rangeList 0u natMax)
     | TBool -> [ VBool false; VBool true ]
-    | TTuple(l, r) -> List.collect (fun (l, r) -> [ l; r ]) (List.allPairs (univ l) (univ r))
+    | TTuple(l, r) -> List.collect (fun (l, r) -> [ VTuple(l, r) ]) (List.allPairs (univ l) (univ r))
     | TSet t -> List.map VSet (powerSet (univ t))
     | TList t ->
         let vOpts = (None :: (List.map Some (univ t))) in
