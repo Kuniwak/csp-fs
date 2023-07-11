@@ -12,7 +12,7 @@ let max = 100
 
 [<Fact>]
 let abSkip () =
-    let m: Map<string, Unit option * Proc<string, Unit, string>> =
+    let m: ProcMap<string, Unit, string> =
         Map
             [ ("ABSkip", (None, Seq(Unwind("ASkip", None), Unwind("BSkip", None))))
               ("ASkip", (None, Prefix(Lit(VUnion(Ctor "a", VUnit)), Skip)))

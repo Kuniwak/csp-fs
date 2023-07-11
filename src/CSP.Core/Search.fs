@@ -13,6 +13,7 @@ let rec search
     | [] -> ()
     | n :: ns' ->
         let n = norm n in
+
         if Set.count visited < max && not (Set.contains n visited) then
             let visited = Set.add n visited
             let es = next n

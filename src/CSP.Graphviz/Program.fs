@@ -81,6 +81,7 @@ let tDispLoginError =
 
 let tDispLogin =
     TUnion("either", Map [ (CtorLeft, tDispLoginError); (CtorRight, tOption tUser) ])
+
 let tDispSearchError =
     TUnion(
         "tDispSearchError",

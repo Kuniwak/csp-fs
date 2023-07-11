@@ -45,7 +45,7 @@ let rec format (v: Val<'Ctor>) : string =
     | VEvent v -> format v
     | VError -> "ERROR"
 
-let formatEvent (ev: Event<'Ctor>): string =
+let formatEvent (ev: Event<'Ctor>) : string =
     match ev with
     | Vis ev' -> format ev'
     | Hid ev' -> $"τ ({format ev'})"

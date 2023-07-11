@@ -6,7 +6,7 @@ type Ctor<'Ctor when 'Ctor: comparison> =
     | CtorNone
     | CtorLeft
     | CtorRight
-    
+
 type Type<'Ctor when 'Ctor: comparison> =
     | TUnit
     | TNat
@@ -19,11 +19,15 @@ type Type<'Ctor when 'Ctor: comparison> =
     | TEvent of Type<'Ctor>
     | TError
 
-let tOption (t: Type<'Ctor>) = TUnion("option", Map [(CtorSome, t); (CtorNone, TUnit)])
-let tEither (tl: Type<'Ctor>) (tr: Type<'Ctor>) = TUnion("either", Map [(CtorLeft, tl); (CtorRight, tr)])
+let tOption (t: Type<'Ctor>) =
+    TUnion("option", Map [ (CtorSome, t); (CtorNone, TUnit) ])
+
+let tEither (tl: Type<'Ctor>) (tr: Type<'Ctor>) =
+    TUnion("either", Map [ (CtorLeft, tl); (CtorRight, tr) ])
+
 let tTriple (t1: Type<'Ctor>) (t2: Type<'Ctor>) (t3: Type<'Ctor>) = TTuple(t1, TTuple(t2, t3))
 
-let rec format (t: Type<'Ctor>): string =
+let rec format (t: Type<'Ctor>) : string =
     match t with
     | TUnit -> "unit"
     | TNat -> "nat"
