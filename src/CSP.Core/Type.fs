@@ -1,33 +1,24 @@
 module CSP.Core.Type
 
-type Ctor<'Ctor when 'Ctor: comparison> =
-    | Ctor of 'Ctor
-    | CtorSome
-    | CtorNone
-    | CtorLeft
-    | CtorRight
-
-type Type<'Ctor when 'Ctor: comparison> =
+type Type =
     | TUnit
     | TNat
     | TBool
-    | TTuple of Type<'Ctor> * Type<'Ctor>
-    | TSet of Type<'Ctor>
-    | TList of Type<'Ctor>
-    | TMap of Type<'Ctor> * Type<'Ctor>
-    | TUnion of string * Map<Ctor<'Ctor>, Type<'Ctor>>
-    | TEvent of Type<'Ctor>
+    | TTuple of Type * Type
+    | TSet of Type
+    | TList of Type
+    | TMap of Type * Type
+    | TUnion of string * Type
+    | TEvent of Type
     | TError
 
-let tOption (t: Type<'Ctor>) =
-    TUnion("option", Map [ (CtorSome, t); (CtorNone, TUnit) ])
+let tOption (t: Type) = TUnion("option", t)
 
-let tEither (tl: Type<'Ctor>) (tr: Type<'Ctor>) =
-    TUnion("either", Map [ (CtorLeft, tl); (CtorRight, tr) ])
+let tEither (tl: Type) (tr: Type) = TUnion("either", TTuple(tl, tr))
 
-let tTriple (t1: Type<'Ctor>) (t2: Type<'Ctor>) (t3: Type<'Ctor>) = TTuple(t1, TTuple(t2, t3))
+let tTriple (t1: Type) (t2: Type) (t3: Type) = TTuple(t1, TTuple(t2, t3))
 
-let rec format (t: Type<'Ctor>) : string =
+let rec format (t: Type) : string =
     match t with
     | TUnit -> "unit"
     | TNat -> "nat"
@@ -36,6 +27,6 @@ let rec format (t: Type<'Ctor>) : string =
     | TSet t -> $"({format t} set)"
     | TList t -> $"({format t} list)"
     | TMap(tk, tv) -> $"(({format tk}, {format tv}) map)"
-    | TUnion(n, _) -> n
+    | TUnion(n, t) -> $"({format t} {n})"
     | TEvent t -> $"({format t} event)"
     | TError -> "error"

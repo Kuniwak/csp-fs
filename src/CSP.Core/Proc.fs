@@ -1,5 +1,6 @@
 ﻿module CSP.Core.Proc
 
+open CSP.Core.Ctor
 open FSharpx.Collections
 open CSP.Core.Type
 open CSP.Core.Expr

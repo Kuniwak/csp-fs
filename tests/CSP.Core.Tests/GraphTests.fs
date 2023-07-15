@@ -1,5 +1,6 @@
 module CSP.Core.Tests.GraphTests
 
+open CSP.Core.Ctor
 open CSP.Core.Type
 open Xunit
 open CSP.Core.Val
@@ -12,14 +13,14 @@ let max = 100
 
 [<Fact>]
 let abSkip () =
-    let m: ProcMap<string, Unit, string> =
+    let pm: ProcMap<string, Unit, string> =
         Map
             [ ("ABSkip", (None, Seq(Unwind("ASkip", None), Unwind("BSkip", None))))
               ("ASkip", (None, Prefix(Lit(VUnion(Ctor "a", VUnit)), Skip)))
               ("BSkip", (None, Prefix(Lit(VUnion(Ctor "b", VUnit)), Skip))) ] in
-
-    let env = Map.empty in
-    let actual = dot max m env "ABSkip" None in
+    let cm = Map.empty in
+    let genv = Map.empty in
+    let actual = dot max pm cm genv "ABSkip" None in
 
     Assert.True(
         """digraph G {
@@ -39,7 +40,7 @@ let abSkip () =
 
 [<Fact>]
 let parABC () =
-    let m: ProcMap<string, Unit, string> =
+    let pm: ProcMap<string, Unit, string> =
         Map
             [ ("ParABC",
                (None,
@@ -49,8 +50,9 @@ let parABC () =
                 )))
               ("P", (None, Seq(Unwind("ParABC", None), Prefix(Union(Ctor "d", Lit VUnit), Skip)))) ] in
 
-    let env = Map.empty in
-    let actual = dot max m env "P" None in
+    let cm = Map.empty in
+    let genv = Map.empty in
+    let actual = dot max pm cm genv "P" None in
 
     Assert.True(
         """digraph G {
@@ -156,11 +158,12 @@ let parABC () =
 
 [<Fact>]
 let rand2 () =
-    let m: ProcMap<string, int, string> =
+    let pm: ProcMap<string, int, string> =
         Map [ ("P", (None, IntCh(Prefix(Lit(VNat 1u), Unwind("P", None)), Prefix(Lit(VNat 2u), Unwind("P", None))))) ] in
 
-    let env = Map.empty in
-    let actual = dot max m env "P" None in
+    let cm = Map.empty
+    let genv = Map.empty in
+    let actual = dot max pm cm genv "P" None in
 
     Assert.True(
         """digraph G {
@@ -178,7 +181,7 @@ let rand2 () =
 
 [<Fact>]
 let abs () =
-    let m: ProcMap<string, Unit, string> =
+    let pm: ProcMap<string, Unit, string> =
         Map
             [ ("ABS",
                (None,
@@ -190,8 +193,9 @@ let abs () =
                     Prefix(Union(Ctor "s", Lit VUnit), Stop)
                 ))) ] in
 
-    let env = Map.empty in
-    let actual = dot max m env "ABS" None in
+    let cm = Map.empty
+    let genv = Map.empty in
+    let actual = dot max pm cm genv "ABS" None in
 
     Assert.True(
         """digraph G {
@@ -213,7 +217,7 @@ let abs () =
 
 [<Fact>]
 let lr () =
-    let m: ProcMap<string, Unit, string> =
+    let pm: ProcMap<string, Unit, string> =
         Map
             [ ("LR",
                (None,
@@ -227,8 +231,9 @@ let lr () =
               ("Right",
                (None, Prefix(Union(Ctor "red", Lit VUnit), Prefix(Union(Ctor "sync", Lit VUnit), Unwind("Right", None))))) ] in
 
-    let env = Map.empty in
-    let actual = dot max m env "LR" None in
+    let cm = Map.empty in
+    let genv = Map.empty in
+    let actual = dot max pm cm genv "LR" None in
 
     Assert.True(
         """digraph G {
@@ -248,7 +253,7 @@ let lr () =
 
 [<Fact>]
 let coinToss () =
-    let m =
+    let pm =
         Map
             [ ("Coin", (None, Prefix(Union(Ctor "toss", Lit VUnit), Unwind("Coin'", None))))
               ("Coin'",
@@ -279,8 +284,9 @@ let coinToss () =
                     Unwind("Man", None)
                 ))) ]
 
-    let env = Map.empty in
-    let actual = dot max m env "CoinToss" None in
+    let cm = Map.empty
+    let genv = Map.empty in
+    let actual = dot max pm cm genv "CoinToss" None in
 
     Assert.True(
         """digraph G {
@@ -304,7 +310,7 @@ let coinToss () =
 
 [<Fact>]
 let lrh () =
-    let m =
+    let pm =
         Map
             [ ("LRH",
                (None,
@@ -320,9 +326,10 @@ let lrh () =
                (None, Prefix(Union(Ctor "blue", Lit VUnit), Prefix(Union(Ctor "sync", Lit VUnit), Unwind("Left", None)))))
               ("Right",
                (None, Prefix(Union(Ctor "red", Lit VUnit), Prefix(Union(Ctor "sync", Lit VUnit), Unwind("Right", None))))) ] in
+    let cm = Map.empty in
 
-    let env = Map.empty in
-    let actual = dot max m env "LRH" None in
+    let genv = Map.empty in
+    let actual = dot max pm cm genv "LRH" None in
 
     Assert.True(
         """digraph G {
@@ -342,12 +349,13 @@ let lrh () =
 
 [<Fact>]
 let hide3 () =
-    let m =
+    let pm =
         Map
             [ ("P", (None, Hide(Prefix(Union(Ctor "a", Lit VUnit), Skip), Lit(VSet(Set [ VUnion(Ctor "a", VUnit) ]))))) ] in
 
-    let env = Map.empty in
-    let actual = dot max m env "P" None in
+    let cm = Map.empty in
+    let genv = Map.empty in
+    let actual = dot max pm cm genv "P" None in
 
     Assert.True(
         """digraph G {
@@ -363,7 +371,7 @@ let hide3 () =
 
 [<Fact>]
 let count () =
-    let m: ProcMap<string, string, string> =
+    let pm: ProcMap<string, string, string> =
         Map
             [ ("COUNT",
                (Some "n",
@@ -377,9 +385,9 @@ let count () =
                         Prefix(Union(Ctor "reset", Lit VUnit), Unwind("COUNT", Some(Lit(VNat 0u))))
                     )
                 ))) ] in
-
-    let env = Map.empty in
-    let actual = dot max m env "COUNT" (Some(VNat 0u)) in
+    let cm = Map.empty in
+    let genv = Map.empty in
+    let actual = dot max pm cm genv "COUNT" (Some(VNat 0u)) in
 
     Assert.True(
         """digraph G {
@@ -412,9 +420,9 @@ let count () =
 
 [<Fact>]
 let roVarSys1 () =
-    let readEvs = Univ(TUnion("read", Map [ (Ctor "Read", TNat) ])) in
+    let readEvs = Univ(TUnion("read", TUnit)) in
 
-    let m: ProcMap<string, string, string> =
+    let pm: ProcMap<string, string, string> =
         Map
             [ ("ROVarSys1",
                (None,
@@ -440,14 +448,15 @@ let roVarSys1 () =
               ("Reader2", (None, PrefixRecv(readEvs, "x", Stop)))
               ("Reader3", (None, PrefixRecv(readEvs, "x", Stop))) ] in
 
-    let env = Map.empty in
-    let actual = dot max m env "ROVarSys1" None in
+    let cm = Map [(Ctor "Read", ("read", TNat))]
+    let genv = Map.empty in
+    let actual = dot max pm cm genv "ROVarSys1" None in
 
     Assert.True(
         """digraph G {
-  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::read)⟧ (STOP ⟦(univ::read)⟧ (STOP ⟦(univ::read)⟧ STOP env={}) env={}) env={})"  [fillcolor=red, style=filled, fontcolor=white]
-  "(ROVar 0 env={} ⟦(univ::read)⟧ (Reader1 ⟦(univ::read)⟧ (Reader2 ⟦(univ::read)⟧ Reader3 env={}) env={}) env={})"
-  "(ROVar 0 env={} ⟦(univ::read)⟧ (Reader1 ⟦(univ::read)⟧ (Reader2 ⟦(univ::read)⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::read)⟧ (STOP ⟦(univ::read)⟧ (STOP ⟦(univ::read)⟧ STOP env={}) env={}) env={})" [label="(Read 0)"]
+  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::(unit read))⟧ (STOP ⟦(univ::(unit read))⟧ (STOP ⟦(univ::(unit read))⟧ STOP env={}) env={}) env={})"  [fillcolor=red, style=filled, fontcolor=white]
+  "(ROVar 0 env={} ⟦(univ::(unit read))⟧ (Reader1 ⟦(univ::(unit read))⟧ (Reader2 ⟦(univ::(unit read))⟧ Reader3 env={}) env={}) env={})"
+  "(ROVar 0 env={} ⟦(univ::(unit read))⟧ (Reader1 ⟦(univ::(unit read))⟧ (Reader2 ⟦(univ::(unit read))⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::(unit read))⟧ (STOP ⟦(univ::(unit read))⟧ (STOP ⟦(univ::(unit read))⟧ STOP env={}) env={}) env={})" [label="(Read 0)"]
 }""" =
             actual,
         actual
@@ -455,9 +464,9 @@ let roVarSys1 () =
 
 [<Fact>]
 let roVarSys2 () =
-    let readEvs = Univ(TUnion("read", Map [ (Ctor "Read", TNat) ])) in
+    let readEvs = Univ(TUnion("read", TUnit)) in
 
-    let m: ProcMap<string, string, string> =
+    let pm: ProcMap<string, string, string> =
         Map
             [ ("ROVarSys2",
                (None,
@@ -478,32 +487,33 @@ let roVarSys2 () =
               ("Reader1", (None, PrefixRecv(readEvs, "x", Stop)))
               ("Reader2", (None, PrefixRecv(readEvs, "x", Stop)))
               ("Reader3", (None, PrefixRecv(readEvs, "x", Stop))) ] in
+    let cm = Map [(Ctor "Read", ("read", TNat))]
 
-    let env = Map.empty in
-    let actual = dot max m env "ROVarSys2" None in
+    let genv = Map.empty in
+    let actual = dot max pm cm genv "ROVarSys2" None in
 
     Assert.True(
         """digraph G {
-  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=2} ⟦(univ::read)⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ STOP env={}) env={}) env={})"  [fillcolor=red, style=filled, fontcolor=white]
-  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::read)⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ STOP env={}) env={}) env={})"
-  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::read)⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ Reader3 env={}) env={}) env={})"
-  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::read)⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ STOP env={}) env={}) env={})"
-  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::read)⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ Reader3 env={}) env={}) env={})"
-  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::read)⟧ (Reader1 ⟦{}⟧ (Reader2 ⟦{}⟧ STOP env={}) env={}) env={})"
-  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::read)⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ Reader3 env={}) env={}) env={})"
-  "(ROVar 0 env={} ⟦(univ::read)⟧ (Reader1 ⟦{}⟧ (Reader2 ⟦{}⟧ Reader3 env={}) env={}) env={})"
-  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::read)⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ STOP env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=2} ⟦(univ::read)⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ STOP env={}) env={}) env={})" [label="(Read 2)"]
-  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::read)⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=2} ⟦(univ::read)⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ STOP env={}) env={}) env={})" [label="(Read 2)"]
-  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::read)⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ STOP env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=2} ⟦(univ::read)⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ STOP env={}) env={}) env={})" [label="(Read 2)"]
-  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::read)⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::read)⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ Reader3 env={}) env={}) env={})" [label="(Read 1)"]
-  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::read)⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::read)⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ STOP env={}) env={}) env={})" [label="(Read 1)"]
-  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::read)⟧ (Reader1 ⟦{}⟧ (Reader2 ⟦{}⟧ STOP env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::read)⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ STOP env={}) env={}) env={})" [label="(Read 1)"]
-  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::read)⟧ (Reader1 ⟦{}⟧ (Reader2 ⟦{}⟧ STOP env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::read)⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ STOP env={}) env={}) env={})" [label="(Read 1)"]
-  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::read)⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::read)⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ STOP env={}) env={}) env={})" [label="(Read 1)"]
-  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::read)⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::read)⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ Reader3 env={}) env={}) env={})" [label="(Read 1)"]
-  "(ROVar 0 env={} ⟦(univ::read)⟧ (Reader1 ⟦{}⟧ (Reader2 ⟦{}⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::read)⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ Reader3 env={}) env={}) env={})" [label="(Read 0)"]
-  "(ROVar 0 env={} ⟦(univ::read)⟧ (Reader1 ⟦{}⟧ (Reader2 ⟦{}⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::read)⟧ (Reader1 ⟦{}⟧ (Reader2 ⟦{}⟧ STOP env={}) env={}) env={})" [label="(Read 0)"]
-  "(ROVar 0 env={} ⟦(univ::read)⟧ (Reader1 ⟦{}⟧ (Reader2 ⟦{}⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::read)⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ Reader3 env={}) env={}) env={})" [label="(Read 0)"]
+  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=2} ⟦(univ::(unit read))⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ STOP env={}) env={}) env={})"  [fillcolor=red, style=filled, fontcolor=white]
+  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::(unit read))⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ STOP env={}) env={}) env={})"
+  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::(unit read))⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ Reader3 env={}) env={}) env={})"
+  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::(unit read))⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ STOP env={}) env={}) env={})"
+  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::(unit read))⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ Reader3 env={}) env={}) env={})"
+  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::(unit read))⟧ (Reader1 ⟦{}⟧ (Reader2 ⟦{}⟧ STOP env={}) env={}) env={})"
+  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::(unit read))⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ Reader3 env={}) env={}) env={})"
+  "(ROVar 0 env={} ⟦(univ::(unit read))⟧ (Reader1 ⟦{}⟧ (Reader2 ⟦{}⟧ Reader3 env={}) env={}) env={})"
+  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::(unit read))⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ STOP env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=2} ⟦(univ::(unit read))⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ STOP env={}) env={}) env={})" [label="(Read 2)"]
+  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::(unit read))⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=2} ⟦(univ::(unit read))⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ STOP env={}) env={}) env={})" [label="(Read 2)"]
+  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::(unit read))⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ STOP env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=2} ⟦(univ::(unit read))⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ STOP env={}) env={}) env={})" [label="(Read 2)"]
+  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::(unit read))⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::(unit read))⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ Reader3 env={}) env={}) env={})" [label="(Read 1)"]
+  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::(unit read))⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::(unit read))⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ STOP env={}) env={}) env={})" [label="(Read 1)"]
+  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::(unit read))⟧ (Reader1 ⟦{}⟧ (Reader2 ⟦{}⟧ STOP env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::(unit read))⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ STOP env={}) env={}) env={})" [label="(Read 1)"]
+  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::(unit read))⟧ (Reader1 ⟦{}⟧ (Reader2 ⟦{}⟧ STOP env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::(unit read))⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ STOP env={}) env={}) env={})" [label="(Read 1)"]
+  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::(unit read))⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::(unit read))⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ STOP env={}) env={}) env={})" [label="(Read 1)"]
+  "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::(unit read))⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=1} ⟦(univ::(unit read))⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ Reader3 env={}) env={}) env={})" [label="(Read 1)"]
+  "(ROVar 0 env={} ⟦(univ::(unit read))⟧ (Reader1 ⟦{}⟧ (Reader2 ⟦{}⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::(unit read))⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ Reader3 env={}) env={}) env={})" [label="(Read 0)"]
+  "(ROVar 0 env={} ⟦(univ::(unit read))⟧ (Reader1 ⟦{}⟧ (Reader2 ⟦{}⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::(unit read))⟧ (Reader1 ⟦{}⟧ (Reader2 ⟦{}⟧ STOP env={}) env={}) env={})" [label="(Read 0)"]
+  "(ROVar 0 env={} ⟦(univ::(unit read))⟧ (Reader1 ⟦{}⟧ (Reader2 ⟦{}⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (x < 4) then (x + 1) else 0) env={x=0} ⟦(univ::(unit read))⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ Reader3 env={}) env={}) env={})" [label="(Read 0)"]
 }""" =
             actual,
         actual
@@ -511,7 +521,7 @@ let roVarSys2 () =
 
 [<Fact>]
 let testMax () =
-    let m =
+    let pm =
         Map
             [ ("P",
                (Some "n",
@@ -520,8 +530,9 @@ let testMax () =
                     Prefix(Union(Ctor "ch", Lit VUnit), Unwind("P", Some(Minus(VarRef "n", Lit(VNat 1u)))))
                 ))) ] in
 
-    let env = Map.empty in
-    let actual = dot 10 m env "P" (Some(VNat 0u)) in
+    let cm = Map [(Ctor "ch", ("ch", TUnit))]
+    let genv = Map.empty in
+    let actual = dot 10 pm cm genv "P" (Some(VNat 0u)) in
 
     Assert.True(
         """digraph G {

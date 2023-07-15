@@ -1,6 +1,6 @@
 module CSP.Core.Val
 
-open CSP.Core.Type
+open CSP.Core.Ctor
 
 
 type Val<'Ctor when 'Ctor: comparison> =
