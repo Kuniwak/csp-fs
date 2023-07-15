@@ -311,3 +311,48 @@ let rec format (expr: Expr<'Var, 'Ctor>) : string =
     | MapAdd(k, v, m) -> $"(Map.add {format k} {format v} {format m})"
     | MapFindOpt(e1, e2) -> $"(Map.findOpt {format e1} {format e2})"
     | Univ t -> $"(univ::{Type.format t})"
+
+let children (expr: Expr<'Var, 'Ctor>) : Expr<'Var, 'Ctor> list =
+    match expr with
+    | Lit _ -> []
+    | Tuple(exprL, exprR) -> [ exprL; exprR ]
+    | Union(_, expr) -> [ expr ]
+    | Throw -> []
+    | If(expr1, expr2, expr3) -> [ expr1; expr2; expr3 ]
+    | Match(expr, vs, dOpt) ->
+        let es = Map.fold (fun acc _ (_, expr) -> acc @ [ expr ]) [ expr ] vs in
+
+        match dOpt with
+        | Some(_, expr) -> es @ [ expr ]
+        | None -> es
+    | VarRef _ -> []
+    | Not expr -> [ expr ]
+    | And(expr1, expr2) -> [ expr1; expr2 ]
+    | Or(expr1, expr2) -> [ expr1; expr2 ]
+    | Eq(expr1, expr2) -> [ expr1; expr2 ]
+    | Less(expr1, expr2) -> [ expr1; expr2 ]
+    | Plus(expr1, expr2) -> [ expr1; expr2 ]
+    | Time(expr1, expr2) -> [ expr1; expr2 ]
+    | Minus(expr1, expr2) -> [ expr1; expr2 ]
+    | TupleFst expr -> [ expr ]
+    | TupleSnd expr -> [ expr ]
+    | ListEmpty -> []
+    | ListCons(expr1, expr2) -> [ expr1; expr2 ]
+    | ListNth(expr1, expr2) -> [ expr1; expr2 ]
+    | ListLen expr -> [ expr ]
+    | SetEmpty -> []
+    | SetRange(expr1, expr2) -> [ expr1; expr2 ]
+    | SetInsert(expr1, expr2) -> [ expr1; expr2 ]
+    | SetMem(expr1, expr2) -> [ expr1; expr2 ]
+    | SetFilter(_, expr1, expr2) -> [ expr1; expr2 ]
+    | SetExists(_, expr1, expr2) -> [ expr1; expr2 ]
+    | MapEmpty -> []
+    | MapAdd(expr1, expr2, expr3) -> [ expr1; expr2; expr3 ]
+    | MapFindOpt(expr1, expr2) -> [ expr1; expr2 ]
+    | Univ _ -> []
+
+let rec descendant (expr: Expr<'Var, 'Ctor>) : Expr<'Var, 'Ctor> list =
+    List.fold (fun acc expr -> acc @ descendant expr) [ expr ] (children expr)
+
+let fold (f: 'State -> Expr<'Var, 'Ctor> -> 'State) (s0: 'State) (expr: Expr<'Var, 'Ctor>) : 'State =
+    List.fold f s0 (descendant expr)

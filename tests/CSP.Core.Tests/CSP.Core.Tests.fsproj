@@ -9,15 +9,16 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="GraphTests.fs"/>
-        <Compile Include="SearchTests.fs"/>
-        <Compile Include="Program.fs"/>
+        <Compile Include="GraphTests.fs" />
+        <Compile Include="SearchTests.fs" />
+        <Compile Include="ExprTests.fs" />
+        <Compile Include="Program.fs" />
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="FSharpx.Collections" Version="3.1.0"/>
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.5.0"/>
-        <PackageReference Include="xunit" Version="2.4.2"/>
+        <PackageReference Include="FSharpx.Collections" Version="3.1.0" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.5.0" />
+        <PackageReference Include="xunit" Version="2.4.2" />
         <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5">
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
@@ -29,7 +30,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\CSP.Core\CSP.Core.fsproj"/>
+        <ProjectReference Include="..\..\src\CSP.Core\CSP.Core.fsproj" />
     </ItemGroup>
 
 </Project>

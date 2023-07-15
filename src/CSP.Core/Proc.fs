@@ -58,3 +58,31 @@ let format (m: Map<'P, 'Var option * Proc<'P, 'Var, 'Ctor>>) (p0: Proc<'P, 'Var,
         | Guard(e, p) -> $"({format e}&{f p false})"
 
     f p0 true
+
+let children (p: Proc<'P, 'Var, 'Ctor>) : Proc<'P, 'Var, 'Ctor> list =
+    match p with
+    | Unwind _ -> []
+    | Stop -> []
+    | Skip -> []
+    | Prefix(_, p) -> [ p ]
+    | PrefixRecv(_, _, p) -> [ p ]
+    | IntCh(p1, p2) -> [ p1; p2 ]
+    | ExtCh(p1, p2) -> [ p1; p2 ]
+    | Seq(p1, p2) -> [ p1; p2 ]
+    | If(_, p1, p2) -> [ p1; p2 ]
+    | Match(_, mp, pOpt) ->
+        let ps = List.map (fun (_, p) -> p) (Seq.toList (Map.values mp)) in
+
+        match pOpt with
+        | Some(_, p) -> ps @ [ p ]
+        | None -> ps
+    | InterfaceParallel(p1, _, p2) -> [ p1; p2 ]
+    | Interleave(p1, p2) -> [ p1; p2 ]
+    | Hide(p, _) -> [ p ]
+    | Guard(_, p) -> [ p ]
+
+let rec descendant (p: Proc<'P, 'Var, 'Ctor>) : Proc<'P, 'Var, 'Ctor> list =
+    List.fold (fun acc p -> acc @ descendant p) [ p ] (children p)
+
+let fold (f: 'State -> Proc<'P, 'Var, 'Ctor> -> 'State) (s0: 'State) (p: Proc<'P, 'Var, 'Ctor>) =
+    List.fold f s0 (descendant p)
