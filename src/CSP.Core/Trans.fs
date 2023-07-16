@@ -2,6 +2,7 @@ module CSP.Core.Trans
 
 open CSP.Core.CtorMap
 open CSP.Core.ProcMap
+open CSP.Core.Event
 open CSP.Core.Val
 open CSP.Core.Expr
 open CSP.Core.State
@@ -35,7 +36,7 @@ let rec trans
         match eval cm env expr with
         | VSet vs -> List.map (fun v -> (Vis v, bind var v s)) (Set.toList vs)
         | v ->
-            [ (Val.Error,
+            [ (Event.Error,
                Error(
                    $"PrefixRecv expected a set, but got: expr env {Expr.format expr} = {Val.format v} (env={Env.format env})",
                    s
@@ -74,7 +75,7 @@ let rec trans
         match eval cm env expr with
         | VBool true -> trans pm cm env s1
         | VBool false -> trans pm cm env s2
-        | v -> [ (Val.Error, Error($"expected a boolean value but got: eval env {expr} = {v} (env = {env})", s0)) ]
+        | v -> [ (Event.Error, Error($"expected a boolean value but got: eval env {expr} = {v} (env = {env})", s0)) ]
     | Match(env, expr, sm, ds) ->
         match eval cm env expr with
         | VUnion(c, v) ->
@@ -84,8 +85,8 @@ let rec trans
                 match ds with
                 | Some(Some var, p2) -> trans pm cm env (bind var (VUnion(c, v)) p2)
                 | Some(None, p2) -> trans pm cm env p2
-                | None -> [ (Val.Error, Error($"Match are not exhausted: | {c} {v} -> ... ", s0)) ]
-        | v -> [ (Val.Error, Error($"Match expected an union value but got: eval env {expr} = {v} (env = {env})", s0)) ]
+                | None -> [ (Event.Error, Error($"Match are not exhausted: | {c} {v} -> ... ", s0)) ]
+        | v -> [ (Event.Error, Error($"Match expected an union value but got: eval env {expr} = {v} (env = {env})", s0)) ]
     | InterfaceParallel(_, Omega, _, Omega) -> [ (Tick, Omega) ] // Para6
     | InterfaceParallel(env, p1, expr, p2) ->
         let t1 = trans pm cm env p1 in
@@ -107,7 +108,7 @@ let rec trans
                         | _ -> acc
                     | Tau -> (Tau, InterfaceParallel(env, p1', expr, p2)) :: acc // Para1
                     | Hid ev' -> (Hid ev', InterfaceParallel(env, p1', expr, p2)) :: acc // para1
-                    | Event.Error -> (Val.Error, Error("lhs error", s0)) :: acc)
+                    | Event.Error -> (Event.Error, Error("lhs error", s0)) :: acc)
                 []
                 t1)
             @ (List.fold
@@ -124,7 +125,7 @@ let rec trans
                         | _ -> acc
                     | Tau -> (Tau, InterfaceParallel(env, p1, expr, p2')) :: acc // Para2
                     | Hid ev' -> (Hid ev', InterfaceParallel(env, p1, expr, p2')) :: acc // para1
-                    | Event.Error -> (Val.Error, Error("rhs error", s0)) :: acc)
+                    | Event.Error -> (Event.Error, Error("rhs error", s0)) :: acc)
                 []
                 t2)
             @ (List.fold
@@ -135,14 +136,14 @@ let rec trans
                             (Vis ev1, InterfaceParallel(env, s1', expr, s2')) :: acc // Para3
                         else
                             acc
-                    | Event.Error, Event.Error -> (Val.Error, Error("both lhs and rhs errors", s0)) :: acc
-                    | Event.Error, _ -> (Val.Error, Error("lhs error", s0)) :: acc
-                    | _, Event.Error -> (Val.Error, Error("rhs error", s0)) :: acc
+                    | Event.Error, Event.Error -> (Event.Error, Error("both lhs and rhs errors", s0)) :: acc
+                    | Event.Error, _ -> (Event.Error, Error("lhs error", s0)) :: acc
+                    | _, Event.Error -> (Event.Error, Error("rhs error", s0)) :: acc
                     | _ -> acc)
                 []
                 (List.allPairs t1 t2))
         | v ->
-            [ Val.Error,
+            [ Event.Error,
               Error(
                   $"InterfaceParallel expected a set, but got: eval env {Expr.format expr} = {Val.format v} (env = {Env.format env})",
                   s0
@@ -158,14 +159,14 @@ let rec trans
                         match s' with
                         | Omega _ -> (Tick, s')
                         | _ -> (ev, Hide(env, s', expr))
-                    | Event.Error -> (Val.Error, Error("error in Hide", s0))
+                    | Event.Error -> (Event.Error, Error("error in Hide", s0))
                     | _ -> (ev, Hide(env, s', expr)))
                 (trans pm cm env0 s)
         | v ->
-            [ (Val.Error,
+            [ (Event.Error,
                Error(
                    $"Hide expected a set, but got: expr env {Expr.format expr} = {Val.format v} (env = {Env.format env})",
                    s0
                )) ]
     | Omega _ -> []
-    | Error _ -> [ (Val.Error, s0) ]
+    | Error _ -> [ (Event.Error, s0) ]

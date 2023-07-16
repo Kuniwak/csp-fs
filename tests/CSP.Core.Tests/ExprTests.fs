@@ -7,17 +7,17 @@ open CSP.Core.Expr
 [<Fact>]
 let rec testDescendant () =
     let actual =
-        descendant (If(Eq(Lit(VNat 0u), VarRef "x"), Plus(VarRef("x"), Lit(VNat 0u)), Minus(VarRef("x"), Lit(VNat 1u))))
+        descendant (If(NatEq(Lit(VNat 0u), VarRef "x"), NatAdd(VarRef("x"), Lit(VNat 0u)), NatSub(VarRef("x"), Lit(VNat 1u))))
 
     let expected =
-        [ If(Eq(Lit(VNat 0u), VarRef "x"), Plus(VarRef("x"), Lit(VNat 0u)), Minus(VarRef("x"), Lit(VNat 1u)))
-          Eq(Lit(VNat 0u), VarRef "x")
+        [ If(NatEq(Lit(VNat 0u), VarRef "x"), NatAdd(VarRef("x"), Lit(VNat 0u)), NatSub(VarRef("x"), Lit(VNat 1u)))
+          NatEq(Lit(VNat 0u), VarRef "x")
           Lit(VNat 0u)
           VarRef "x"
-          Plus(VarRef("x"), Lit(VNat 0u))
+          NatAdd(VarRef("x"), Lit(VNat 0u))
           VarRef("x")
           Lit(VNat 0u)
-          Minus(VarRef("x"), Lit(VNat 1u))
+          NatSub(VarRef("x"), Lit(VNat 1u))
           VarRef("x")
           Lit(VNat 1u) ]
 

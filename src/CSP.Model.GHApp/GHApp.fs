@@ -243,13 +243,13 @@ let model: ProcMap<ProcName, VarName, CtorName> =
                             Tuple(
                                 Expr.If(
                                     // fst r < List.length p1
-                                    Less(TupleSnd(VarRef R), Plus(ListLen(VarRef Pages1), Lit(VNat 1u))),
+                                    NatLess(TupleSnd(VarRef R), NatAdd(ListLen(VarRef Pages1), Lit(VNat 1u))),
                                     // Requested page.
-                                    ListNth(VarRef Pages1, Plus(TupleSnd(VarRef R), Lit(VNat 1u))),
+                                    ListNth(VarRef Pages1, NatAdd(TupleSnd(VarRef R), Lit(VNat 1u))),
                                     // Out of range.
                                     ListEmpty
                                 ),
-                                Less(TupleSnd(VarRef R), Minus(ListLen(VarRef Pages1), Lit(VNat 1u)))
+                                NatLess(TupleSnd(VarRef R), NatSub(ListLen(VarRef Pages1), Lit(VNat 1u)))
                             ),
                             // Others.
                             Tuple(ListEmpty, Lit(VBool false))
@@ -306,7 +306,7 @@ let model: ProcMap<ProcName, VarName, CtorName> =
           (GHStarWillResp,
            (Some T,
             Prefix(
-                Union(Ctor ChStarRes, Union(CtorRight, Not(SetMem(VarRef T, VarRef StarRel)))),
+                Union(Ctor ChStarRes, Union(CtorRight, BoolNot(SetMem(VarRef T, VarRef StarRel)))),
                 Unwind(GHStar, Some(SetInsert(VarRef T, VarRef StarRel)))
             )))
 
@@ -347,7 +347,7 @@ let model: ProcMap<ProcName, VarName, CtorName> =
             ExtCh(
                 PrefixRecv(Univ(tChPATField), P2, Unwind(AppDispLogin, Some(VarRef P2))),
                 Guard(
-                    Not(Eq(VarRef P1, Union(Ctor PATEmpty, Lit VUnit))),
+                    BoolNot(Eq(VarRef P1, Union(Ctor PATEmpty, Lit VUnit))),
                     Prefix(Union(Ctor EvLoginBtn, Lit VUnit), Unwind(AppDidPressLoginBtn, Some(VarRef P1)))
                 )
             )))
@@ -384,7 +384,7 @@ let model: ProcMap<ProcName, VarName, CtorName> =
                 ExtCh(
                     PrefixRecv(Univ(tChSearchField), Q, Unwind(AppDispSearch, Some(VarRef Q))),
                     Guard(
-                        Not(Eq(VarRef Q, Union(Ctor QueryEmpty, Lit VUnit))),
+                        BoolNot(Eq(VarRef Q, Union(Ctor QueryEmpty, Lit VUnit))),
                         Prefix(Union(Ctor EvSearchBtn, Lit VUnit), Unwind(AppDidPressSearchBtn, Some(VarRef Q)))
                     )
                 )

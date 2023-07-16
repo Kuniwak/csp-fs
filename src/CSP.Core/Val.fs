@@ -12,15 +12,8 @@ type Val<'Ctor when 'Ctor: comparison> =
     | VList of Val<'Ctor> list
     | VMap of Map<Val<'Ctor>, Val<'Ctor>>
     | VUnion of Ctor<'Ctor> * Val<'Ctor>
-    | VEvent of Val<'Ctor>
     | VError
 
-and Event<'Ctor when 'Ctor: comparison> =
-    | Vis of Val<'Ctor>
-    | Hid of Val<'Ctor>
-    | Tau
-    | Tick
-    | Error
 
 let rec format (v: Val<'Ctor>) : string =
     match v with
@@ -42,13 +35,5 @@ let rec format (v: Val<'Ctor>) : string =
         | CtorNone -> "None"
         | CtorLeft -> $"(Left {format v})"
         | CtorRight -> $"(Right {format v})"
-    | VEvent v -> format v
     | VError -> "ERROR"
 
-let formatEvent (ev: Event<'Ctor>) : string =
-    match ev with
-    | Vis ev' -> format ev'
-    | Hid ev' -> $"τ ({format ev'})"
-    | Tau -> "τ"
-    | Tick -> "✓"
-    | Error -> "ERROR"

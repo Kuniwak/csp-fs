@@ -1,8 +1,10 @@
 module CSP.Core.Graph
 
+open FSharpPlus
 open CSP.Core.CtorMap
 open CSP.Core.Env
 open CSP.Core.ProcMap
+open CSP.Core.Event
 open CSP.Core.Val
 open CSP.Core.State
 open CSP.Core.Trans
@@ -50,16 +52,16 @@ let dot
         List.map
             (fun (s, n) ->
                 match s with
-                | Omega -> $"  \"{(format pm cm s).Replace(dq, sq)}\""
+                | Omega -> $"  \"{String.replace dq sq (format pm cm s)}\""
                 | _ when n = 0 ->
-                    $"  \"{(format pm cm s).Replace(dq, sq)}\"  [fillcolor=red, style=filled, fontcolor=white]"
-                | _ -> $"  \"{(format pm cm s).Replace(dq, sq)}\"")
+                    $"  \"{String.replace dq sq (format pm cm s)}\"  [fillcolor=red, style=filled, fontcolor=white]"
+                | _ -> $"  \"{String.replace dq sq (format pm cm s)}\"")
             ss
 
     let r2 =
         List.map
             (fun (s, ev, s') ->
-                $"  \"{(format pm cm s).Replace(dq, sq)}\" -> \"{(format pm cm s').Replace(dq, sq)}\" [label=\"{(formatEvent ev).Replace(dq, sq)}\"]")
+                $"  \"{String.replace dq sq (format pm cm s)}\" -> \"{String.replace dq sq (format pm cm s')}\" [label=\"{String.replace dq sq (Event.format ev)}\"]")
             es
 
     let sep = "\n"

@@ -9,7 +9,6 @@ type Type =
     | TList of Type
     | TMap of Type * Type
     | TUnion of string * Type
-    | TEvent of Type
     | TError
 
 let tOption (t: Type) = TUnion("option", t)
@@ -28,5 +27,4 @@ let rec format (t: Type) : string =
     | TList t -> $"({format t} list)"
     | TMap(tk, tv) -> $"(({format tk}, {format tv}) map)"
     | TUnion(n, t) -> $"({format t} {n})"
-    | TEvent t -> $"({format t} event)"
     | TError -> "error"

@@ -1,6 +1,7 @@
 ﻿module CSP.Core.CLI
 
 open FSharpPlus
+open CSP.Core.CtorMap
 open CSP.Core.Env
 open CSP.Core.ProcMap
 open CSP.Core.Val
@@ -15,15 +16,15 @@ h - show history
 q - quit
 """
 
-let start (m: ProcMap<'P, 'Var, 'Ctor>) (genv: Env<'Var, 'Ctor>) (n: 'P) (vOpt: Val<'Ctor> option) =
-    let mutable s = init m genv n vOpt in
+let start (pm: ProcMap<'P, 'Var, 'Ctor>) (cm: CtorMap<'Ctor>) (genv: Env<'Var, 'Ctor>) (n: 'P) (vOpt: Val<'Ctor> option) =
+    let mutable s = init pm genv n vOpt in
     let mutable hist = []
 
     while true do
-        printfn $"state: %s{format m s}"
-        let ts = trans m genv s
+        printfn $"state: %s{format pm cm s}"
+        let ts = trans pm cm genv s
 
-        Seq.iteri (fun i (ev, s') -> printfn $"  c {i}: {formatEvent ev} -> {format m s'}") ts
+        Seq.iteri (fun i (ev, s') -> printfn $"  c {i}: {Event.format ev} -> {format pm cm s'}") ts
         printfn ""
         printf "> "
 
@@ -47,7 +48,7 @@ let start (m: ProcMap<'P, 'Var, 'Ctor>) (genv: Env<'Var, 'Ctor>) (n: 'P) (vOpt: 
             | Some(s', _) -> s <- s'
         | Some 'h' ->
             Seq.iteri
-                (fun i (s', ev) -> printfn $"  b {i}: {format m s'} -> {formatEvent ev}")
+                (fun i (s', ev) -> printfn $"  b {i}: {format pm cm s'} -> {Event.format ev}")
                 hist
         | Some 'q' -> exit 0
         | _ -> printfn $"%s{usage}"

@@ -377,11 +377,11 @@ let count () =
                (Some "n",
                 ExtCh(
                     Guard(
-                        Less((VarRef "n"), Lit(VNat 10u)),
-                        Prefix(Union(Ctor "push", Lit VUnit), Unwind("COUNT", Some(Plus((VarRef "n"), Lit(VNat 1u)))))
+                        NatLess((VarRef "n"), Lit(VNat 10u)),
+                        Prefix(Union(Ctor "push", Lit VUnit), Unwind("COUNT", Some(NatAdd((VarRef "n"), Lit(VNat 1u)))))
                     ),
                     Guard(
-                        Eq((VarRef "n"), Lit(VNat 10u)),
+                        NatEq((VarRef "n"), Lit(VNat 10u)),
                         Prefix(Union(Ctor "reset", Lit VUnit), Unwind("COUNT", Some(Lit(VNat 0u))))
                     )
                 ))) ] in
@@ -391,28 +391,28 @@ let count () =
 
     Assert.True(
         """digraph G {
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=10} env={n=10}) else STOP) env={n=10}) □ (if (n = 10) then (reset -> COUNT 0 env={n=10} env={n=10}) else STOP) env={n=10}))"
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=9} env={n=9}) else STOP) env={n=9}) □ (if (n = 10) then (reset -> COUNT 0 env={n=9} env={n=9}) else STOP) env={n=9}))"
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=8} env={n=8}) else STOP) env={n=8}) □ (if (n = 10) then (reset -> COUNT 0 env={n=8} env={n=8}) else STOP) env={n=8}))"
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=7} env={n=7}) else STOP) env={n=7}) □ (if (n = 10) then (reset -> COUNT 0 env={n=7} env={n=7}) else STOP) env={n=7}))"
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=6} env={n=6}) else STOP) env={n=6}) □ (if (n = 10) then (reset -> COUNT 0 env={n=6} env={n=6}) else STOP) env={n=6}))"
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=5} env={n=5}) else STOP) env={n=5}) □ (if (n = 10) then (reset -> COUNT 0 env={n=5} env={n=5}) else STOP) env={n=5}))"
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=4} env={n=4}) else STOP) env={n=4}) □ (if (n = 10) then (reset -> COUNT 0 env={n=4} env={n=4}) else STOP) env={n=4}))"
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=3} env={n=3}) else STOP) env={n=3}) □ (if (n = 10) then (reset -> COUNT 0 env={n=3} env={n=3}) else STOP) env={n=3}))"
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=2} env={n=2}) else STOP) env={n=2}) □ (if (n = 10) then (reset -> COUNT 0 env={n=2} env={n=2}) else STOP) env={n=2}))"
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=1} env={n=1}) else STOP) env={n=1}) □ (if (n = 10) then (reset -> COUNT 0 env={n=1} env={n=1}) else STOP) env={n=1}))"
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=0} env={n=0}) else STOP) env={n=0}) □ (if (n = 10) then (reset -> COUNT 0 env={n=0} env={n=0}) else STOP) env={n=0}))"
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=10} env={n=10}) else STOP) env={n=10}) □ (if (n = 10) then (reset -> COUNT 0 env={n=10} env={n=10}) else STOP) env={n=10}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=0} env={n=0}) else STOP) env={n=0}) □ (if (n = 10) then (reset -> COUNT 0 env={n=0} env={n=0}) else STOP) env={n=0}))" [label="reset"]
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=9} env={n=9}) else STOP) env={n=9}) □ (if (n = 10) then (reset -> COUNT 0 env={n=9} env={n=9}) else STOP) env={n=9}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=10} env={n=10}) else STOP) env={n=10}) □ (if (n = 10) then (reset -> COUNT 0 env={n=10} env={n=10}) else STOP) env={n=10}))" [label="push"]
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=8} env={n=8}) else STOP) env={n=8}) □ (if (n = 10) then (reset -> COUNT 0 env={n=8} env={n=8}) else STOP) env={n=8}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=9} env={n=9}) else STOP) env={n=9}) □ (if (n = 10) then (reset -> COUNT 0 env={n=9} env={n=9}) else STOP) env={n=9}))" [label="push"]
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=7} env={n=7}) else STOP) env={n=7}) □ (if (n = 10) then (reset -> COUNT 0 env={n=7} env={n=7}) else STOP) env={n=7}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=8} env={n=8}) else STOP) env={n=8}) □ (if (n = 10) then (reset -> COUNT 0 env={n=8} env={n=8}) else STOP) env={n=8}))" [label="push"]
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=6} env={n=6}) else STOP) env={n=6}) □ (if (n = 10) then (reset -> COUNT 0 env={n=6} env={n=6}) else STOP) env={n=6}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=7} env={n=7}) else STOP) env={n=7}) □ (if (n = 10) then (reset -> COUNT 0 env={n=7} env={n=7}) else STOP) env={n=7}))" [label="push"]
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=5} env={n=5}) else STOP) env={n=5}) □ (if (n = 10) then (reset -> COUNT 0 env={n=5} env={n=5}) else STOP) env={n=5}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=6} env={n=6}) else STOP) env={n=6}) □ (if (n = 10) then (reset -> COUNT 0 env={n=6} env={n=6}) else STOP) env={n=6}))" [label="push"]
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=4} env={n=4}) else STOP) env={n=4}) □ (if (n = 10) then (reset -> COUNT 0 env={n=4} env={n=4}) else STOP) env={n=4}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=5} env={n=5}) else STOP) env={n=5}) □ (if (n = 10) then (reset -> COUNT 0 env={n=5} env={n=5}) else STOP) env={n=5}))" [label="push"]
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=3} env={n=3}) else STOP) env={n=3}) □ (if (n = 10) then (reset -> COUNT 0 env={n=3} env={n=3}) else STOP) env={n=3}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=4} env={n=4}) else STOP) env={n=4}) □ (if (n = 10) then (reset -> COUNT 0 env={n=4} env={n=4}) else STOP) env={n=4}))" [label="push"]
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=2} env={n=2}) else STOP) env={n=2}) □ (if (n = 10) then (reset -> COUNT 0 env={n=2} env={n=2}) else STOP) env={n=2}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=3} env={n=3}) else STOP) env={n=3}) □ (if (n = 10) then (reset -> COUNT 0 env={n=3} env={n=3}) else STOP) env={n=3}))" [label="push"]
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=1} env={n=1}) else STOP) env={n=1}) □ (if (n = 10) then (reset -> COUNT 0 env={n=1} env={n=1}) else STOP) env={n=1}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=2} env={n=2}) else STOP) env={n=2}) □ (if (n = 10) then (reset -> COUNT 0 env={n=2} env={n=2}) else STOP) env={n=2}))" [label="push"]
-  "((if (n < 10) then (push -> COUNT (n + 1) env={n=0} env={n=0}) else STOP) env={n=0}) □ (if (n = 10) then (reset -> COUNT 0 env={n=0} env={n=0}) else STOP) env={n=0}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=1} env={n=1}) else STOP) env={n=1}) □ (if (n = 10) then (reset -> COUNT 0 env={n=1} env={n=1}) else STOP) env={n=1}))" [label="push"]
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=10} env={n=10}) else STOP) env={n=10}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=10} env={n=10}) else STOP) env={n=10}))"
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=9} env={n=9}) else STOP) env={n=9}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=9} env={n=9}) else STOP) env={n=9}))"
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=8} env={n=8}) else STOP) env={n=8}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=8} env={n=8}) else STOP) env={n=8}))"
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=7} env={n=7}) else STOP) env={n=7}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=7} env={n=7}) else STOP) env={n=7}))"
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=6} env={n=6}) else STOP) env={n=6}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=6} env={n=6}) else STOP) env={n=6}))"
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=5} env={n=5}) else STOP) env={n=5}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=5} env={n=5}) else STOP) env={n=5}))"
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=4} env={n=4}) else STOP) env={n=4}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=4} env={n=4}) else STOP) env={n=4}))"
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=3} env={n=3}) else STOP) env={n=3}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=3} env={n=3}) else STOP) env={n=3}))"
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=2} env={n=2}) else STOP) env={n=2}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=2} env={n=2}) else STOP) env={n=2}))"
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=1} env={n=1}) else STOP) env={n=1}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=1} env={n=1}) else STOP) env={n=1}))"
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=0} env={n=0}) else STOP) env={n=0}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=0} env={n=0}) else STOP) env={n=0}))"
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=10} env={n=10}) else STOP) env={n=10}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=10} env={n=10}) else STOP) env={n=10}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=0} env={n=0}) else STOP) env={n=0}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=0} env={n=0}) else STOP) env={n=0}))" [label="reset"]
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=9} env={n=9}) else STOP) env={n=9}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=9} env={n=9}) else STOP) env={n=9}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=10} env={n=10}) else STOP) env={n=10}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=10} env={n=10}) else STOP) env={n=10}))" [label="push"]
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=8} env={n=8}) else STOP) env={n=8}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=8} env={n=8}) else STOP) env={n=8}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=9} env={n=9}) else STOP) env={n=9}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=9} env={n=9}) else STOP) env={n=9}))" [label="push"]
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=7} env={n=7}) else STOP) env={n=7}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=7} env={n=7}) else STOP) env={n=7}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=8} env={n=8}) else STOP) env={n=8}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=8} env={n=8}) else STOP) env={n=8}))" [label="push"]
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=6} env={n=6}) else STOP) env={n=6}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=6} env={n=6}) else STOP) env={n=6}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=7} env={n=7}) else STOP) env={n=7}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=7} env={n=7}) else STOP) env={n=7}))" [label="push"]
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=5} env={n=5}) else STOP) env={n=5}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=5} env={n=5}) else STOP) env={n=5}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=6} env={n=6}) else STOP) env={n=6}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=6} env={n=6}) else STOP) env={n=6}))" [label="push"]
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=4} env={n=4}) else STOP) env={n=4}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=4} env={n=4}) else STOP) env={n=4}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=5} env={n=5}) else STOP) env={n=5}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=5} env={n=5}) else STOP) env={n=5}))" [label="push"]
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=3} env={n=3}) else STOP) env={n=3}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=3} env={n=3}) else STOP) env={n=3}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=4} env={n=4}) else STOP) env={n=4}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=4} env={n=4}) else STOP) env={n=4}))" [label="push"]
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=2} env={n=2}) else STOP) env={n=2}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=2} env={n=2}) else STOP) env={n=2}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=3} env={n=3}) else STOP) env={n=3}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=3} env={n=3}) else STOP) env={n=3}))" [label="push"]
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=1} env={n=1}) else STOP) env={n=1}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=1} env={n=1}) else STOP) env={n=1}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=2} env={n=2}) else STOP) env={n=2}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=2} env={n=2}) else STOP) env={n=2}))" [label="push"]
+  "((if (n < 10) then (push -> COUNT (n + 1) env={n=0} env={n=0}) else STOP) env={n=0}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=0} env={n=0}) else STOP) env={n=0}))" -> "((if (n < 10) then (push -> COUNT (n + 1) env={n=1} env={n=1}) else STOP) env={n=1}) □ (if (n =N 10) then (reset -> COUNT 0 env={n=1} env={n=1}) else STOP) env={n=1}))" [label="push"]
 }""" =
             actual,
         actual
@@ -441,7 +441,7 @@ let roVarSys1 () =
                     Union(Ctor "Read", VarRef "x"),
                     Unwind(
                         "ROVar",
-                        Some(Expr.If(Less(VarRef "x", Lit(VNat 4u)), Plus(VarRef "x", Lit(VNat 1u)), Lit(VNat 0u)))
+                        Some(Expr.If(NatLess(VarRef "x", Lit(VNat 4u)), NatAdd(VarRef "x", Lit(VNat 1u)), Lit(VNat 0u)))
                     )
                 )))
               ("Reader1", (None, PrefixRecv(readEvs, "x", Stop)))
@@ -481,7 +481,7 @@ let roVarSys2 () =
                     Union(Ctor "Read", VarRef "x"),
                     Unwind(
                         "ROVar",
-                        Some(Expr.If(Less(VarRef "x", Lit(VNat 4u)), Plus(VarRef "x", Lit(VNat 1u)), Lit(VNat 0u)))
+                        Some(Expr.If(NatLess(VarRef "x", Lit(VNat 4u)), NatAdd(VarRef "x", Lit(VNat 1u)), Lit(VNat 0u)))
                     )
                 )))
               ("Reader1", (None, PrefixRecv(readEvs, "x", Stop)))
@@ -526,8 +526,8 @@ let testMax () =
             [ ("P",
                (Some "n",
                 ExtCh(
-                    Prefix(Union(Ctor "ch", Lit VUnit), Unwind("P", Some(Plus(VarRef "n", Lit(VNat 1u))))),
-                    Prefix(Union(Ctor "ch", Lit VUnit), Unwind("P", Some(Minus(VarRef "n", Lit(VNat 1u)))))
+                    Prefix(Union(Ctor "ch", Lit VUnit), Unwind("P", Some(NatAdd(VarRef "n", Lit(VNat 1u))))),
+                    Prefix(Union(Ctor "ch", Lit VUnit), Unwind("P", Some(NatSub(VarRef "n", Lit(VNat 1u)))))
                 ))) ] in
 
     let cm = Map [(Ctor "ch", ("ch", TUnit))]

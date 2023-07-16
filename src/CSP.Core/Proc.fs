@@ -2,7 +2,6 @@
 
 open CSP.Core.Ctor
 open FSharpx.Collections
-open CSP.Core.Type
 open CSP.Core.Expr
 
 type Proc<'P, 'Var, 'Ctor when 'P: comparison and 'Var: comparison and 'Ctor: comparison> =

@@ -82,9 +82,12 @@ let testCases: obj[] list =
                (9u, TCVar 8u)
                (10u, TCMap(TCVar 0u, TCVar 1u)) ] } |]
       [| { Val = VUnion(Ctor "Foo", VUnit)
-           Expected = [ (0u, TCUnit); (1u, TCVar 0u); (1u, TCUnit); (2u, TCUnion("foo", TCVar 1u)) ] } |]
-      [| { Val = VEvent VUnit
-           Expected = [ (1u, TCUnit); (2u, TCVar 1u); (2u, TCVar 0u); (3u, TCEvent(TCVar 0u)) ] } |]
+           Expected =
+             [ (0u, TCName "foo")
+               (1u, TCUnit)
+               (2u, TCVar 1u)
+               (2u, TCUnit)
+               (3u, TCUnion(TCVar 0u, TCVar 1u)) ] } |]
       [| { Val = VError
            Expected = [ (0u, TCError) ] } |] ]
 
@@ -97,7 +100,7 @@ let tcFmt (p: uint * TypeCstr) =
 let typeCstrVal (tc: ValTestCase) =
     let init = (0u, []) in
     let cm = Map [ (Ctor "Foo", ("foo", TUnit)) ]
-    let _, actual = ofVal cm init tc.Val in
+    let _, (_, actual) = ofVal cm init tc.Val in
     let actual = List.rev actual in
 
     Assert.True(tc.Expected = actual, cmp tcFmt tc.Expected actual)

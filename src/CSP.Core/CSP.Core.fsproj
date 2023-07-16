@@ -9,6 +9,7 @@
         <Compile Include="Type.fs" />
         <Compile Include="Ctor.fs" />
         <Compile Include="Val.fs" />
+        <Compile Include="Event.fs" />
         <Compile Include="Env.fs" />
         <Compile Include="CtorMap.fs" />
         <Compile Include="Expr.fs" />
@@ -22,6 +23,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="FSharpPlus" Version="1.4.1" />
         <PackageReference Include="FSharpx.Collections" Version="3.1.0" />
     </ItemGroup>
 
