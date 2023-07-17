@@ -1,8 +1,7 @@
 module CSP.Core.Ctor
 
-type Ctor<'Ctor when 'Ctor: comparison> =
-    | Ctor of 'Ctor
-    | CtorSome
-    | CtorNone
-    | CtorLeft
-    | CtorRight
+type Ctor = Ctor of string
+
+let format (ctor: Ctor): string =
+    match ctor with
+    | Ctor n -> n

@@ -3,19 +3,19 @@ module CSP.Core.Val
 open CSP.Core.Ctor
 
 
-type Val<'Ctor when 'Ctor: comparison> =
+type Val =
     | VUnit
     | VNat of uint
     | VBool of bool
-    | VTuple of Val<'Ctor> * Val<'Ctor>
-    | VSet of Set<Val<'Ctor>>
-    | VList of Val<'Ctor> list
-    | VMap of Map<Val<'Ctor>, Val<'Ctor>>
-    | VUnion of Ctor<'Ctor> * Val<'Ctor>
+    | VTuple of Val * Val
+    | VSet of Set<Val>
+    | VList of Val list
+    | VMap of Map<Val, Val>
+    | VUnion of Ctor * Val
     | VError
 
 
-let rec format (v: Val<'Ctor>) : string =
+let rec format (v: Val) : string =
     match v with
     | VUnit -> "()"
     | VNat n -> $"{n}"
@@ -31,9 +31,4 @@ let rec format (v: Val<'Ctor>) : string =
     | VUnion(c, v) ->
         match c with
         | Ctor c' -> if v = VUnit then $"{c'}" else $"({c'} {format v})"
-        | CtorSome -> $"(Some {format v})"
-        | CtorNone -> "None"
-        | CtorLeft -> $"(Left {format v})"
-        | CtorRight -> $"(Right {format v})"
     | VError -> "ERROR"
-

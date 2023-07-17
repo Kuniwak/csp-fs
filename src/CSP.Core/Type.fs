@@ -1,6 +1,9 @@
 module CSP.Core.Type
 
+type UnionName = string
+
 type Type =
+    | TVar of uint
     | TUnit
     | TNat
     | TBool
@@ -19,6 +22,7 @@ let tTriple (t1: Type) (t2: Type) (t3: Type) = TTuple(t1, TTuple(t2, t3))
 
 let rec format (t: Type) : string =
     match t with
+    | TVar n -> $"'t{n}"
     | TUnit -> "unit"
     | TNat -> "nat"
     | TBool -> "bool"

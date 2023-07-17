@@ -9,26 +9,26 @@ open CSP.Core.Proc
 open CSP.Core.Val
 
 type State<'P, 'Var, 'Ctor when 'P: comparison and 'Var: comparison and 'Ctor: comparison> =
-    | Unwind of Map<'Var, Val<'Ctor>> * 'P * Expr<'Var, 'Ctor> option
+    | Unwind of Map<'Var, Val> * 'P * Expr option
     | Stop
     | Skip
-    | Prefix of Map<'Var, Val<'Ctor>> * Expr<'Var, 'Ctor> * State<'P, 'Var, 'Ctor>
-    | PrefixRecv of Map<'Var, Val<'Ctor>> * Expr<'Var, 'Ctor> * 'Var * State<'P, 'Var, 'Ctor>
+    | Prefix of Map<'Var, Val> * Expr * State<'P, 'Var, 'Ctor>
+    | PrefixRecv of Map<'Var, Val> * Expr * 'Var * State<'P, 'Var, 'Ctor>
     | IntCh of State<'P, 'Var, 'Ctor> * State<'P, 'Var, 'Ctor>
     | ExtCh of State<'P, 'Var, 'Ctor> * State<'P, 'Var, 'Ctor>
     | Seq of State<'P, 'Var, 'Ctor> * State<'P, 'Var, 'Ctor>
-    | If of Map<'Var, Val<'Ctor>> * Expr<'Var, 'Ctor> * State<'P, 'Var, 'Ctor> * State<'P, 'Var, 'Ctor>
+    | If of Map<'Var, Val> * Expr * State<'P, 'Var, 'Ctor> * State<'P, 'Var, 'Ctor>
     | Match of
-        Map<'Var, Val<'Ctor>> *
-        Expr<'Var, 'Ctor> *
-        Map<Ctor<'Ctor>, 'Var * State<'P, 'Var, 'Ctor>> *
+        Map<'Var, Val> *
+        Expr *
+        Map<Ctor, 'Var * State<'P, 'Var, 'Ctor>> *
         ('Var option * State<'P, 'Var, 'Ctor>) option
-    | InterfaceParallel of Map<'Var, Val<'Ctor>> * State<'P, 'Var, 'Ctor> * Expr<'Var, 'Ctor> * State<'P, 'Var, 'Ctor>
-    | Hide of Map<'Var, Val<'Ctor>> * State<'P, 'Var, 'Ctor> * Expr<'Var, 'Ctor>
+    | InterfaceParallel of Map<'Var, Val> * State<'P, 'Var, 'Ctor> * Expr * State<'P, 'Var, 'Ctor>
+    | Hide of Map<'Var, Val> * State<'P, 'Var, 'Ctor> * Expr
     | Omega
     | Error of string * State<'P, 'Var, 'Ctor>
 
-let rec bind (var: 'Var) (v: Val<'Ctor>) (s: State<'P, 'Var, 'Ctor>) =
+let rec bind (var: 'Var) (v: Val) (s: State<'P, 'Var, 'Ctor>) =
     match s with
     | Unwind(env, n, eOpt) -> Unwind(Map.add var v env, n, eOpt)
     | Stop -> Stop
@@ -47,7 +47,7 @@ let rec bind (var: 'Var) (v: Val<'Ctor>) (s: State<'P, 'Var, 'Ctor>) =
 
 let rec ofProc
     (pm: ProcMap<'P, 'Var, 'Ctor>)
-    (genv: Map<'Var, Val<'Ctor>>)
+    (genv: Map<'Var, Val>)
     (p: Proc<'P, 'Var, 'Ctor>)
     : State<'P, 'Var, 'Ctor> =
     match p with
@@ -72,7 +72,7 @@ let rec ofProc
     | Proc.Hide(p, expr) -> Hide(genv, ofProc pm genv p, expr)
     | Proc.Guard(e, p) -> If(genv, e, ofProc pm genv p, Stop)
 
-let unwind (pm: ProcMap<'P, 'Var, 'Ctor>) (cm: CtorMap<'Ctor>) (s0: State<'P, 'Var, 'Ctor>) : State<'P, 'Var, 'Ctor> =
+let unwind (pm: ProcMap<'P, 'Var, 'Ctor>) (cm: CtorMap) (s0: State<'P, 'Var, 'Ctor>) : State<'P, 'Var, 'Ctor> =
     let rec loop (s: State<'P, 'Var, 'Ctor>) visited =
         match s with
         | Unwind(env, n, eOpt) ->
@@ -105,7 +105,7 @@ let unwind (pm: ProcMap<'P, 'Var, 'Ctor>) (cm: CtorMap<'Ctor>) (s0: State<'P, 'V
 
     loop s0 Set.empty
 
-let format (pm: ProcMap<'P, 'Var, 'Ctor>) (cm: CtorMap<'Ctor>) (s0: State<'P, 'Var, 'Ctor>) : string =
+let format (pm: ProcMap) (cm: CtorMap) (s0: State<'P, 'Var, 'Ctor>) : string =
     let rec f s isTop =
         match s with
         | Unwind(env, n, eOpt) ->

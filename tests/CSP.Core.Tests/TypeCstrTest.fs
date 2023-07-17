@@ -1,17 +1,22 @@
 module CSP.Core.Tests.TypeCstrTest
 
-open CSP.Core.Ctor
 open Xunit
+open CSP.Core.Ctor
+open CSP.Core.Expr
 open CSP.Core.Type
 open CSP.Core.Val
 open CSP.Core.TypeCstr
 open CSP.Core.TestUtil
 
+let tcFmt (p: uint * TypeCstr) =
+    match p with
+    | n, tc -> $"({n}, {format tc})"
+
 type ValTestCase =
     { Val: Val<string>
       Expected: (uint * TypeCstr) list }
 
-let testCases: obj[] list =
+let valTestCases: obj[] list =
     [ [| { Val = VUnit
            Expected = [ (0u, TCUnit) ] } |]
       [| { Val = VNat 0u
@@ -91,16 +96,33 @@ let testCases: obj[] list =
       [| { Val = VError
            Expected = [ (0u, TCError) ] } |] ]
 
-let tcFmt (p: uint * TypeCstr) =
-    match p with
-    | n, tc -> $"({n}, {format tc})"
-
 [<Theory>]
-[<MemberData(nameof testCases)>]
-let typeCstrVal (tc: ValTestCase) =
+[<MemberData(nameof valTestCases)>]
+let typeCstrOfVal (tc: ValTestCase) =
     let init = (0u, []) in
     let cm = Map [ (Ctor "Foo", ("foo", TUnit)) ]
     let _, (_, actual) = ofVal cm init tc.Val in
     let actual = List.rev actual in
 
     Assert.True(tc.Expected = actual, cmp tcFmt tc.Expected actual)
+
+type ExprTestCase =
+    { Expr: Expr<string, string>
+      Expected: (uint * TypeCstr) list }
+
+let exprTestCases: obj[] list =
+    [ [| { Expr = Lit VUnit
+           Expected = [ (0u, TCUnit) ] } |]
+         { Expr = Union (Ctor "Foo", Lit VUnit)
+           Expected = [ (1u, TCVar 0); (1u, ) ] }
+     ]
+    
+[<Theory>]
+[<MemberData(nameof exprTestCases)>]
+let typeCstrOfExpr (tc: ExprTestCase) =
+     let init = (0u, []) in
+     let cm = Map [(Ctor "Foo", ("foo", TUnit))] in
+     let tenv = Map.empty in
+     let _, (_, actual) = ofExpr cm tenv init tc.Expr in
+     
+     Assert.True(tc.Expected = actual, cmp tcFmt tc.Expected actual)
