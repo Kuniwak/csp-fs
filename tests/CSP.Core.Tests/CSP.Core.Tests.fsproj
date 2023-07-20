@@ -10,9 +10,8 @@
 
     <ItemGroup>
         <Compile Include="GraphTests.fs" />
-        <Compile Include="TypeCstrTest.fs" />
+        <Compile Include="TypeInferTest.fs" />
         <Compile Include="SearchTests.fs" />
-        <Compile Include="ExprTests.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
 

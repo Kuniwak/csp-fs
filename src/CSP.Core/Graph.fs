@@ -1,7 +1,10 @@
 module CSP.Core.Graph
 
 open FSharpPlus
+open CSP.Core.Indent
+open CSP.Core.Var
 open CSP.Core.CtorMap
+open CSP.Core.Proc
 open CSP.Core.Env
 open CSP.Core.ProcMap
 open CSP.Core.Event
@@ -12,16 +15,16 @@ open CSP.Core.Search
 
 let graph
     (max: int)
-    (pm: ProcMap<'P, 'Var, 'Ctor>)
-    (cm: CtorMap<'Ctor>)
-    (genv: Env<'Var, 'Ctor>)
-    (n: 'P)
-    (vOpt: Val<'Ctor> option)
-    : (State<'P, 'Var, 'Ctor> * int) list * (State<'P, 'Var, 'Ctor> * Event<'Ctor> * State<'P, 'Var, 'Ctor>) list =
-    let s0: State<'P, 'Var, 'Ctor> = init pm genv n vOpt in
-    let mutable ss: (State<'P, 'Var, 'Ctor> * int) list = [] in
+    (pm: ProcMap)
+    (cm: CtorMap)
+    (genv: Env)
+    (n: ProcId)
+    (vOpt: Val option)
+    : (State * int) list * (State * Event * State) list =
+    let s0: State = init pm genv n vOpt in
+    let mutable ss: (State * int) list = [] in
 
-    let mutable es: (State<'P, 'Var, 'Ctor> * Event<'Ctor> * State<'P, 'Var, 'Ctor>) list =
+    let mutable es: (State * Event * State) list =
         [] in
 
     bfs
@@ -38,11 +41,11 @@ let graph
 
 let dot
     (max: int)
-    (pm: ProcMap<'P, 'Var, 'Ctor>)
-    (cm: CtorMap<'Ctor>)
-    (genv: Map<'Var, Val<'Ctor>>)
-    (n: 'P)
-    (vOpt: Val<'Ctor> option)
+    (pm: ProcMap)
+    (cm: CtorMap)
+    (genv: Map<Var, Val>)
+    (n: ProcId)
+    (vOpt: Val option)
     : string =
     let dq = "\""
     let sq = "'"
@@ -52,16 +55,16 @@ let dot
         List.map
             (fun (s, n) ->
                 match s with
-                | Omega -> $"  \"{String.replace dq sq (format pm cm s)}\""
+                | Omega -> $"  \"{String.replace dq sq (oneline (format pm cm genv s))}\""
                 | _ when n = 0 ->
-                    $"  \"{String.replace dq sq (format pm cm s)}\"  [fillcolor=red, style=filled, fontcolor=white]"
-                | _ -> $"  \"{String.replace dq sq (format pm cm s)}\"")
+                    $"  \"{String.replace dq sq (oneline (format pm cm genv s))}\"  [fillcolor=red, style=filled, fontcolor=white]"
+                | _ -> $"  \"{String.replace dq sq (oneline (format pm cm genv s))}\"")
             ss
 
     let r2 =
         List.map
             (fun (s, ev, s') ->
-                $"  \"{String.replace dq sq (format pm cm s)}\" -> \"{String.replace dq sq (format pm cm s')}\" [label=\"{String.replace dq sq (Event.format ev)}\"]")
+                $"  \"{String.replace dq sq (oneline(format pm cm genv s))}\" -> \"{String.replace dq sq (oneline (format pm cm genv s'))}\" [label=\"{String.replace dq sq (oneline (Event.format ev))}\"]")
             es
 
     let sep = "\n"

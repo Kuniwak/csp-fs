@@ -2,8 +2,12 @@ module CSP.Core.Type
 
 type UnionName = string
 
+type TVar = uint
+
+type TClassName = string
+
 type Type =
-    | TVar of uint
+    | TVar of TVar
     | TUnit
     | TNat
     | TBool

@@ -5,8 +5,12 @@ open CSP.Core.Var
 
 type Env = Map<Var, Val>
 
-let format (env: Env) : string =
+let from: (Var * Val) seq -> Env = Map
+let empty: Env = Map.empty
+
+let format (genv: Env) (env: Env) : string =
+    let env = Map.filter (fun var _ -> not (Map.containsKey var genv)) env
     let s =
-        String.concat ", " (List.map (fun (var, v) -> $"{var}={format v}") (Map.toList env)) in
+        String.concat ", " (List.map (fun (var, v) -> $"{format var}={Val.format v}") (Map.toList env)) in
 
     $"{{{s}}}"

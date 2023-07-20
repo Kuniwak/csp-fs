@@ -1,33 +1,39 @@
 module CSP.Core.Trans
 
+open CSP.Core.LineNum
 open CSP.Core.CtorMap
+open CSP.Core.Proc
 open CSP.Core.ProcMap
 open CSP.Core.Event
 open CSP.Core.Val
 open CSP.Core.Expr
 open CSP.Core.State
+open CSP.Core.Var
 
 let init
-    (m: ProcMap<'P, 'Var, 'Ctor>)
-    (genv: Map<'Var, Val<'Ctor>>)
-    (n: 'P)
-    (vOpt: Val<'Ctor> option)
-    : State<'P, 'Var, 'Ctor> =
-    let env, varOpt =
-        match (Map.find n m, vOpt) with
-        | (Some var, _), Some v -> (Map.add var v genv, Some var)
-        | (None, _), None -> (genv, None)
-        | (None, _), Some _ -> failwith "given a value to Unwind, but not needed at init"
-        | (Some _, _), None -> failwith "needed a value by Unwind, but not given at init"
+    (pm: ProcMap)
+    (genv: Map<Var, Val>)
+    (pn: ProcId)
+    (vOpt: Val option)
+    : State =
+    match Map.tryFind pn pm with
+    | None -> failwith $"no such process: {pn}"
+    | Some (var, _) ->
+        let genv, varOpt =
+            match (var, vOpt) with
+            | Some var, Some v -> (Map.add var v genv, Some var)
+            | None, None -> (genv, None)
+            | None, Some _ -> failwith "given a value to Unwind, but not needed at init"
+            | Some _, None -> failwith "needed a value by Unwind, but not given at init"
 
-    ofProc m env (Proc.Unwind(n, Option.map VarRef varOpt))
+        ofProc genv (Proc.Unwind(pn, Option.map (fun var -> VarRef(var, None, unknown)) varOpt, unknown))
 
 let rec trans
-    (pm: ProcMap<'P, 'Var, 'Ctor>)
-    (cm: CtorMap<'Ctor>)
-    (env0: Map<'Var, Val<'Ctor>>)
-    (s0: State<'P, 'Var, 'Ctor>)
-    : (Event<'Ctor> * State<'P, 'Var, 'Ctor>) list =
+    (pm: ProcMap)
+    (cm: CtorMap)
+    (env0: Map<Var, Val>)
+    (s0: State)
+    : (Event * State) list =
     match unwind pm cm s0 with
     | Unwind _ -> failwith "unwind cannot return Unwind"
     | Stop _ -> []
@@ -80,7 +86,8 @@ let rec trans
         match eval cm env expr with
         | VUnion(c, v) ->
             match Map.tryFind c sm with
-            | Some(var, p2) -> trans pm cm env (bind var v p2)
+            | Some(Some var, p2) -> trans pm cm env (bind var v p2)
+            | Some(None, p2) -> trans pm cm env p2
             | None ->
                 match ds with
                 | Some(Some var, p2) -> trans pm cm env (bind var (VUnion(c, v)) p2)

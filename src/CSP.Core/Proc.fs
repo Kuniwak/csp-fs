@@ -1,7 +1,8 @@
 ﻿module CSP.Core.Proc
 
-open CSP.Core.LineNum
 open FSharpx.Collections
+open CSP.Core.LineNum
+open CSP.Core.Var
 open CSP.Core.Ctor
 open CSP.Core.Expr
 
@@ -12,15 +13,15 @@ type Proc =
     | Stop of LineNum
     | Skip of LineNum
     | Prefix of Expr * Proc * LineNum
-    | PrefixRecv of Expr * string * Proc * LineNum
+    | PrefixRecv of Expr * Var * Proc * LineNum
     | IntCh of Proc * Proc * LineNum
     | ExtCh of Proc * Proc * LineNum
     | Seq of Proc * Proc * LineNum
     | If of Expr * Proc * Proc * LineNum
     | Match of
         Expr *
-        Map<Ctor, string * Proc> *
-        (string option * Proc) option *
+        Map<Ctor, Var option * Proc> *
+        (Var option * Proc) option *
         LineNum
     | InterfaceParallel of Proc * Expr * Proc * LineNum
     | Interleave of Proc * Proc * LineNum

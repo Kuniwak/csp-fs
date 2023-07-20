@@ -1,34 +1,33 @@
 module CSP.Core.State
 
-open CSP.Core.CtorMap
+open CSP.Core.Env
 open FSharpx.Collections
+open CSP.Core.CtorMap
+open CSP.Core.Type
+open CSP.Core.Var
 open CSP.Core.Ctor
 open CSP.Core.Expr
 open CSP.Core.ProcMap
 open CSP.Core.Proc
 open CSP.Core.Val
 
-type State<'P, 'Var, 'Ctor when 'P: comparison and 'Var: comparison and 'Ctor: comparison> =
-    | Unwind of Map<'Var, Val> * 'P * Expr option
+type State =
+    | Unwind of Map<Var, Val> * ProcId * Expr option
     | Stop
     | Skip
-    | Prefix of Map<'Var, Val> * Expr * State<'P, 'Var, 'Ctor>
-    | PrefixRecv of Map<'Var, Val> * Expr * 'Var * State<'P, 'Var, 'Ctor>
-    | IntCh of State<'P, 'Var, 'Ctor> * State<'P, 'Var, 'Ctor>
-    | ExtCh of State<'P, 'Var, 'Ctor> * State<'P, 'Var, 'Ctor>
-    | Seq of State<'P, 'Var, 'Ctor> * State<'P, 'Var, 'Ctor>
-    | If of Map<'Var, Val> * Expr * State<'P, 'Var, 'Ctor> * State<'P, 'Var, 'Ctor>
-    | Match of
-        Map<'Var, Val> *
-        Expr *
-        Map<Ctor, 'Var * State<'P, 'Var, 'Ctor>> *
-        ('Var option * State<'P, 'Var, 'Ctor>) option
-    | InterfaceParallel of Map<'Var, Val> * State<'P, 'Var, 'Ctor> * Expr * State<'P, 'Var, 'Ctor>
-    | Hide of Map<'Var, Val> * State<'P, 'Var, 'Ctor> * Expr
+    | Prefix of Map<Var, Val> * Expr * State
+    | PrefixRecv of Map<Var, Val> * Expr * Var * State
+    | IntCh of State * State
+    | ExtCh of State * State
+    | Seq of State * State
+    | If of Map<Var, Val> * Expr * State * State
+    | Match of Map<Var, Val> * Expr * Map<Ctor, Var option * State> * (Var option * State) option
+    | InterfaceParallel of Map<Var, Val> * State * Expr * State
+    | Hide of Map<Var, Val> * State * Expr
     | Omega
-    | Error of string * State<'P, 'Var, 'Ctor>
+    | Error of string * State
 
-let rec bind (var: 'Var) (v: Val) (s: State<'P, 'Var, 'Ctor>) =
+let rec bind (var: Var) (v: Val) (s: State) =
     match s with
     | Unwind(env, n, eOpt) -> Unwind(Map.add var v env, n, eOpt)
     | Stop -> Stop
@@ -45,46 +44,63 @@ let rec bind (var: 'Var) (v: Val) (s: State<'P, 'Var, 'Ctor>) =
     | Omega -> Omega
     | Error _ -> s
 
-let rec ofProc
-    (pm: ProcMap<'P, 'Var, 'Ctor>)
-    (genv: Map<'Var, Val>)
-    (p: Proc<'P, 'Var, 'Ctor>)
-    : State<'P, 'Var, 'Ctor> =
-    match p with
-    | Proc.Unwind(n, e) -> Unwind(genv, n, e)
-    | Proc.Stop -> Stop
-    | Proc.Skip -> Skip
-    | Proc.Prefix(e, p') -> Prefix(genv, e, ofProc pm genv p')
-    | Proc.PrefixRecv(e, var, p') -> PrefixRecv(genv, e, var, ofProc pm genv p')
-    | Proc.IntCh(p1, p2) -> IntCh(ofProc pm genv p1, ofProc pm genv p2)
-    | Proc.ExtCh(p1, p2) -> ExtCh(ofProc pm genv p1, ofProc pm genv p2)
-    | Proc.Seq(p1, p2) -> Seq(ofProc pm genv p1, ofProc pm genv p2)
-    | Proc.If(e, p1, p2) -> If(genv, e, ofProc pm genv p1, ofProc pm genv p2)
-    | Proc.Match(e, mp, dp) ->
-        Match(
-            genv,
-            e,
-            Map.map (fun _ (v, p) -> (v, ofProc pm genv p)) mp,
-            Option.map (fun (varOpt, s') -> (varOpt, ofProc pm genv s')) dp
-        )
-    | Proc.InterfaceParallel(p1, expr, p2) -> InterfaceParallel(genv, ofProc pm genv p1, expr, ofProc pm genv p2)
-    | Proc.Interleave(p1, p2) -> InterfaceParallel(genv, ofProc pm genv p1, SetEmpty, ofProc pm genv p2)
-    | Proc.Hide(p, expr) -> Hide(genv, ofProc pm genv p, expr)
-    | Proc.Guard(e, p) -> If(genv, e, ofProc pm genv p, Stop)
+let ofProc (genv: Map<Var, Val>) (p: Proc) : State =
+    let rec ofProc p =
+        match p with
+        | Proc.Unwind(nm, e, _) -> Unwind(genv, nm, e)
+        | Proc.Stop _ -> Stop
+        | Proc.Skip _ -> Skip
+        | Proc.Prefix(e, p', _) -> Prefix(genv, e, ofProc p')
+        | Proc.PrefixRecv(e, var, p', _) -> PrefixRecv(genv, e, var, ofProc p')
+        | Proc.IntCh(p1, p2, _) ->
+            let s1 = ofProc p1 in
+            let s2 = ofProc p2 in
+            IntCh(s1, s2)
+        | Proc.ExtCh(p1, p2, _) ->
+            let s1 = ofProc p1 in
+            let s2 = ofProc p2 in
+            ExtCh(s1, s2)
+        | Proc.Seq(p1, p2, _) ->
+            let s1 = ofProc p1 in
+            let s2 = ofProc p2 in
+            Seq(s1, s2)
+        | Proc.If(e, p1, p2, _) ->
+            let s1 = ofProc p1 in
+            let s2 = ofProc p2 in
+            If(genv, e, s1, s2)
+        | Proc.Match(e, mp, dp, _) ->
+            let ms = Map.map (fun _ (var, p) -> (var, ofProc p)) mp in
+            let ds = Option.map (fun (var, p) -> (var, ofProc p)) dp
 
-let unwind (pm: ProcMap<'P, 'Var, 'Ctor>) (cm: CtorMap) (s0: State<'P, 'Var, 'Ctor>) : State<'P, 'Var, 'Ctor> =
-    let rec loop (s: State<'P, 'Var, 'Ctor>) visited =
+            Match(genv, e, ms, ds)
+        | Proc.InterfaceParallel(p1, expr, p2, _) ->
+            let s1 = ofProc p1 in
+            let s2 = ofProc p2 in
+            InterfaceParallel(genv, s1, expr, s2)
+        | Proc.Interleave(p1, p2, line) ->
+            let s1 = ofProc p1 in
+            let s2 = ofProc p2 in
+            InterfaceParallel(genv, s1, LitEmpty(TSet(TUnit), None, line), s2)
+        | Proc.Hide(p, expr, _) -> let s = ofProc p in Hide(genv, s, expr)
+        | Proc.Guard(e, p, _) -> let s = ofProc p in If(genv, e, s, Stop)
+
+    ofProc p
+
+let unwind (pm: ProcMap) (cm: CtorMap) (s0: State) : State =
+    let rec loop s visited =
         match s with
-        | Unwind(env, n, eOpt) ->
+        | Unwind(env, pn, eOpt) ->
             if Set.contains s visited then
                 failwith "circular definition"
             else
-                match Map.tryFind n pm with
+                match Map.tryFind pn pm with
                 | Some t ->
                     match (t, eOpt) with
                     | (Some var, p), Some e ->
-                        let env = Map.add var (eval cm env e) env in loop (ofProc pm env p) (Set.add s visited)
-                    | (None, p), None -> loop (ofProc pm env p) (Set.add s visited)
+                        let env = Map.add var (eval cm env e) env in
+                        loop (ofProc env p) (Set.add (ofProc env p) visited)
+                    | (None, p), None ->
+                        loop (ofProc env p) (Set.add (ofProc env p) visited)
                     | (None, _), Some _ -> Error("given a value to Unwind, but not needed at unwind", s)
                     | (Some _, _), None -> Error("needed a value by Unwind, but not given at unwind", s)
                 | None ->
@@ -100,12 +116,12 @@ let unwind (pm: ProcMap<'P, 'Var, 'Ctor>) (cm: CtorMap) (s0: State<'P, 'Var, 'Ct
                                     | None -> $"{n}")
                                 (Map.toList pm)) in
 
-                    failwith $"no such process: {n} in [{ms}]"
+                    failwith $"no such process: {pn} in [{ms}]"
         | _ -> s
 
     loop s0 Set.empty
 
-let format (pm: ProcMap) (cm: CtorMap) (s0: State<'P, 'Var, 'Ctor>) : string =
+let format (pm: ProcMap) (cm: CtorMap) (genv: Env) (s0: State) : string =
     let rec f s isTop =
         match s with
         | Unwind(env, n, eOpt) ->
@@ -113,29 +129,29 @@ let format (pm: ProcMap) (cm: CtorMap) (s0: State<'P, 'Var, 'Ctor>) : string =
                 f (unwind pm cm s) false
             else
                 match eOpt with
-                | Some e -> $"{n} {Expr.format e} env={Env.format env}"
+                | Some e -> $"{n} {Expr.format e} env={Env.format genv env}"
                 | None -> $"{n}"
         | Stop -> "STOP"
         | Skip -> "SKIP"
-        | Prefix(env, expr, s') -> $"({Expr.format expr} -> {f s' false} env={Env.format env})"
-        | PrefixRecv(env, expr, var, s') -> $"({Expr.format expr}?{var} -> {f s' false} env={Env.format env})"
+        | Prefix(env, expr, s') -> $"({Expr.format expr} -> {f s' false} env={Env.format genv env})"
+        | PrefixRecv(env, expr, var, s') -> $"({Expr.format expr}?{var} -> {f s' false} env={Env.format genv env})"
         | IntCh(s1, s2) -> $"({f s1 false} ⨅ {f s2 false})"
         | ExtCh(s1, s2) -> $"({f s1 false} □ {f s2 false})"
         | Seq(s1, s2) -> $"({f s1 false} ; {f s2 false})"
-        | If(env, expr, s1, s2) -> $"(if {Expr.format expr} then {f s1 false} else {f s2 false}) env={Env.format env})"
+        | If(env, expr, s1, s2) -> $"(if {Expr.format expr} then {f s1 false} else {f s2 false}) env={Env.format genv env})"
         | Match(env, expr, sm, ds) ->
             let sep = " | " in
             let cs' = List.map (fun (c, (v, p')) -> $"{c} {v} -> {f p' false}") (Map.toList sm) in
 
             match ds with
             | Some(Some var, p') ->
-                $"(match {Expr.format expr} with {String.concat sep cs'} | {var} -> {f p' false} env={Env.format env})"
+                $"(match {Expr.format expr} with {String.concat sep cs'} | {var} -> {f p' false} env={Env.format genv env})"
             | Some(None, p') ->
-                $"(match {Expr.format expr} with {String.concat sep cs'} | _ -> {f p' false} env={Env.format env})"
-            | None -> $"(match {Expr.format expr} with {String.concat sep cs'} env={Env.format env})"
+                $"(match {Expr.format expr} with {String.concat sep cs'} | _ -> {f p' false} env={Env.format genv env})"
+            | None -> $"(match {Expr.format expr} with {String.concat sep cs'} env={Env.format genv env})"
         | InterfaceParallel(env, s1, expr, s2) ->
-            $"({f s1 false} ⟦{Expr.format expr}⟧ {f s2 false} env={Env.format env})"
-        | Hide(env, s, expr) -> $"({f s false} \\\\ {Expr.format expr} env={Env.format env})"
+            $"({f s1 false} ⟦{Expr.format expr}⟧ {f s2 false} env={Env.format genv env})"
+        | Hide(env, s, expr) -> $"({f s false} \\\\ {Expr.format expr} env={Env.format genv env})"
         | Omega -> "Ω"
         | Error(msg, s) -> $"(ERROR: {msg} at {f s false})"
 

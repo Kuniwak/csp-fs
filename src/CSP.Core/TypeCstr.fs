@@ -1,13 +1,16 @@
 module CSP.Core.TypeCstr
 
 open CSP.Core.Type
+open CSP.Core.Var
 
 type UnionNameCstr =
-    | UNVar of int
+    | UNAny
     | UNName of string
+    
+type TCVarId = uint
 
 type TypeCstr =
-    | TCVar of uint
+    | TCVar of TCVarId
     | TCUnit
     | TCNat
     | TCBool
@@ -17,13 +20,12 @@ type TypeCstr =
     | TCMap of TypeCstr * TypeCstr
     | TCUnion of UnionNameCstr * TypeCstr
     | TCError
-    | TCTypeMismatch of string
 
-type TypeEnv<'Var when 'Var: comparison> = Map<'Var, TypeCstr>
+type TypeEnv = Map<Var, TypeCstr>
 
 let rec formatUnionName (un: UnionNameCstr) =
     match un with
-    | UNVar n -> $"'u{n}"
+    | UNAny -> "*"
     | UNName n -> n
 
 let rec format (tc: TypeCstr) =
@@ -38,7 +40,6 @@ let rec format (tc: TypeCstr) =
     | TCMap(tcK, tcV) -> $"(({format tcK}, {format tcV}) map)"
     | TCUnion(name, t) -> $"({format t} {formatUnionName name})"
     | TCError -> "error"
-    | TCTypeMismatch s -> $"(ERROR: {s})"
 
 let merge (m1: Map<'K, 'V>) (m2: Map<'K, 'V>) : Map<'K, 'V> =
     Map.fold (fun acc k v -> Map.add k v acc) m1 m2
