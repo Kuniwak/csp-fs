@@ -149,7 +149,7 @@ let format (expr: Expr) : string =
                 tcOpt
         | Tuple(exprs, tcOpt, _) ->
             let s =
-                String.concat ",\n" (List.map (fun expr -> $"{render indent1}%s{format indent2 expr}") exprs)
+                String.concat $",\n%s{render indent1}" (List.map (format indent2) exprs)
 
             typeAnn $"(%s{s})" tcOpt
         | ListCons(e1, e2, tcOpt, _) ->
