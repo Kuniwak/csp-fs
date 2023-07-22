@@ -55,7 +55,7 @@ let exprTestCasesOk: obj[] list =
       [| { Expr =
              matchExpr
                  (ctor "Some" [ litUnit ])
-                 [ ("Some", ["_"], ctor "Some" [ litUnit ]) ]
+                 [ ("Some", [ "_" ], ctor "Some" [ litUnit ]) ]
                  (Some(Some(Var "x"), varRef "x"))
            Expected = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ]
            Line = __LINE__ } |]
@@ -139,6 +139,12 @@ let exprTestCasesOk: obj[] list =
            Line = __LINE__ } |]
       [| { Expr = univ (tMap tNat tUnit)
            Expected = tSet (tMap tNat tUnit)
+           Line = __LINE__ } |]
+      [| { Expr = tuple2 (ctor "Some" [ litUnit ]) (ctor "Some" [ litTrue ])
+           Expected =
+             tTuple2
+                 (tUnion "option" [ ("Some", [ tUnit ]); ("None", []) ])
+                 (tUnion "option" [ ("Some", [ tBool ]); ("None", []) ])
            Line = __LINE__ } |] ]
 
 [<Theory>]
