@@ -375,3 +375,28 @@ Inferred as:
 Expected: %s{formatTypeError tc.Expr tc.Expected}
 Actual:   %s{formatTypeError tc.Expr actual}"""
         )
+
+[<Fact>]
+let unifMiss () =
+    let expr =
+        matchExpr (ctor "Some" [ litUnit ]) [ ("Some", [ "x" ], boolNot (varRef "x")); ("None", [], litTrue) ] None in
+
+    let expected = TypeMismatch(tBool, tUnit) in
+
+    let tOption = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ] in
+    let tFoo = tUnion "foo" [ ("Foo", []) ] in
+    let cm = CtorMap.from [ tOption; tFoo ] in
+    let tenv = TypeEnv.from [ ("GLOBAL", tBool) ] in
+
+    match infer cm 0u Map.empty tenv expr with
+    | Ok(actual, _, _) -> Assert.Fail $"\n%s{Expr.format actual}"
+    | Error terr ->
+        let actual = unwrapTypeError terr in
+
+        Assert.True(
+            (expected = actual),
+            $"""
+Expected: %s{formatTypeError expr expected}
+Actual:   %s{formatTypeError expr actual}
+"""
+        )

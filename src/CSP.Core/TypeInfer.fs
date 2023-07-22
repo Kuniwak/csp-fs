@@ -97,7 +97,7 @@ let resolve (m: Map<TVarId, Type>) (u: TVarId) : Option<Type> =
         | TMap(tcK, tcV) ->
             Option.bind (fun tcK -> Option.map (fun tcV -> TMap(tcK, tcV)) (resolve visited tcV)) (resolve visited tcK)
 
-    resolve (Set[u]) (TVar u)
+    resolve (Set[]) (TVar u)
 
 let unify (m: Map<TVarId, Type>) (t1: Type) (t2: Type) : Result<Type * Map<TVarId, Type>, TypeError> =
     let rec unify m t1 t2 =
