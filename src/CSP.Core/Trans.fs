@@ -139,9 +139,7 @@ let trans (cfg: TransConfig) (pm: ProcMap) (cm: CtorMap) (genv: Env) (s0: State)
                             | _ -> acc
                         | Tau -> (Tau, InterfaceParallel(env, p1', expr, p2)) :: acc // Para1
                         | Hid ev' -> (Hid ev', InterfaceParallel(env, p1', expr, p2)) :: acc // para1
-                        | ErrorEvent ->
-                            (ErrorEvent, ErrorState("lhs error", p1'))
-                            :: acc)
+                        | ErrorEvent -> (ErrorEvent, ErrorState("lhs error", p1')) :: acc)
                     []
                     t1)
                 @ (List.fold
@@ -158,9 +156,7 @@ let trans (cfg: TransConfig) (pm: ProcMap) (cm: CtorMap) (genv: Env) (s0: State)
                             | _ -> acc
                         | Tau -> (Tau, InterfaceParallel(env, p1, expr, p2')) :: acc // Para2
                         | Hid ev' -> (Hid ev', InterfaceParallel(env, p1, expr, p2')) :: acc // para1
-                        | ErrorEvent ->
-                            (ErrorEvent, ErrorState("rhs error", p2'))
-                            :: acc)
+                        | ErrorEvent -> (ErrorEvent, ErrorState("rhs error", p2')) :: acc)
                     []
                     t2)
                 @ (List.fold
