@@ -16,7 +16,7 @@ let rec ofMap (ks: 'k list) (vs: 'v list) : Map<'k, 'v> list =
         
     let kvs =
         List.collect
-            (fun ks -> List.map (fun vs -> List.zip ks vs) (ofList (Checked.uint32 (List.length ks)) vs))
+            (fun ks -> List.map (List.zip ks) (ofList (Checked.uint32 (List.length ks)) vs))
             (ListEx.power ks) in
 
     List.map Map kvs

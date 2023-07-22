@@ -92,8 +92,8 @@ let resolve (m: Map<TVarId, Type>) (u: TVarId) : Option<Type> =
             match cmOpt with
             | Some cm -> Some(TUnion(un, cm))
             | None -> None
-        | TSet tcV -> Option.map (fun tcV -> TSet(tcV)) (resolve visited tcV)
-        | TList tcV -> Option.map (fun tcV -> TSet(tcV)) (resolve visited tcV)
+        | TSet tcV -> Option.map TSet (resolve visited tcV)
+        | TList tcV -> Option.map TSet (resolve visited tcV)
         | TMap(tcK, tcV) ->
             Option.bind (fun tcK -> Option.map (fun tcV -> TMap(tcK, tcV)) (resolve visited tcV)) (resolve visited tcK)
 
@@ -111,7 +111,7 @@ let unify (m: Map<TVarId, Type>) (t1: Type) (t2: Type) : Result<Type * Map<TVarI
                 Result.map
                     (fun (ts, m) -> (TTuple(ts), m))
                     (List.foldBack
-                        (fun (i, t1, t2) tsRes ->
+                        (fun (i, t1, t2) ->
                             Result.bind
                                 (fun (ts, m) ->
                                     match unify m t1 t2 with
@@ -119,8 +119,7 @@ let unify (m: Map<TVarId, Type>) (t1: Type) (t2: Type) : Result<Type * Map<TVarI
                                         Error(
                                             At(terr, $"the %d{i}th element of the tuple: {format t1} vs {format t2}")
                                         )
-                                    | Ok(t, m) -> Ok(t :: ts, m))
-                                tsRes)
+                                    | Ok(t, m) -> Ok(t :: ts, m)))
                         (List.mapi (fun i (t1, t2) -> (i, t1, t2)) (List.zip ts1 ts2))
                         (Ok([], m)))
             else
@@ -142,14 +141,13 @@ let unify (m: Map<TVarId, Type>) (t1: Type) (t2: Type) : Result<Type * Map<TVarI
                                     Result.map
                                         (fun (ts, m) -> (Map.add ctor ts cm, m))
                                         (List.foldBack
-                                            (fun (t1, t2) accRes ->
+                                            (fun (t1, t2) ->
                                                 Result.bind
                                                     (fun (ts, m) ->
                                                         match unify m t1 t2 with
                                                         | Ok(t, m) -> Ok(t :: ts, m)
                                                         | Error terr ->
-                                                            Error(At(terr, $"the type list of %s{Ctor.format ctor}")))
-                                                    accRes)
+                                                            Error(At(terr, $"the type list of %s{Ctor.format ctor}"))))
                                             (List.zip ts1 ts2)
                                             (Ok([], m)))
                                 | _ -> Error(CtorsMismatch(ctors1, ctors2)))
@@ -655,13 +653,11 @@ let infer
     | Ok(expr, m, n) ->
         let expr =
             mapType
-                (fun tOpt ->
-                    Option.bind
-                        (fun t ->
-                            match t with
-                            | TVar n -> resolve m n
-                            | _ -> Some t)
-                        tOpt)
+                (Option.bind
+                     (fun t ->
+                         match t with
+                         | TVar n -> resolve m n
+                         | _ -> Some t))
                 expr in
 
         Ok(expr, m, n)

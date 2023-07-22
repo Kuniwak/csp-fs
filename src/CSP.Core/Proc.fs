@@ -94,7 +94,7 @@ let children (p: Proc) : Proc list =
     | Seq(p1, p2, _) -> [ p1; p2 ]
     | If(_, p1, p2, _) -> [ p1; p2 ]
     | Match(_, mp, pOpt, _) ->
-        let ps = List.map (fun (_, p) -> p) (Seq.toList (Map.values mp)) in
+        let ps = List.map snd (Seq.toList (Map.values mp)) in
 
         match pOpt with
         | Some(_, p) -> ps @ [ p ]

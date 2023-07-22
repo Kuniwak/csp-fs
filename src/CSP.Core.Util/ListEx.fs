@@ -17,12 +17,10 @@ let rec cartesian (xss: 'a list list) : 'a list list =
 
 let power (xs: 'a list) : 'a list list =
     List.map
-        (fun xOpts ->
-            List.collect
-                (fun xOpt ->
-                    match xOpt with
-                    | Some x -> [ x ]
-                    | None -> [])
-                xOpts)
+        (List.collect
+             (fun xOpt ->
+                 match xOpt with
+                 | Some x -> [ x ]
+                 | None -> []))
         (cartesian (List.map (fun v -> [ None; Some v ]) xs))
 

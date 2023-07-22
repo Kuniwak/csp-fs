@@ -1,7 +1,6 @@
 module CSP.Core.UtilTests.SetExTest
 
 open CSP.Core.Util
-open CSP.Core.Util.ListEx
 open CSP.Core.TestUtil
 open Xunit
 
@@ -36,7 +35,7 @@ let cartesian2TestCases: obj[] list =
 [<Theory>]
 [<MemberData(nameof cartesian2TestCases)>]
 let testCartesian2 (testCase: Cartesian2TestCase) =
-    let actual = cartesian2 testCase.Input1 testCase.Input2 in
+    let actual = ListEx.cartesian2 testCase.Input1 testCase.Input2 in
     Assert.True(testCase.Expected = actual, cmp (fun x -> $"%A{x}") testCase.Expected actual)
 
 
@@ -64,7 +63,7 @@ let cartesianTestCases: obj[] list =
 [<Theory>]
 [<MemberData(nameof cartesianTestCases)>]
 let testCartesian (testCase: CartesianTestCase) =
-    let actual = cartesian testCase.Input in
+    let actual = ListEx.cartesian testCase.Input in
     Assert.True(testCase.Expected = actual, cmp (fun x -> $"%A{x}") testCase.Expected actual)
 
 type PowerTestCase =
@@ -81,5 +80,5 @@ let powerTestCases: obj[] list =
 [<Theory>]
 [<MemberData(nameof powerTestCases)>]
 let testPower (testCase: PowerTestCase) =
-    let actual = power testCase.Input in
+    let actual = ListEx.power testCase.Input in
     Assert.True(testCase.Expected = actual, cmp (fun x -> $"%A{x}") testCase.Expected actual)

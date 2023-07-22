@@ -5,7 +5,7 @@ open FSharpPlus
 let expand (n: int) (xs: 'a list) : 'a option list =
     List.map Some xs @ List.replicate (max 0 (n - (List.length xs))) None
 
-let zipl (xs: 'a list) (ys: 'b list) : ('a option * 'b option) list =
+let zipLongest (xs: 'a list) (ys: 'b list) : ('a option * 'b option) list =
     let n = max (List.length xs) (List.length ys) in
     let xs = expand n xs in
     let ys = expand n ys in
@@ -21,4 +21,4 @@ let cmp (fmt: 'a -> string) (xs: 'a list) (ys: 'a list) : string =
                 | Some x, None -> $"{fmt x}\t-"
                 | None, Some y -> $"-\t{fmt y}"
                 | None, None -> "-\t-")
-            (zipl xs ys)))
+            (zipLongest xs ys)))
