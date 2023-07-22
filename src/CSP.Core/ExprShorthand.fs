@@ -18,14 +18,14 @@ let matchExpr exprUnion exprMap exprDef =
     Match(
         exprUnion,
         Map [ for ctor, vs, expr in exprMap -> (Ctor ctor, (List.map Var vs, expr)) ],
-        exprDef,
+        Option.map (fun (varOpt, expr) -> (Option.map Var varOpt, expr)) exprDef,
         None,
         unknown
     )
 
 let varRef var = VarRef(Var var, None, unknown)
 let eq t expr1 expr2 = Eq(t, expr1, expr2, None, unknown)
-let not expr = BoolNot(expr, None, unknown)
+let boolNot expr = BoolNot(expr, None, unknown)
 let less t expr1 expr2 = Less(t, expr1, expr2, None, unknown)
 let plus t expr1 expr2 = Plus(t, expr1, expr2, None, unknown)
 let minus t expr1 expr2 = Minus(t, expr1, expr2, None, unknown)

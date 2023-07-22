@@ -57,11 +57,11 @@ let format (expr: Expr) : string =
         | LitEmpty(t, tcOpt, _) -> typeAnn $"%s{Type.format t}.empty" tcOpt
         | Union(ctor, exprs, tcOpt, _) ->
             match List.length exprs with
-            | 0 -> typeAnn $"%s{Ctor.format ctor}" tcOpt
+            | 0 -> typeAnn (Ctor.format ctor) tcOpt
             | 1 -> typeAnn $"(%s{Ctor.format ctor} %s{format indent1 exprs[0]})" tcOpt
             | _ ->
                 let s =
-                    String.concat "\n" (List.map (fun expr -> $"{render indent} %s{format indent1 expr})") exprs)
+                    String.concat "\n" (List.map (fun expr -> $"{render indent}%s{format indent1 expr})") exprs)
 
                 typeAnn $"(%s{Ctor.format ctor}\n%s{s})" tcOpt
         | If(e1, e2, e3, tcOpt, _) ->
@@ -100,7 +100,7 @@ let format (expr: Expr) : string =
 {render indent1}%s{format indent2 e'})"""
                     tcOpt
             | None -> typeAnn $"(match %s{format indent1 e} with%s{lines})" tcOpt
-        | VarRef(v, tcOpt, _) -> typeAnn $"%s{Var.format v}" tcOpt
+        | VarRef(v, tcOpt, _) -> typeAnn (Var.format v) tcOpt
         | BoolNot(expr, tcOpt, _) -> typeAnn $"""(not %s{format indent2 expr})""" tcOpt
         | Eq(t, expr1, expr2, tcOpt, _) ->
             typeAnn
@@ -148,8 +148,7 @@ let format (expr: Expr) : string =
 {render indent1}%s{format indent2 expr2})"
                 tcOpt
         | Tuple(exprs, tcOpt, _) ->
-            let s =
-                String.concat $",\n%s{render indent1}" (List.map (format indent2) exprs)
+            let s = String.concat $",\n%s{render indent1}" (List.map (format indent2) exprs)
 
             typeAnn $"(%s{s})" tcOpt
         | ListCons(e1, e2, tcOpt, _) ->
@@ -235,36 +234,35 @@ let line (expr: Expr) : LineNum =
     | MapFindOpt(_, _, _, line) -> line
     | Univ(_, _, line) -> line
 
-let toType (expr: Expr) : Type =
+let toType (expr: Expr) : Type option =
     match expr with
-    | LitTrue(Some tc, _) -> tc
-    | LitFalse(Some tc, _) -> tc
-    | LitNat(_, Some tc, _) -> tc
-    | LitEmpty(_, Some tc, _) -> tc
-    | Union(_, _, Some tc, _) -> tc
-    | If(_, _, _, Some tc, _) -> tc
-    | Match(_, _, _, Some tc, _) -> tc
-    | VarRef(_, Some tc, _) -> tc
-    | BoolNot(_, Some tc, _) -> tc
-    | Plus(_, _, _, Some tc, _) -> tc
-    | Times(_, _, _, Some tc, _) -> tc
-    | Minus(_, _, _, Some tc, _) -> tc
-    | Less(_, _, _, Some tc, _) -> tc
-    | Eq(_, _, _, Some tc, _) -> tc
-    | Size(_, _, Some tc, _) -> tc
-    | Filter(_, _, _, _, Some tc, _) -> tc
-    | Exists(_, _, _, _, Some tc, _) -> tc
-    | Tuple(_, Some tc, _) -> tc
-    | TupleNth(_, _, Some tc, _) -> tc
-    | ListCons(_, _, Some tc, _) -> tc
-    | ListNth(_, _, Some tc, _) -> tc
-    | SetRange(_, _, Some tc, _) -> tc
-    | SetInsert(_, _, Some tc, _) -> tc
-    | SetMem(_, _, Some tc, _) -> tc
-    | MapAdd(_, _, _, Some tc, _) -> tc
-    | MapFindOpt(_, _, Some tc, _) -> tc
-    | Univ(_, Some tc, _) -> tc
-    | _ -> failwithf $"not typed {format expr}"
+    | LitTrue(tcOpt, _) -> tcOpt
+    | LitFalse(tcOpt, _) -> tcOpt
+    | LitNat(_, tcOpt, _) -> tcOpt
+    | LitEmpty(_, tcOpt, _) -> tcOpt
+    | Union(_, _, tcOpt, _) -> tcOpt
+    | If(_, _, _, tcOpt, _) -> tcOpt
+    | Match(_, _, _, tcOpt, _) -> tcOpt
+    | VarRef(_, tcOpt, _) -> tcOpt
+    | BoolNot(_, tcOpt, _) -> tcOpt
+    | Plus(_, _, _, tcOpt, _) -> tcOpt
+    | Times(_, _, _, tcOpt, _) -> tcOpt
+    | Minus(_, _, _, tcOpt, _) -> tcOpt
+    | Less(_, _, _, tcOpt, _) -> tcOpt
+    | Eq(_, _, _, tcOpt, _) -> tcOpt
+    | Size(_, _, tcOpt, _) -> tcOpt
+    | Filter(_, _, _, _, tcOpt, _) -> tcOpt
+    | Exists(_, _, _, _, tcOpt, _) -> tcOpt
+    | Tuple(_, tcOpt, _) -> tcOpt
+    | TupleNth(_, _, tcOpt, _) -> tcOpt
+    | ListCons(_, _, tcOpt, _) -> tcOpt
+    | ListNth(_, _, tcOpt, _) -> tcOpt
+    | SetRange(_, _, tcOpt, _) -> tcOpt
+    | SetInsert(_, _, tcOpt, _) -> tcOpt
+    | SetMem(_, _, tcOpt, _) -> tcOpt
+    | MapAdd(_, _, _, tcOpt, _) -> tcOpt
+    | MapFindOpt(_, _, tcOpt, _) -> tcOpt
+    | Univ(_, tcOpt, _) -> tcOpt
 
 let children (expr: Expr) : Expr list =
     match expr with
