@@ -1,23 +1,25 @@
 module CSP.Core.Tests.SearchTests
 
+open Xunit
 open CSP.Core.Search
 
-open Xunit
-
 let mapNext (m: Map<'n, ('e * 'n) list>) (n: 'n) : ('e * 'n) list = Map.find n m
+let searchCfg: SearchConfig = { NodeMax = 100 }
+let dfs = dfs searchCfg
+let bfs = bfs searchCfg
 
 [<Fact>]
 let dfs_rec () =
     let next = mapNext (Map [ ("a", [ ((), "a") ]) ]) in
     let mutable visited = [] in
-    dfs (fun n _ -> visited <- visited @ [ n ]) 100 next id "a"
+    dfs (fun n _ -> visited <- visited @ [ n ]) next id "a"
     Assert.Equal<string list>([ "a" ], visited)
 
 [<Fact>]
 let bfs_rec () =
     let next = mapNext (Map [ ("a", [ ((), "a") ]) ]) in
     let mutable visited = [] in
-    bfs (fun n _ -> visited <- visited @ [ n ]) 100 next id "a"
+    bfs (fun n _ -> visited <- visited @ [ n ]) next id "a"
     Assert.Equal<string list>([ "a" ], visited)
 
 [<Fact>]
@@ -32,7 +34,7 @@ let dfs_order () =
         ) in
 
     let mutable visited = [] in
-    dfs (fun n _ -> visited <- visited @ [ n ]) 100 next id "a"
+    dfs (fun n _ -> visited <- visited @ [ n ]) next id "a"
     Assert.Equal<string list>([ "a"; "a-1"; "a-1-1"; "a-2" ], visited)
 
 [<Fact>]
@@ -47,5 +49,5 @@ let bfs_order () =
         ) in
 
     let mutable visited = [] in
-    bfs (fun n _ -> visited <- visited @ [ n ]) 100 next id "a"
+    bfs (fun n _ -> visited <- visited @ [ n ]) next id "a"
     Assert.Equal<string list>([ "a"; "a-1"; "a-2"; "a-1-1" ], visited)

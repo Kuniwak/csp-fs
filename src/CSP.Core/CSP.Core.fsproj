@@ -9,16 +9,27 @@
         <Compile Include="LineNum.fs" />
         <Compile Include="Indent.fs" />
         <Compile Include="Search.fs" />
-        <Compile Include="Range.fs" />
         <Compile Include="Var.fs" />
-        <Compile Include="Type.fs" />
-        <Compile Include="TypeCstr.fs" />
         <Compile Include="Ctor.fs" />
+        <Compile Include="Type.fs" />
+        <Compile Include="TypeShorthand.fs" />
         <Compile Include="CtorMap.fs" />
         <Compile Include="Val.fs" />
+        <Compile Include="ClassEq.fs" />
+        <Compile Include="ClassOrd.fs" />
+        <Compile Include="ClassPlus.fs" />
+        <Compile Include="ClassSize.fs" />
+        <Compile Include="ClassTimes.fs" />
+        <Compile Include="ClassMinus.fs" />
+        <Compile Include="ClassEnum.fs" />
+        <Compile Include="EnvError.fs" />
         <Compile Include="Env.fs" />
+        <Compile Include="UnivError.fs" />
+        <Compile Include="Univ.fs" />
         <Compile Include="Expr.fs" />
         <Compile Include="ExprShorthand.fs" />
+        <Compile Include="EvalError.fs" />
+        <Compile Include="Eval.fs" />
         <Compile Include="Proc.fs" />
         <Compile Include="ProcShorthand.fs" />
         <Compile Include="ProcMap.fs" />
@@ -33,6 +44,10 @@
     <ItemGroup>
         <PackageReference Include="FSharpPlus" Version="1.4.1" />
         <PackageReference Include="FSharpx.Collections" Version="3.1.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\CSP.Core.Util\CSP.Core.Util.fsproj" />
     </ItemGroup>
 
 </Project>

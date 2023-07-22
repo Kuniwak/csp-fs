@@ -1,29 +1,37 @@
 module CSP.Core.Search
 
-let rec search
+type SearchConfig = { NodeMax: int }
+
+let searchConfig n = { NodeMax = n }
+type typeToGetMaxValue = int32
+let searchCfgUnlimited = { NodeMax = typeToGetMaxValue.MaxValue }
+
+let search
+    (cfg: SearchConfig)
     (visit: 's -> ('e * 's) list -> Unit)
-    (max: int)
     (next: 's -> ('e * 's) list)
     (joinQueue: ('e * 's) list -> 's list -> 's list)
     (norm: 's -> 's)
     (ns: 's list)
     (visited: Set<'s>)
-    =
-    match ns with
-    | [] -> ()
-    | n :: ns' ->
-        let n = norm n in
+    : Unit =
+    let rec search ns visited =
+        match ns with
+        | [] -> ()
+        | n :: ns' ->
+            let n = norm n in
 
-        if Set.count visited < max && not (Set.contains n visited) then
-            let visited = Set.add n visited
-            let es = next n
-            visit n es
-            search visit max next joinQueue norm (joinQueue es ns') visited
-        else
-            search visit max next joinQueue norm ns' visited
-            
-let dfs visit max next norm n =
-    search visit max next (fun ts rest -> (List.map snd ts) @ rest) norm [ n ] Set.empty
+            if Set.count visited < cfg.NodeMax && not (Set.contains n visited) then
+                let es = next n in
+                visit n es
+                search (joinQueue es ns') (Set.add n visited)
+            else
+                search ns' visited in
 
-let bfs visit max next norm n =
-    search visit max next (fun ts rest -> rest @ (List.map snd ts)) norm [ n ] Set.empty
+    search ns visited
+
+let dfs cfg visit next norm n =
+    search cfg visit next (fun ts rest -> (List.map snd ts) @ rest) norm [ n ] Set.empty
+
+let bfs cfg visit next norm n =
+    search cfg visit next (fun ts rest -> rest @ (List.map snd ts)) norm [ n ] Set.empty

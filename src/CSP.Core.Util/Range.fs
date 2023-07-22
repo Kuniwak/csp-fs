@@ -1,4 +1,4 @@
-module CSP.Core.Range
+module CSP.Core.Util.Range
 
 let rec ofSet (n1: uint) (n2: uint) : Set<uint> =
     if n1 > n2 then failwith "n1 > n2"

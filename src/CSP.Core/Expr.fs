@@ -2,293 +2,46 @@ module CSP.Core.Expr
 
 open CSP.Core.Indent
 open CSP.Core.Ctor
-open CSP.Core.CtorMap
 open CSP.Core.LineNum
+open CSP.Core.Search
 open CSP.Core.Type
-open CSP.Core.TypeCstr
-open CSP.Core.Val
-open CSP.Core.Env
 open CSP.Core.Var
 
+
+type UserDefinedErrorMessage = string
+
 type Expr =
-    | LitUnit of TypeCstr option * LineNum
-    | LitTrue of TypeCstr option * LineNum
-    | LitFalse of TypeCstr option * LineNum
-    | LitNat of uint * TypeCstr option * LineNum
-    | LitEmpty of Type * TypeCstr option * LineNum
-    | LitError of TypeCstr option * LineNum
-    | Union of Ctor * Expr * TypeCstr option * LineNum
-    | Throw of TypeCstr option * LineNum
-    | If of Expr * Expr * Expr * TypeCstr option * LineNum
-    | Match of Expr * Map<Ctor, Var option * Expr> * (Var option * Expr) option * TypeCstr option * LineNum
-    | VarRef of Var * TypeCstr option * LineNum
-    | Eq of Type * Expr * Expr * TypeCstr option * LineNum
-    | Not of Expr * TypeCstr option * LineNum
-    | Less of Type * Expr * Expr * TypeCstr option * LineNum
-    | Plus of Type * Expr * Expr * TypeCstr option * LineNum
-    | Minus of Type * Expr * Expr * TypeCstr option * LineNum
-    | Times of Type * Expr * Expr * TypeCstr option * LineNum
-    | Size of Type * Expr * TypeCstr option * LineNum
-    | Filter of Type * Var * Expr * Expr * TypeCstr option * LineNum
-    | Exists of Type * Var * Expr * Expr * TypeCstr option * LineNum
-    | Tuple of Expr * Expr * TypeCstr option * LineNum
-    | TupleFst of Expr * TypeCstr option * LineNum
-    | TupleSnd of Expr * TypeCstr option * LineNum
-    | ListCons of Expr * Expr * TypeCstr option * LineNum
-    | ListNth of Expr * Expr * TypeCstr option * LineNum
-    | SetRange of Expr * Expr * TypeCstr option * LineNum
-    | SetInsert of Expr * Expr * TypeCstr option * LineNum
-    | SetMem of Expr * Expr * TypeCstr option * LineNum
-    | MapAdd of Expr * Expr * Expr * TypeCstr option * LineNum
-    | MapFindOpt of Expr * Expr * TypeCstr option * LineNum
-    | Univ of Type * TypeCstr option * LineNum
+    | LitTrue of Type option * LineNum
+    | LitFalse of Type option * LineNum
+    | LitNat of uint * Type option * LineNum
+    | LitEmpty of Type * Type option * LineNum
+    | VarRef of Var * Type option * LineNum
+    | Union of Ctor * Expr list * Type option * LineNum
+    | Tuple of Expr list * Type option * LineNum
+    | If of Expr * Expr * Expr * Type option * LineNum
+    | Match of Expr * Map<Ctor, Var list * Expr> * (Var option * Expr) option * Type option * LineNum
+    | Eq of Type * Expr * Expr * Type option * LineNum
+    | Less of Type * Expr * Expr * Type option * LineNum
+    | Plus of Type * Expr * Expr * Type option * LineNum
+    | Minus of Type * Expr * Expr * Type option * LineNum
+    | Times of Type * Expr * Expr * Type option * LineNum
+    | Size of Type * Expr * Type option * LineNum
+    | Filter of Type * Var * Expr * Expr * Type option * LineNum
+    | Exists of Type * Var * Expr * Expr * Type option * LineNum
+    | TupleNth of Expr * uint * Type option * LineNum
+    | ListNth of Expr * Expr * Type option * LineNum
+    | BoolNot of Expr * Type option * LineNum
+    | ListCons of Expr * Expr * Type option * LineNum
+    | SetRange of Expr * Expr * Type option * LineNum
+    | SetInsert of Expr * Expr * Type option * LineNum
+    | SetMem of Expr * Expr * Type option * LineNum
+    | MapAdd of Expr * Expr * Expr * Type option * LineNum
+    | MapFindOpt of Expr * Expr * Type option * LineNum
+    | Univ of Type * Type option * LineNum
 
-let rec rangeVNat (n1: uint32) (n2: uint32) : Set<Val> = Set.map VNat (Range.ofSet n1 n2)
-
-let natMax = 5u
-
-let powerSet (vs: 'v list) : Set<'v> list =
-    let vss = List.map (fun v -> [ Some v; None ]) vs in
-
-    List.fold
-        (fun acc vs ->
-            List.map
-                (fun t ->
-                    match t with
-                    | Some v, s -> Set.add v s
-                    | None, s -> s)
-                (List.allPairs vs acc))
-        []
-        vss
-
-
-let univ (m: CtorMap) (t: Type) : Val list =
-    let rec univ t =
-        match t with
-        | TVar _ -> failwith "cannot use type vars as a parameter of univ"
-        | TUnit -> [ VUnit ]
-        | TNat -> List.map VNat (Range.ofList 0u natMax)
-        | TBool -> [ VBool false; VBool true ]
-        | TTuple(l, r) -> List.collect (fun (l, r) -> [ VTuple(l, r) ]) (List.allPairs (univ l) (univ r))
-        | TSet t -> List.map VSet (powerSet (univ t))
-        | TList t ->
-            let vOpts = (None :: (List.map Some (univ t))) in
-
-            List.map
-                VList
-                (List.fold
-                    (fun acc vOpt ->
-                        match vOpt with
-                        | Some v -> List.map (fun vs -> v :: vs) acc
-                        | None -> acc)
-                    []
-                    vOpts)
-        | TMap(tk, tv) ->
-            let vOptsList = List.map (fun v -> [ Some v; None ]) (univ tk) in
-
-            List.map
-                VMap
-                (List.fold
-                    (fun acc vs ->
-                        List.collect
-                            (fun t ->
-                                match t with
-                                | Some kv, m -> List.map (fun vv -> Map.add kv vv m) (univ tv)
-                                | None, m -> [ m ])
-                            (List.allPairs vs acc))
-                    []
-                    vOptsList)
-
-        | TUnion _ ->
-            List.map VUnion (List.collect (fun (c, (_, t)) -> List.map (fun v -> (c, v)) (univ t)) (Map.toList m))
-        | TError -> [ VError ]
-
-    univ t
-
-let eval (m: CtorMap) (env: Env) (expr: Expr) : Val =
-    let rec eval env expr =
-        match expr with
-        | LitUnit _ -> VUnit
-        | LitTrue _ -> VBool(true)
-        | LitFalse _ -> VBool(false)
-        | LitNat(n, _, _) -> VNat(n)
-        | LitEmpty(t, _, _) ->
-            match t with
-            | TSet _ -> VSet Set.empty
-            | TList _ -> VList List.empty
-            | TMap _ -> VMap Map.empty
-            | _ -> VError
-        | LitError _ -> VError
-        | Union(c, e, _, _) -> VUnion(c, eval env e)
-        | Throw _ -> VError
-        | If(e1, e2, e3, _, _) ->
-            match eval env e1 with
-            | VBool true -> eval env e2
-            | VBool false -> eval env e3
-            | _ -> VError
-        | Match(e, m, d, _, _) ->
-            match eval env e with
-            | VUnion(c, v) ->
-                match Map.tryFind c m with
-                | Some(Some(var), e1) ->
-                    if Map.containsKey var env then
-                        VError // NOTE: 変数シャドウはとりあえず落とす
-                    else
-                        eval (Map.add var v env) e1
-                | Some(None, e1) -> eval env e1
-                | None ->
-                    match d with
-                    | Some(Some var, e2) -> eval (Map.add var (VUnion(c, v)) env) e2
-                    | Some(None, e2) -> eval env e2
-                    | None -> VError
-            | _ -> VError
-        | Eq(t, e1, e2, _, _) ->
-            match t, eval env e1, eval env e2 with
-            | TUnit, VUnit, VUnit -> VBool(true)
-            | TNat, VNat n1, VNat n2 -> VBool(n1 = n2)
-            | TBool, VBool b1, VBool b2 -> VBool(b1 = b2)
-            | TTuple _, VTuple(vL1, vR1), VTuple(vL2, vR2) -> VBool((vL1, vR1) = (vL2, vR2))
-            | TSet _, VSet s1, VSet s2 -> VBool(s1 = s2)
-            | TList _, VList vs1, VList vs2 -> VBool(vs1 = vs2)
-            | TMap _, VMap m1, VMap m2 -> VBool(m1 = m2)
-            | TUnion _, VUnion(ctor1, v1), VUnion(ctor2, v2) -> VBool(ctor1 = ctor2 && v1 = v2)
-            | TError, VError, VError -> VBool(true)
-            | _, _, _ -> VError
-        | Less(t, e1, e2, _, _) ->
-            match t, eval env e1, eval env e2 with
-            | TNat, VNat n1, VNat n2 -> VBool(n1 < n2)
-            | TBool, VBool b1, VBool b2 -> VBool(b2 && not b1)
-            | TSet _, VSet s1, VSet s2 -> VBool(Set.isSubset s1 s2)
-            | _, _, _ -> VError
-        | Size(t, expr, _, _) ->
-            match t, eval env expr with
-            | TSet _, VSet s -> VNat(uint (Set.count s))
-            | TList _, VList vs -> VNat(uint (List.length vs))
-            | TMap _, VMap m -> VNat(uint (Map.count m))
-            | _ -> VError
-        | VarRef(v, _, _) -> Map.find v env
-        | Not(e, _, _) ->
-            match eval env e with
-            | VBool b -> VBool(not b)
-            | _ -> VError
-        | Plus(t, e1, e2, _, _) ->
-            match t, eval env e1, eval env e2 with
-            | TBool, VBool n1, VBool n2 -> VBool(n1 || n2)
-            | TNat, VNat n1, VNat n2 -> VNat(n1 + n2)
-            | TSet _, VSet n1, VSet n2 -> VSet(Set.union n1 n2)
-            | TList _, VList n1, VList n2 -> VList(List.append n1 n2)
-            | _ -> VError
-        | Times(t, e1, e2, _, _) ->
-            match t, eval env e1, eval env e2 with
-            | TBool, VBool n1, VBool n2 -> VBool(n1 && n2)
-            | TNat, VNat n1, VNat n2 -> VNat(n1 * n2)
-            | TSet _, VSet n1, VSet n2 -> VSet(Set.intersect n1 n2)
-            | _ -> VError
-        | Minus(t, e1, e2, _, _) ->
-            match t, eval env e1, eval env e2 with
-            | TBool, VBool b1, VBool b2 -> VBool(not b2 || b1)
-            | TNat, VNat n1, VNat n2 -> VNat(if n1 < n2 then 0u else n1 - n2)
-            | TSet _, VSet s1, VSet s2 -> VSet(Set.difference s1 s2)
-            | _ -> VError
-        | Tuple(l, r, _, _) -> VTuple(eval env l, eval env r)
-        | TupleFst(e, _, _) ->
-            match eval env e with
-            | VTuple(l, _) -> l
-            | _ -> VError
-        | TupleSnd(e, _, _) ->
-            match eval env e with
-            | VTuple(_, r) -> r
-            | _ -> VError
-        | ListCons(e1, e2, _, _) ->
-            match eval env e1, eval env e2 with
-            | v, VList vs -> VList(v :: vs)
-            | _ -> VError
-        | ListNth(e1, e2, _, _) ->
-            match eval env e1, eval env e2 with
-            | VNat n, VList vs -> List.item (Checked.int n) vs
-            | _ -> VError
-        | SetRange(e1, e2, _, _) ->
-            match eval env e1, eval env e2 with
-            | VNat n1, VNat n2 when n1 <= n2 -> VSet(Set.map VNat (Range.ofSet n1 n2))
-            | _ -> VError
-        | SetInsert(e1, e2, _, _) ->
-            match eval env e1, eval env e2 with
-            | v, VSet vs -> VSet(Set.add v vs)
-            | _ -> VError
-        | SetMem(e1, e2, _, _) ->
-            match eval env e1, eval env e2 with
-            | v, VSet vs -> VBool(Set.contains v vs)
-            | _ -> VError
-        | Filter(_, var, e1, e2, _, _) ->
-            match eval env e2 with
-            | VSet s ->
-                (Set.fold
-                    (fun acc v ->
-                        match acc with
-                        | VSet vsAcc ->
-                            match eval (Map.add var v env) e1 with
-                            | VBool b -> VSet(if b then Set.add v vsAcc else s)
-                            | _ -> VError
-                        | _ -> VError)
-                    (VSet Set.empty)
-                    s)
-            | VList vs ->
-                (List.fold
-                    (fun acc v ->
-                        match acc with
-                        | VList vsAcc ->
-                            match eval (Map.add var v env) e1 with
-                            | VBool b -> VList(if b then v :: vsAcc else vs)
-                            | _ -> VError
-                        | _ -> VError)
-                    (VList List.empty)
-                    vs)
-            | _ -> VError
-        | Exists(_, var, e1, e2, _, _) ->
-            match eval env e2 with
-            | VSet s ->
-                (Set.fold
-                    (fun acc v ->
-                        match acc with
-                        | VBool true -> VBool true
-                        | VBool false ->
-                            match eval (Map.add var v env) e1 with
-                            | VBool b -> VBool b
-                            | _ -> VError
-                        | _ -> VError)
-                    (VBool false)
-                    s)
-            | VList vs ->
-                (List.fold
-                    (fun acc v ->
-                        match acc with
-                        | VBool true -> VBool true
-                        | VBool false ->
-                            match eval (Map.add var v env) e1 with
-                            | VBool b -> VBool b
-                            | _ -> VError
-                        | _ -> VError)
-                    (VBool false)
-                    vs)
-            | _ -> VError
-        | MapAdd(e1, e2, e3, _, _) ->
-            match eval env e1, eval env e2, eval env e3 with
-            | k, v, VMap m -> VMap(Map.add k v m)
-            | _ -> VError
-        | MapFindOpt(e1, e2, _, _) ->
-            match eval env e1, eval env e2 with
-            | k, VMap m ->
-                match Map.tryFind k m with
-                | Some v -> VUnion(Ctor "Some", v)
-                | None -> VUnion(Ctor "None", VUnit)
-            | _ -> VError
-        | Univ(t, _, _) -> VSet(Set.ofList (univ m t))
-
-    eval env expr
-
-let typeAnn (s: string) (tcOpt: TypeCstr option) =
+let typeAnn (s: string) (tcOpt: Type option) =
     match tcOpt with
-    | Some tc -> $"({s}::{TypeCstr.format tc})"
+    | Some tc -> $"({s}::{Type.format tc})"
     | None -> s
 
 let format (expr: Expr) : string =
@@ -298,21 +51,19 @@ let format (expr: Expr) : string =
         let indent3 = indent + 3u in
 
         match expr with
-        | LitUnit(tcOpt, _) -> typeAnn "()" tcOpt
         | LitTrue(tcOpt, _) -> typeAnn "true" tcOpt
         | LitFalse(tcOpt, _) -> typeAnn "false" tcOpt
         | LitNat(n, tcOpt, _) -> typeAnn $"%d{n}" tcOpt
         | LitEmpty(t, tcOpt, _) -> typeAnn $"%s{Type.format t}.empty" tcOpt
-        | LitError(tcOpt, _) -> typeAnn "error" tcOpt
-        | Union(ctor, e, tcOpt, _) ->
-            match e with
-            | LitUnit _ -> typeAnn $"%s{Ctor.format ctor}" tcOpt
+        | Union(ctor, exprs, tcOpt, _) ->
+            match List.length exprs with
+            | 0 -> typeAnn $"%s{Ctor.format ctor}" tcOpt
+            | 1 -> typeAnn $"(%s{Ctor.format ctor} %s{format indent1 exprs[0]})" tcOpt
             | _ ->
-                typeAnn
-                    $"""(%s{Ctor.format ctor}
-{render indent} %s{format indent1 e})"""
-                    tcOpt
-        | Throw(tcOpt, _) -> typeAnn "throw" tcOpt
+                let s =
+                    String.concat "\n" (List.map (fun expr -> $"{render indent} %s{format indent1 expr})") exprs)
+
+                typeAnn $"(%s{Ctor.format ctor}\n%s{s})" tcOpt
         | If(e1, e2, e3, tcOpt, _) ->
             typeAnn
                 $"""(if %s{format indent1 e1}
@@ -326,10 +77,13 @@ let format (expr: Expr) : string =
                 String.concat
                     ""
                     (List.map
-                        (fun (ctor, (varOpt, e')) ->
-                            match varOpt with
-                            | Some var -> $"\n{render indent}| %s{Ctor.format ctor} %s{Var.format var} ->\n{render indent1}%s{format indent2 e'}"
-                            | None -> $"\n{render indent}| %s{Ctor.format ctor} _ ->\n{render indent1}%s{format indent2 e'}")
+                        (fun (ctor, (vars, e')) ->
+                            match List.length vars with
+                            | 0 ->
+                                $"\n{render indent}| %s{Ctor.format ctor} _ ->\n{render indent1}%s{format indent2 e'}"
+                            | _ ->
+                                let s = String.concat " " (List.map Var.format vars) in
+                                $"\n{render indent}| %s{Ctor.format ctor} %s{s} ->\n{render indent1}%s{format indent2 e'}")
                         (Map.toList cs)) in
 
             match d with
@@ -347,7 +101,7 @@ let format (expr: Expr) : string =
                     tcOpt
             | None -> typeAnn $"(match %s{format indent1 e} with%s{lines})" tcOpt
         | VarRef(v, tcOpt, _) -> typeAnn $"%s{Var.format v}" tcOpt
-        | Not(expr, tcOpt, _) -> typeAnn $"""(not %s{format indent2 expr})""" tcOpt
+        | BoolNot(expr, tcOpt, _) -> typeAnn $"""(not %s{format indent2 expr})""" tcOpt
         | Eq(t, expr1, expr2, tcOpt, _) ->
             typeAnn
                 $"""(%s{Type.format t}.equal
@@ -393,19 +147,22 @@ let format (expr: Expr) : string =
 {render indent2}%s{format indent3 expr1})
 {render indent1}%s{format indent2 expr2})"
                 tcOpt
-        | Tuple(l, r, tcOpt, _) ->
-            typeAnn
-                $"(
-{render indent1}%s{format indent2 l},
-{render indent1}%s{format indent2 r})"
-                tcOpt
-        | TupleFst(e, tcOpt, _) -> typeAnn $"(fst %s{format indent1 e})" tcOpt
-        | TupleSnd(e, tcOpt, _) -> typeAnn $"(snd %s{format indent1 e})" tcOpt
+        | Tuple(exprs, tcOpt, _) ->
+            let s =
+                String.concat ",\n" (List.map (fun expr -> $"{render indent1}%s{format indent2 expr}") exprs)
+
+            typeAnn $"(%s{s})" tcOpt
         | ListCons(e1, e2, tcOpt, _) ->
             typeAnn
                 $"""(List.cons
 {render indent1}%s{format indent2 e1}
 {render indent1}%s{format indent2 e2})"""
+                tcOpt
+        | TupleNth(e1, idx, tcOpt, _) ->
+            typeAnn
+                $"""(Tuple.nth
+{render indent1}%s{format indent2 e1}
+{render indent1}%d{idx})"""
                 tcOpt
         | ListNth(e1, e2, tcOpt, _) ->
             typeAnn
@@ -450,18 +207,15 @@ let format (expr: Expr) : string =
 
 let line (expr: Expr) : LineNum =
     match expr with
-    | LitUnit(_, line) -> line
     | LitTrue(_, line) -> line
     | LitFalse(_, line) -> line
     | LitNat(_, _, line) -> line
-    | LitError(_, line) -> line
     | LitEmpty(_, _, line) -> line
     | Union(_, _, _, line) -> line
-    | Throw(_, line) -> line
     | If(_, _, _, _, line) -> line
     | Match(_, _, _, _, line) -> line
     | VarRef(_, _, line) -> line
-    | Not(_, _, line) -> line
+    | BoolNot(_, _, line) -> line
     | Plus(_, _, _, _, line) -> line
     | Times(_, _, _, _, line) -> line
     | Minus(_, _, _, _, line) -> line
@@ -470,10 +224,9 @@ let line (expr: Expr) : LineNum =
     | Size(_, _, _, line) -> line
     | Filter(_, _, _, _, _, line) -> line
     | Exists(_, _, _, _, _, line) -> line
-    | Tuple(_, _, _, line) -> line
-    | TupleFst(_, _, line) -> line
-    | TupleSnd(_, _, line) -> line
+    | Tuple(_, _, line) -> line
     | ListCons(_, _, _, line) -> line
+    | TupleNth(_, _, _, line) -> line
     | ListNth(_, _, _, line) -> line
     | SetRange(_, _, _, line) -> line
     | SetInsert(_, _, _, line) -> line
@@ -482,20 +235,17 @@ let line (expr: Expr) : LineNum =
     | MapFindOpt(_, _, _, line) -> line
     | Univ(_, _, line) -> line
 
-let typeCstr (expr: Expr) : TypeCstr =
+let toType (expr: Expr) : Type =
     match expr with
-    | LitUnit(Some tc, _) -> tc
     | LitTrue(Some tc, _) -> tc
     | LitFalse(Some tc, _) -> tc
     | LitNat(_, Some tc, _) -> tc
-    | LitError(Some tc, _) -> tc
     | LitEmpty(_, Some tc, _) -> tc
     | Union(_, _, Some tc, _) -> tc
-    | Throw(Some tc, _) -> tc
     | If(_, _, _, Some tc, _) -> tc
     | Match(_, _, _, Some tc, _) -> tc
     | VarRef(_, Some tc, _) -> tc
-    | Not(_, Some tc, _) -> tc
+    | BoolNot(_, Some tc, _) -> tc
     | Plus(_, _, _, Some tc, _) -> tc
     | Times(_, _, _, Some tc, _) -> tc
     | Minus(_, _, _, Some tc, _) -> tc
@@ -504,9 +254,8 @@ let typeCstr (expr: Expr) : TypeCstr =
     | Size(_, _, Some tc, _) -> tc
     | Filter(_, _, _, _, Some tc, _) -> tc
     | Exists(_, _, _, _, Some tc, _) -> tc
-    | Tuple(_, _, Some tc, _) -> tc
-    | TupleFst(_, Some tc, _) -> tc
-    | TupleSnd(_, Some tc, _) -> tc
+    | Tuple(_, Some tc, _) -> tc
+    | TupleNth(_, _, Some tc, _) -> tc
     | ListCons(_, _, Some tc, _) -> tc
     | ListNth(_, _, Some tc, _) -> tc
     | SetRange(_, _, Some tc, _) -> tc
@@ -519,14 +268,11 @@ let typeCstr (expr: Expr) : TypeCstr =
 
 let children (expr: Expr) : Expr list =
     match expr with
-    | LitUnit _ -> []
     | LitTrue _ -> []
     | LitFalse _ -> []
     | LitNat _ -> []
-    | LitError _ -> []
     | LitEmpty _ -> []
-    | Union(_, expr, _, _) -> [ expr ]
-    | Throw _ -> []
+    | Union(_, exprs, _, _) -> exprs
     | VarRef _ -> []
     | If(expr1, expr2, expr3, _, _) -> [ expr1; expr2; expr3 ]
     | Match(expr, vs, dOpt, _, _) ->
@@ -535,19 +281,18 @@ let children (expr: Expr) : Expr list =
         match dOpt with
         | Some(_, expr) -> es @ [ expr ]
         | None -> es
-    | Not(expr, _, _) -> [ expr ]
+    | BoolNot(expr, _, _) -> [ expr ]
     | Eq(_, expr1, expr2, _, _) -> [ expr1; expr2 ]
     | Less(_, expr1, expr2, _, _) -> [ expr1; expr2 ]
     | Plus(_, expr1, expr2, _, _) -> [ expr1; expr2 ]
     | Minus(_, expr1, expr2, _, _) -> [ expr1; expr2 ]
     | Times(_, expr1, expr2, _, _) -> [ expr1; expr2 ]
-    | Tuple(exprL, exprR, _, _) -> [ exprL; exprR ]
-    | TupleFst(expr, _, _) -> [ expr ]
-    | TupleSnd(expr, _, _) -> [ expr ]
+    | Tuple(exprs, _, _) -> exprs
     | Size(_, expr, _, _) -> [ expr ]
     | Filter(_, _, _, expr, _, _) -> [ expr ]
     | Exists(_, _, _, expr, _, _) -> [ expr ]
     | ListCons(expr1, expr2, _, _) -> [ expr1; expr2 ]
+    | TupleNth(expr, _, _, _) -> [ expr ]
     | ListNth(expr1, expr2, _, _) -> [ expr1; expr2 ]
     | SetRange(expr1, expr2, _, _) -> [ expr1; expr2 ]
     | SetInsert(expr1, expr2, _, _) -> [ expr1; expr2 ]
@@ -556,72 +301,61 @@ let children (expr: Expr) : Expr list =
     | MapFindOpt(expr1, expr2, _, _) -> [ expr1; expr2 ]
     | Univ _ -> []
 
-type typeToGetMaxValue = int32
 
 let dfs (visit: Expr -> Unit) (expr: Expr) : Unit =
-    Search.dfs
+    dfs
+        searchCfgUnlimited
         (fun expr _ -> visit expr)
-        typeToGetMaxValue.MaxValue
         (fun expr -> List.map (fun expr -> ((), expr)) (children expr))
         id
         expr
 
 let bfs (visit: Expr -> Unit) (expr: Expr) : Unit =
-    Search.bfs
+    bfs
+        searchCfgUnlimited
         (fun expr _ -> visit expr)
-        typeToGetMaxValue.MaxValue
         (fun expr -> List.map (fun expr -> ((), expr)) (children expr))
         id
         expr
 
-let mapTypeCstr (f: TypeCstr option -> TypeCstr option) (expr: Expr) =
-    let rec mapTypeCstr expr =
+let mapType (f: Type option -> Type option) (expr: Expr) =
+    let rec mapType expr =
         match expr with
-        | LitUnit(tcOpt, line) -> LitUnit(f tcOpt, line)
         | LitTrue(tcOpt, line) -> LitTrue(f tcOpt, line)
         | LitFalse(tcOpt, line) -> LitFalse(f tcOpt, line)
         | LitNat(n, tcOpt, line) -> LitNat(n, f tcOpt, line)
-        | LitError(tcOpt, line) -> LitError(f tcOpt, line)
         | LitEmpty(t, tcOpt, line) -> LitEmpty(t, f tcOpt, line)
-        | Union(ctor, exprVal, tcOpt, line) -> Union(ctor, mapTypeCstr exprVal, f tcOpt, line)
-        | Throw(tcOpt, line) -> Throw(f tcOpt, line)
+        | Union(ctor, exprs, tcOpt, line) -> Union(ctor, List.map mapType exprs, f tcOpt, line)
         | If(exprCond, exprThen, exprFalse, tcOpt, line) ->
-            If(mapTypeCstr exprCond, mapTypeCstr exprThen, mapTypeCstr exprFalse, f tcOpt, line)
+            If(mapType exprCond, mapType exprThen, mapType exprFalse, f tcOpt, line)
         | Match(exprUnion, exprMap, exprDef, tcOpt, line) ->
             Match(
-                mapTypeCstr exprUnion,
-                Map.map (fun _ (var, expr) -> (var, mapTypeCstr expr)) exprMap,
-                Option.map (fun (var, expr) -> (var, mapTypeCstr expr)) exprDef,
+                mapType exprUnion,
+                Map.map (fun _ (var, expr) -> (var, mapType expr)) exprMap,
+                Option.map (fun (var, expr) -> (var, mapType expr)) exprDef,
                 f tcOpt,
                 line
             )
         | VarRef(var, tcOpt, line) -> VarRef(var, f tcOpt, line)
-        | Not(expr, tcOpt, line) -> Not(mapTypeCstr expr, f tcOpt, line)
-        | Plus(t, expr1, expr2, tcOpt, line) -> Plus(t, mapTypeCstr expr1, mapTypeCstr expr2, f tcOpt, line)
-        | Times(t, expr1, expr2, tcOpt, line) -> Times(t, mapTypeCstr expr1, mapTypeCstr expr2, f tcOpt, line)
-        | Minus(t, expr1, expr2, tcOpt, line) -> Minus(t, mapTypeCstr expr1, mapTypeCstr expr2, f tcOpt, line)
-        | Less(t, expr1, expr2, tcOpt, line) -> Less(t, mapTypeCstr expr1, mapTypeCstr expr2, f tcOpt, line)
-        | Eq(t, expr1, expr2, tcOpt, line) -> Eq(t, mapTypeCstr expr1, mapTypeCstr expr2, f tcOpt, line)
-        | Size(t, expr, tcOpt, line) -> Size(t, mapTypeCstr expr, f tcOpt, line)
-        | Filter(t, var, exprCond, expr, tcOpt, line) ->
-            Filter(t, var, mapTypeCstr exprCond, mapTypeCstr expr, f tcOpt, line)
-        | Exists(t, var, exprCond, expr, tcOpt, line) ->
-            Exists(t, var, mapTypeCstr exprCond, mapTypeCstr expr, f tcOpt, line)
-        | Tuple(expr1, expr2, tcOpt, line) -> Tuple(mapTypeCstr expr1, mapTypeCstr expr2, f tcOpt, line)
-        | TupleFst(exprTuple, tcOpt, line) -> TupleFst(mapTypeCstr exprTuple, f tcOpt, line)
-        | TupleSnd(exprTuple, tcOpt, line) -> TupleSnd(mapTypeCstr exprTuple, f tcOpt, line)
-        | ListCons(exprElem, exprList, tcOpt, line) ->
-            ListCons(mapTypeCstr exprElem, mapTypeCstr exprList, f tcOpt, line)
-        | ListNth(exprList, exprIdx, tcOpt, line) -> ListNth(mapTypeCstr exprList, mapTypeCstr exprIdx, f tcOpt, line)
-        | SetRange(exprLower, experUppwer, tcOpt, line) ->
-            SetRange(mapTypeCstr exprLower, mapTypeCstr experUppwer, f tcOpt, line)
-        | SetInsert(exprElem, exprSet, tcOpt, line) ->
-            SetInsert(mapTypeCstr exprElem, mapTypeCstr exprSet, f tcOpt, line)
-        | SetMem(exprElem, exprSet, tcOpt, line) -> SetMem(mapTypeCstr exprElem, mapTypeCstr exprSet, f tcOpt, line)
+        | BoolNot(expr, tcOpt, line) -> BoolNot(mapType expr, f tcOpt, line)
+        | Plus(t, expr1, expr2, tcOpt, line) -> Plus(t, mapType expr1, mapType expr2, f tcOpt, line)
+        | Times(t, expr1, expr2, tcOpt, line) -> Times(t, mapType expr1, mapType expr2, f tcOpt, line)
+        | Minus(t, expr1, expr2, tcOpt, line) -> Minus(t, mapType expr1, mapType expr2, f tcOpt, line)
+        | Less(t, expr1, expr2, tcOpt, line) -> Less(t, mapType expr1, mapType expr2, f tcOpt, line)
+        | Eq(t, expr1, expr2, tcOpt, line) -> Eq(t, mapType expr1, mapType expr2, f tcOpt, line)
+        | Size(t, expr, tcOpt, line) -> Size(t, mapType expr, f tcOpt, line)
+        | Filter(t, var, exprCond, expr, tcOpt, line) -> Filter(t, var, mapType exprCond, mapType expr, f tcOpt, line)
+        | Exists(t, var, exprCond, expr, tcOpt, line) -> Exists(t, var, mapType exprCond, mapType expr, f tcOpt, line)
+        | Tuple(exprs, tcOpt, line) -> Tuple(List.map mapType exprs, f tcOpt, line)
+        | ListCons(exprElem, exprList, tcOpt, line) -> ListCons(mapType exprElem, mapType exprList, f tcOpt, line)
+        | TupleNth(exprList, idx, tcOpt, line) -> TupleNth(mapType exprList, idx, f tcOpt, line)
+        | ListNth(exprList, exprIdx, tcOpt, line) -> ListNth(mapType exprList, mapType exprIdx, f tcOpt, line)
+        | SetRange(exprLower, exprUpper, tcOpt, line) -> SetRange(mapType exprLower, mapType exprUpper, f tcOpt, line)
+        | SetInsert(exprElem, exprSet, tcOpt, line) -> SetInsert(mapType exprElem, mapType exprSet, f tcOpt, line)
+        | SetMem(exprElem, exprSet, tcOpt, line) -> SetMem(mapType exprElem, mapType exprSet, f tcOpt, line)
         | MapAdd(exprKey, exprVal, exprMap, tcOpt, line) ->
-            MapAdd(mapTypeCstr exprKey, mapTypeCstr exprVal, mapTypeCstr exprMap, f tcOpt, line)
-        | MapFindOpt(exprKey, exprMap, tcOpt, line) ->
-            MapFindOpt(mapTypeCstr exprKey, mapTypeCstr exprMap, f tcOpt, line)
+            MapAdd(mapType exprKey, mapType exprVal, mapType exprMap, f tcOpt, line)
+        | MapFindOpt(exprKey, exprMap, tcOpt, line) -> MapFindOpt(mapType exprKey, mapType exprMap, f tcOpt, line)
         | Univ(t, tcOpt, line) -> Univ(t, f tcOpt, line)
 
-    mapTypeCstr expr
+    mapType expr

@@ -2,33 +2,32 @@ module CSP.Core.Val
 
 open CSP.Core.Ctor
 
-
 type Val =
-    | VUnit
     | VNat of uint
     | VBool of bool
-    | VTuple of Val * Val
+    | VTuple of Val list
     | VSet of Set<Val>
     | VList of Val list
     | VMap of Map<Val, Val>
-    | VUnion of Ctor * Val
-    | VError
+    | VUnion of Ctor * Val list
+    | VError of string
 
 
 let rec format (v: Val) : string =
     match v with
-    | VUnit -> "()"
-    | VNat n -> $"{n}"
-    | VBool b -> $"{b}"
-    | VTuple(l, r) -> $"({format l}, {format r})"
-    | VSet(s) -> let s' = String.concat ", " (List.map format (Set.toList s)) in $"{{{s'}}}"
-    | VList(vs) -> let s' = String.concat ", " (List.map format vs) in $"[{s'}]"
-    | VMap(m) ->
+    | VNat n -> $"%d{n}"
+    | VBool b -> $"%b{b}"
+    | VTuple vs -> let s = String.concat ", " (List.map format vs) in $"(%s{s})"
+    | VSet s -> let s' = String.concat ", " (List.map format (Set.toList s)) in $"{{%s{s'}}}"
+    | VList vs -> let s' = String.concat ", " (List.map format vs) in $"[%s{s'}]"
+    | VMap m ->
         let s' =
-            String.concat ", " (List.map (fun (k, v) -> $"{format k}: {format v}") (Map.toList m)) in
+            String.concat ", " (List.map (fun (k, v) -> $"%s{format k}: %s{format v}") (Map.toList m)) in
 
-        $"{{{s'}}}"
-    | VUnion(c, v) ->
-        match c with
-        | Ctor c' -> if v = VUnit then $"{c'}" else $"({c'} {format v})"
-    | VError -> "ERROR"
+        $"{{%s{s'}}}"
+    | VUnion(ctor, vs) ->
+        match List.length vs with
+        | 0 -> Ctor.format ctor
+        | 1 -> $"(%s{Ctor.format ctor} %s{format vs[0]})"
+        | _ -> let s = String.concat " " (List.map format vs) in $"(%s{Ctor.format ctor} %s{s})"
+    | VError err -> $"error: %s{err}"

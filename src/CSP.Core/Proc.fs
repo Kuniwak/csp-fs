@@ -1,6 +1,7 @@
 ﻿module CSP.Core.Proc
 
 open FSharpx.Collections
+open CSP.Core.Search
 open CSP.Core.LineNum
 open CSP.Core.Var
 open CSP.Core.Ctor
@@ -20,7 +21,7 @@ type Proc =
     | If of Expr * Proc * Proc * LineNum
     | Match of
         Expr *
-        Map<Ctor, Var option * Proc> *
+        Map<Ctor, Var list * Proc> *
         (Var option * Proc) option *
         LineNum
     | InterfaceParallel of Proc * Expr * Proc * LineNum
@@ -104,7 +105,7 @@ let children (p: Proc) : Proc list =
     | Guard(_, p, _) -> [ p ]
 
 let dfs (visit: Proc -> Unit) (p: Proc) : Unit =
-    Search.dfs (fun p _ -> visit p) 10000 (fun p -> List.map (fun p -> ((), p)) (children p)) id p
+    Search.dfs searchCfgUnlimited (fun p _ -> visit p) (fun p -> List.map (fun p -> ((), p)) (children p)) id p
 
 let bfs (visit: Proc -> Unit) (p: Proc) : Unit =
-    Search.bfs (fun p _ -> visit p) 10000 (fun p -> List.map (fun p -> ((), p)) (children p)) id p
+    Search.bfs searchCfgUnlimited (fun p _ -> visit p) (fun p -> List.map (fun p -> ((), p)) (children p)) id p

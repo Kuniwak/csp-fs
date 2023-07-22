@@ -7,7 +7,7 @@ type Event =
     | Hid of Val
     | Tau
     | Tick
-    | Error
+    | ErrorEvent
     
 let format (ev: Event) : string =
     match ev with
@@ -15,4 +15,4 @@ let format (ev: Event) : string =
     | Hid ev' -> $"τ ({format ev'})"
     | Tau -> "τ"
     | Tick -> "✓"
-    | Error -> "ERROR"
+    | ErrorEvent -> "ERROR"
