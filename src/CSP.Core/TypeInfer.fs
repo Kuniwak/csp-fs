@@ -9,11 +9,9 @@ open CSP.Core.Expr
 open CSP.Core.Type
 open CSP.Core.TypeEnv
 
-type TClassName = string
-
 type TypeError =
     | At of TypeError * string
-    | TypeNotDerived of Type * TClassName
+    | TypeNotDerived of Type * TypeClassName
     | UnionNameMismatch of UnionName * UnionName
     | NotUnion of Type
     | NotTuple of Type
