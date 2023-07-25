@@ -398,6 +398,10 @@ let focused () =
         Assert.True(
             (expected = actual),
             $"""
+
+Expr:
+%s{Expr.format noAnnotation expr}
+
 Expected: %s{formatTypeError expected}
 Actual:   %s{formatTypeError actual}
 """

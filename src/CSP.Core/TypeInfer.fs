@@ -130,7 +130,7 @@ let unify (m: Map<TVarId, Type>) (t1: Type) (t2: Type) : Result<Type * Map<TVarI
             match Map.tryFind n m with
             | Some(t1') when t1 = t1' -> Ok(t1, m)
             | Some(t1') -> Error(TypeMismatch(t1, t1'))
-            | None -> Ok(t2, Map.add n t2 m)
+            | None -> Ok(t1, Map.add n t1 m)
         | TBool, TBool -> Ok(TBool, m)
         | TNat, TNat -> Ok(TNat, m)
         | TTuple(ts1), TTuple(ts2) ->
