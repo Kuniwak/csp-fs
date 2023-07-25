@@ -29,7 +29,7 @@ let rec chkType (t: Type) (v: Val) : bool =
 type EvalConfig = { UnivConfig: UnivConfig }
 let evalConfig cfg = { UnivConfig = cfg }
 
-let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr) : Result<Val, EvalError> =
+let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Val, EvalError> =
     let rec eval env expr =
         match expr with
         | LitTrue _ -> Ok(VBool(true))

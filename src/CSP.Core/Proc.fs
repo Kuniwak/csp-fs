@@ -10,26 +10,27 @@ open CSP.Core.Expr
 type ProcId = string
 
 type Proc =
-    | Unwind of ProcId * Expr option * LineNum
+    | Unwind of ProcId * Expr<unit> option * LineNum
     | Stop of LineNum
     | Skip of LineNum
-    | Prefix of Expr * Proc * LineNum
-    | PrefixRecv of Expr * Var * Proc * LineNum
+    | Prefix of Expr<unit> * Proc * LineNum
+    | PrefixRecv of Expr<unit> * Var * Proc * LineNum
     | IntCh of Proc * Proc * LineNum
     | ExtCh of Proc * Proc * LineNum
     | Seq of Proc * Proc * LineNum
-    | If of Expr * Proc * Proc * LineNum
+    | If of Expr<unit> * Proc * Proc * LineNum
     | Match of
-        Expr *
+        Expr<unit> *
         Map<Ctor, Var list * Proc> *
         (Var option * Proc) option *
         LineNum
-    | InterfaceParallel of Proc * Expr * Proc * LineNum
+    | InterfaceParallel of Proc * Expr<unit> * Proc * LineNum
     | Interleave of Proc * Proc * LineNum
-    | Hide of Proc * Expr * LineNum
-    | Guard of Expr * Proc * LineNum
+    | Hide of Proc * Expr<unit> * LineNum
+    | Guard of Expr<unit> * Proc * LineNum
 
 let format (m: Map<ProcId, 'Var option * Proc>) (p0: Proc) : string =
+    let format = format noAnnotation
     let rec f p isTop =
         match p with
         | Unwind(n, eOpt, _) ->

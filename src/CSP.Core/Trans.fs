@@ -27,7 +27,7 @@ let init (pm: ProcMap) (genv: Env) (pn: ProcId) (vOpt: Val option) : State =
             | None, Some _ -> failwith "given a value to Unwind, but not needed at init"
             | Some _, None -> failwith "needed a value by Unwind, but not given at init"
 
-        ofProc genv (Proc.Unwind(pn, Option.map (fun var -> VarRef(var, None, unknown)) varOpt, unknown))
+        ofProc genv (Proc.Unwind(pn, Option.map (fun var -> VarRef(var, (), unknown)) varOpt, unknown))
 
 type TransConfig =
     { EvalConfig: EvalConfig

@@ -14,18 +14,18 @@ open CSP.Core.Proc
 open CSP.Core.Val
 
 type State =
-    | Unwind of Env * ProcId * Expr option
+    | Unwind of Env * ProcId * Expr<unit> option
     | Stop
     | Skip
-    | Prefix of Env * Expr * State
-    | PrefixRecv of Env * Expr * Var * State
+    | Prefix of Env * Expr<unit> * State
+    | PrefixRecv of Env * Expr<unit> * Var * State
     | IntCh of State * State
     | ExtCh of State * State
     | Seq of State * State
-    | If of Env * Expr * State * State
-    | Match of Env * Expr * Map<Ctor, Var list * State> * (Var option * State) option
-    | InterfaceParallel of Env * State * Expr * State
-    | Hide of Env * State * Expr
+    | If of Env * Expr<unit> * State * State
+    | Match of Env * Expr<unit> * Map<Ctor, Var list * State> * (Var option * State) option
+    | InterfaceParallel of Env * State * Expr<unit> * State
+    | Hide of Env * State * Expr<unit>
     | Omega
     | ErrorState of string * State
 
@@ -141,7 +141,7 @@ let ofProc (genv: Env) (p: Proc) : State =
         | Proc.Interleave(p1, p2, line) ->
             let s1 = ofProc p1 in
             let s2 = ofProc p2 in
-            InterfaceParallel(genv, s1, LitEmpty(TSet(TTuple([])), None, line), s2)
+            InterfaceParallel(genv, s1, LitEmpty(TSet(TTuple([])), (), line), s2)
         | Proc.Hide(p, expr, _) -> let s = ofProc p in Hide(genv, s, expr)
         | Proc.Guard(e, p, _) -> let s = ofProc p in If(genv, e, s, Stop)
 
@@ -189,6 +189,7 @@ let unwind (cfg: UnwindConfig) (pm: ProcMap) (cm: CtorMap) (genv: Env) (s0: Stat
     loop s0 Set.empty
 
 let format (cfg: UnwindConfig) (pm: ProcMap) (cm: CtorMap) (genv: Env) (s0: State) : string =
+    let formatExpr = Expr.format noAnnotation
     let rec f s isTop =
         match s with
         | Unwind(env, n, eOpt) ->
@@ -197,17 +198,17 @@ let format (cfg: UnwindConfig) (pm: ProcMap) (cm: CtorMap) (genv: Env) (s0: Stat
                 f (unwind cfg pm cm genv s) false
             else
                 match eOpt with
-                | Some e -> $"%s{n} %s{Expr.format e} env=%s{Env.format genv env}"
+                | Some e -> $"%s{n} %s{formatExpr e} env=%s{Env.format genv env}"
                 | None -> $"%s{n}"
         | Stop -> "STOP"
         | Skip -> "SKIP"
-        | Prefix(env, expr, s') -> $"(%s{Expr.format expr} -> %s{f s' false} env=%s{Env.format genv env})"
-        | PrefixRecv(env, expr, var, s') -> $"({Expr.format expr}?{var} -> {f s' false} env={Env.format genv env})"
+        | Prefix(env, expr, s') -> $"(%s{formatExpr expr} -> %s{f s' false} env=%s{Env.format genv env})"
+        | PrefixRecv(env, expr, var, s') -> $"({formatExpr expr}?{var} -> {f s' false} env={Env.format genv env})"
         | IntCh(s1, s2) -> $"(%s{f s1 false} ⨅ %s{f s2 false})"
         | ExtCh(s1, s2) -> $"(%s{f s1 false} □ %s{f s2 false})"
         | Seq(s1, s2) -> $"(%s{f s1 false} ; %s{f s2 false})"
         | If(env, expr, s1, s2) ->
-            $"(if %s{Expr.format expr} then %s{f s1 false} else %s{f s2 false}) env=%s{Env.format genv env})"
+            $"(if %s{formatExpr expr} then %s{f s1 false} else %s{f s2 false}) env=%s{Env.format genv env})"
         | Match(env, expr, sm, ds) ->
             let sep = " | " in
 
@@ -220,13 +221,13 @@ let format (cfg: UnwindConfig) (pm: ProcMap) (cm: CtorMap) (genv: Env) (s0: Stat
 
             match ds with
             | Some(Some var, p') ->
-                $"(match %s{Expr.format expr} with %s{String.concat sep cs'} | %s{Var.format var} -> %s{f p' false} env=%s{Env.format genv env})"
+                $"(match %s{formatExpr expr} with %s{String.concat sep cs'} | %s{Var.format var} -> %s{f p' false} env=%s{Env.format genv env})"
             | Some(None, p') ->
-                $"(match %s{Expr.format expr} with %s{String.concat sep cs'} | _ -> %s{f p' false} env=%s{Env.format genv env})"
-            | None -> $"(match %s{Expr.format expr} with %s{String.concat sep cs'} env=%s{Env.format genv env})"
+                $"(match %s{formatExpr expr} with %s{String.concat sep cs'} | _ -> %s{f p' false} env=%s{Env.format genv env})"
+            | None -> $"(match %s{formatExpr expr} with %s{String.concat sep cs'} env=%s{Env.format genv env})"
         | InterfaceParallel(env, s1, expr, s2) ->
-            $"(%s{f s1 false} ⟦%s{Expr.format expr}⟧ %s{f s2 false} env=%s{Env.format genv env})"
-        | Hide(env, s, expr) -> $"(%s{f s false} \\\\ %s{Expr.format expr} env=%s{Env.format genv env})"
+            $"(%s{f s1 false} ⟦%s{formatExpr expr}⟧ %s{f s2 false} env=%s{Env.format genv env})"
+        | Hide(env, s, expr) -> $"(%s{f s false} \\\\ %s{formatExpr expr} env=%s{Env.format genv env})"
         | Omega -> "Ω"
         | ErrorState(msg, s) -> $"(ERROR: %s{msg} at %s{f s false})"
 

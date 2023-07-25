@@ -14,7 +14,7 @@ let tcFmt (p: uint * Type.Type) =
     | n, t -> $"({n}, {Type.format t})"
 
 type ExprTestCaseOk =
-    { Expr: Expr
+    { Expr: Expr<unit>
       Expected: Type.Type
       Line: string }
 
@@ -55,9 +55,9 @@ let exprTestCasesOk: obj[] list =
       [| { Expr =
              matchExpr
                  (ctor "Some" [ litUnit ])
-                 [ ("Some", [ "_" ], ctor "Some" [ litUnit ]) ]
+                 [ ("Some", [ "x" ], ctor "Some" [ varRef "x" ]) ]
                  (Some(Some "x", varRef "x"))
-           Expected = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ]
+           Expected = tUnion "option" [ ("Some", [ tUnit ]); ("None", []) ]
            Line = __LINE__ } |]
       [| { Expr = matchExpr (ctor "Some" [ litUnit ]) [] (Some(Some "x", varRef "x"))
            Expected = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ]
@@ -146,10 +146,10 @@ let exprTestCasesOk: obj[] list =
                  (tUnion "option" [ ("Some", [ tUnit ]); ("None", []) ])
                  (tUnion "option" [ ("Some", [ tBool ]); ("None", []) ])
            Line = __LINE__ } |]
-      [| { Expr = matchExpr (ctor "Some" [ litTrue ]) [ ("Some", [ "x" ], boolNot (varRef "x")); ("None", [], litTrue) ] None
+      [| { Expr =
+             matchExpr (ctor "Some" [ litTrue ]) [ ("Some", [ "x" ], boolNot (varRef "x")); ("None", [], litTrue) ] None
            Expected = tBool
-           Line = __LINE__ } |]
-       ]
+           Line = __LINE__ } |] ]
 
 [<Theory>]
 [<MemberData(nameof exprTestCasesOk)>]
@@ -160,28 +160,31 @@ let inferExprOk (tc: ExprTestCaseOk) =
     let tenv = TypeEnv.from [ ("GLOBAL", tBool) ] in
 
     match infer cm 0u Map.empty tenv tc.Expr with
-    | Ok(actual, _, _) ->
+    | Ok(actual) ->
         Assert.True(
-            tc.Expected = Option.get (toType actual),
+            tc.Expected = get actual,
             $"""line %s{tc.Line}
 
-Expected: {Type.format tc.Expected}
-Actual:   {Type.format (Option.get (toType actual))}
+Expected: %s{Type.format tc.Expected}
+Actual:   %s{Type.format (get actual)}
 Inferred as:
-{Expr.format actual}
+%s{Expr.format typeAnnotation actual}
 """
         )
     | Error terr ->
         Assert.Fail
             $"""line %s{tc.Line}
 
+Expr:
+%s{Expr.format noAnnotation tc.Expr}
+
 Expected: (no error)
-Actual:   {formatTypeError tc.Expr terr}
+Actual:   %s{formatTypeError terr}
 """
 
 
 type ExprTestCaseError =
-    { Expr: Expr
+    { Expr: Expr<unit>
       Expected: TypeError
       Line: string }
 
@@ -359,12 +362,12 @@ let inferExprError (tc: ExprTestCaseError) =
     let tenv = TypeEnv.from [ ("GLOBAL", tBool) ] in
 
     match infer cm 0u Map.empty tenv tc.Expr with
-    | Ok(actual, _, _) ->
+    | Ok(actual) ->
         Assert.Fail
             $"""line %s{tc.Line}
 
 Inferred as:
-%s{Expr.format actual}"""
+%s{Expr.format typeAnnotation actual}"""
     | Error terr ->
         let actual = unwrapTypeError terr in
 
@@ -372,14 +375,13 @@ Inferred as:
             tc.Expected = actual,
             $"""line %s{tc.Line}
 
-Expected: %s{formatTypeError tc.Expr tc.Expected}
-Actual:   %s{formatTypeError tc.Expr actual}"""
+Expected: %s{formatTypeError tc.Expected}
+Actual:   %s{formatTypeError actual}"""
         )
 
 [<Fact>]
-let unifMiss () =
-    let expr =
-        matchExpr (ctor "Some" [ litUnit ]) [ ("Some", [ "x" ], boolNot (varRef "x")); ("None", [], litTrue) ] None in
+let focused () =
+    let expr = listNth (litEmpty (tList tBool)) (litNat 0u) in
 
     let expected = TypeMismatch(tBool, tUnit) in
 
@@ -389,14 +391,14 @@ let unifMiss () =
     let tenv = TypeEnv.from [ ("GLOBAL", tBool) ] in
 
     match infer cm 0u Map.empty tenv expr with
-    | Ok(actual, _, _) -> Assert.Fail $"\n%s{Expr.format actual}"
+    | Ok(actual) -> Assert.Fail $"\n%s{Expr.format typeAnnotation actual}"
     | Error terr ->
         let actual = unwrapTypeError terr in
 
         Assert.True(
             (expected = actual),
             $"""
-Expected: %s{formatTypeError expr expected}
-Actual:   %s{formatTypeError expr actual}
+Expected: %s{formatTypeError expected}
+Actual:   %s{formatTypeError actual}
 """
         )

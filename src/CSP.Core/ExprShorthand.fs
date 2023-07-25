@@ -5,68 +5,68 @@ open CSP.Core.LineNum
 open CSP.Core.Expr
 open CSP.Core.Var
 
-let litTrue = LitTrue(None, unknown)
-let litFalse = LitFalse(None, unknown)
-let litNat n = LitNat(n, None, unknown)
-let litEmpty t = LitEmpty(t, None, unknown)
-let ctor ctor expr = Union(Ctor ctor, expr, None, unknown)
+let litTrue = LitTrue((), unknown)
+let litFalse = LitFalse((), unknown)
+let litNat n = LitNat(n, (), unknown)
+let litEmpty t = LitEmpty(t, (), unknown)
+let ctor ctor expr = Union(Ctor ctor, expr, (), unknown)
 
 let ifExpr exprCond exprThen exprElse =
-    If(exprCond, exprThen, exprElse, None, unknown)
+    If(exprCond, exprThen, exprElse, (), unknown)
 
 let matchExpr exprUnion exprMap exprDef =
     Match(
         exprUnion,
         Map [ for ctor, vs, expr in exprMap -> (Ctor ctor, (List.map Var vs, expr)) ],
         Option.map (fun (varOpt, expr) -> (Option.map Var varOpt, expr)) exprDef,
-        None,
+        (),
         unknown
     )
 
-let varRef var = VarRef(Var var, None, unknown)
-let eq t expr1 expr2 = Eq(t, expr1, expr2, None, unknown)
-let boolNot expr = BoolNot(expr, None, unknown)
-let less t expr1 expr2 = Less(t, expr1, expr2, None, unknown)
-let plus t expr1 expr2 = Plus(t, expr1, expr2, None, unknown)
-let minus t expr1 expr2 = Minus(t, expr1, expr2, None, unknown)
-let times t expr1 expr2 = Times(t, expr1, expr2, None, unknown)
-let size t expr = Size(t, expr, None, unknown)
+let varRef var = VarRef(Var var, (), unknown)
+let eq t expr1 expr2 = Eq(t, expr1, expr2, (), unknown)
+let boolNot expr = BoolNot(expr, (), unknown)
+let less t expr1 expr2 = Less(t, expr1, expr2, (), unknown)
+let plus t expr1 expr2 = Plus(t, expr1, expr2, (), unknown)
+let minus t expr1 expr2 = Minus(t, expr1, expr2, (), unknown)
+let times t expr1 expr2 = Times(t, expr1, expr2, (), unknown)
+let size t expr = Size(t, expr, (), unknown)
 
 let filter t var expr1 expr2 =
-    Filter(t, Var var, expr1, expr2, None, unknown)
+    Filter(t, Var var, expr1, expr2, (), unknown)
 
 let exists t var expr1 expr2 =
-    Exists(t, Var var, expr1, expr2, None, unknown)
+    Exists(t, Var var, expr1, expr2, (), unknown)
 
-let litUnit = Tuple([], None, unknown)
-let tuple exprs = Tuple(exprs, None, unknown)
-let tuple2 expr1 expr2 = Tuple([ expr1; expr2 ], None, unknown)
+let litUnit = Tuple([], (), unknown)
+let tuple exprs = Tuple(exprs, (), unknown)
+let tuple2 expr1 expr2 = Tuple([ expr1; expr2 ], (), unknown)
 
 let tuple3 expr1 expr2 expr3 =
-    Tuple([ expr1; expr2; expr3 ], None, unknown)
+    Tuple([ expr1; expr2; expr3 ], (), unknown)
 
-let tupleNth expr idx = TupleNth(expr, idx, None, unknown)
-let tupleFst expr = TupleNth(expr, 0u, None, unknown)
-let tupleSnd expr = TupleNth(expr, 1u, None, unknown)
+let tupleNth expr idx = TupleNth(expr, idx, (), unknown)
+let tupleFst expr = TupleNth(expr, 0u, (), unknown)
+let tupleSnd expr = TupleNth(expr, 1u, (), unknown)
 
 let listCons exprElem exprList =
-    ListCons(exprElem, exprList, None, unknown)
+    ListCons(exprElem, exprList, (), unknown)
 
-let listNth expr exprIdx = ListNth(expr, exprIdx, None, unknown)
+let listNth expr exprIdx = ListNth(expr, exprIdx, (), unknown)
 
 let setRange exprLower exprUpper =
-    SetRange(exprLower, exprUpper, None, unknown)
+    SetRange(exprLower, exprUpper, (), unknown)
 
 let setInsert exprElem exprSet =
-    SetInsert(exprElem, exprSet, None, unknown)
+    SetInsert(exprElem, exprSet, (), unknown)
 
 let setMem exprElem exprSet =
-    SetMem(exprElem, exprSet, None, unknown)
+    SetMem(exprElem, exprSet, (), unknown)
 
 let mapAdd exprKey exprVal exprMap =
-    MapAdd(exprKey, exprVal, exprMap, None, unknown)
+    MapAdd(exprKey, exprVal, exprMap, (), unknown)
 
 let mapFindOpt exprKey exprMap =
-    MapFindOpt(exprKey, exprMap, None, unknown)
+    MapFindOpt(exprKey, exprMap, (), unknown)
 
-let univ t = Univ(t, None, unknown)
+let univ t = Univ(t, (), unknown)
