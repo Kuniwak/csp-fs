@@ -36,11 +36,10 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr) : Result<Val, E
         | LitFalse _ -> Ok(VBool(false))
         | LitNat(n, _, _) -> Ok(VNat(n))
         | LitEmpty(t, _, line) ->
-            match t with
-            | TSet _ -> Ok(VSet Set.empty)
-            | TList _ -> Ok(VList List.empty)
-            | TMap _ -> Ok(VMap Map.empty)
-            | _ -> Error(atLine (TypeNotDerived(t, "Empty")) line)
+            if ClassEmpty.derivedBy t then
+                Ok(ClassEmpty.empty t)
+            else
+                Error(atLine (TypeNotDerived(t, ClassEmpty.name)) line)
         | VarRef(var, _, line) -> Result.mapError (fun err -> atLine (EnvError err) line) (valOf var env)
         | Tuple(exprs, _, line) ->
             let vsRes =

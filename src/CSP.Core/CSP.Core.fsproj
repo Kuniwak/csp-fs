@@ -21,6 +21,7 @@
         <Compile Include="ClassSize.fs" />
         <Compile Include="ClassTimes.fs" />
         <Compile Include="ClassMinus.fs" />
+        <Compile Include="ClassEmpty.fs" />
         <Compile Include="ClassEnum.fs" />
         <Compile Include="EnvError.fs" />
         <Compile Include="Env.fs" />

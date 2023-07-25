@@ -186,11 +186,10 @@ let infer
         | LitFalse(_, line) -> Ok(LitFalse(Some TBool, line), m, n)
         | LitNat(n, _, line) -> Ok(LitNat(n, Some TNat, line), m, n)
         | LitEmpty(t, _, line) ->
-            match t with
-            | TSet tElem -> Ok(LitEmpty(TSet(tElem), Some(TSet tElem), line), m, n)
-            | TList tElem -> Ok(LitEmpty(TList(tElem), Some(TList tElem), line), m, n)
-            | TMap(tK, tV) -> Ok(LitEmpty(TMap(tK, tV), Some(TMap(tK, tV)), line), m, n)
-            | _ -> Error(atLine (TypeNotDerived(t, "Empty")) line)
+            if ClassEmpty.derivedBy t then
+                Ok(LitEmpty(t, Some t, line), m, n)
+            else
+                Error(atLine (TypeNotDerived(t, ClassEmpty.name)) line)
         | Union(ctor, exprs, _, line) ->
             match Map.tryFind ctor cm with
             | None -> Error(NoSuchCtor ctor)
