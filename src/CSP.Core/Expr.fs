@@ -78,7 +78,7 @@ let format (fmt: string -> 'a -> string) (expr: Expr<'a>) : string =
                         (fun (ctor, (vars, e')) ->
                             match List.length vars with
                             | 0 ->
-                                $"\n{render indent}| %s{Ctor.format ctor} _ ->\n{render indent1}%s{format indent2 e'}"
+                                $"\n{render indent}| %s{Ctor.format ctor} ->\n{render indent1}%s{format indent2 e'}"
                             | _ ->
                                 let s = String.concat " " (List.map Var.format vars) in
                                 $"\n{render indent}| %s{Ctor.format ctor} %s{s} ->\n{render indent1}%s{format indent2 e'}")
