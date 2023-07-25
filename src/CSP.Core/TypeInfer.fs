@@ -121,16 +121,24 @@ let resolve (m: Map<TVarId, Type>) (t: Type) : Result<Type, TypeError> =
 let unify (m: Map<TVarId, Type>) (t1: Type) (t2: Type) : Result<Type * Map<TVarId, Type>, TypeError> =
     let rec unify m t1 t2 =
         match t1, t2 with
-        | TVar n, _ ->
-            match Map.tryFind n m with
-            | Some(t2') when t2 = t2' -> Ok(t2, m)
-            | Some(t2') -> Error(TypeMismatch(t2, t2'))
-            | None -> Ok(t2, Map.add n t2 m)
-        | _, TVar n ->
-            match Map.tryFind n m with
-            | Some(t1') when t1 = t1' -> Ok(t1, m)
-            | Some(t1') -> Error(TypeMismatch(t1, t1'))
-            | None -> Ok(t1, Map.add n t1 m)
+        | TVar _, _ ->
+            match resolve m t1, resolve m t2 with
+            | Ok(t1), Ok(t2) ->
+                match t1, t2 with
+                | TVar n, _ -> Ok(t2, Map.add n t2 m)
+                | _, TVar n -> Ok(t1, Map.add n t1 m)
+                | _, _ -> if t1 = t2 then Ok(t1, m) else Error(TypeMismatch(t1, t2))
+            | Error(terr), _ -> Error terr // NOTE: Occurence check failed.
+            | _, Error(terr) -> Error terr // NOTE: Occurence check failed.
+        | _, TVar _ ->
+            match resolve m t1, resolve m t2 with
+            | Ok(t1), Ok(t2) ->
+                match t1, t2 with
+                | TVar n, _ -> Ok(t2, Map.add n t2 m)
+                | _, TVar n -> Ok(t1, Map.add n t1 m)
+                | _, _ -> if t1 = t2 then Ok(t1, m) else Error(TypeMismatch(t1, t2))
+            | Error(terr), _ -> Error terr // NOTE: Occurence check failed.
+            | _, Error(terr) -> Error terr // NOTE: Occurence check failed.
         | TBool, TBool -> Ok(TBool, m)
         | TNat, TNat -> Ok(TNat, m)
         | TTuple(ts1), TTuple(ts2) ->
@@ -672,7 +680,18 @@ let infer
     | Error err -> Error err
     | Ok(expr, m, _) ->
         let expr = map (get >> resolve m) expr in
-        let exprRes = fold (fun accRes expr -> Result.bind (fun _ -> Result.map (fun _ -> ()) (get expr)) accRes) (Ok(())) expr
+
+        let exprRes =
+            fold (fun accRes expr -> Result.bind (fun _ -> Result.map (fun _ -> ()) (get expr)) accRes) (Ok(())) expr
+
         match exprRes with
-        | Ok _ -> Ok(map (fun tRes -> match get tRes with Ok t -> t | Error err -> failwith (formatTypeError err)) expr)
+        | Ok _ ->
+            Ok(
+                map
+                    (fun tRes ->
+                        match get tRes with
+                        | Ok t -> t
+                        | Error err -> failwith (formatTypeError err))
+                    expr
+            )
         | Error err -> Error err

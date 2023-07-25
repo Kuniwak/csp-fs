@@ -60,7 +60,7 @@ let exprTestCasesOk: obj[] list =
            Expected = tUnion "option" [ ("Some", [ tUnit ]); ("None", []) ]
            Line = __LINE__ } |]
       [| { Expr = matchExpr (ctor "Some" [ litUnit ]) [] (Some(Some "x", varRef "x"))
-           Expected = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ]
+           Expected = tUnion "option" [ ("Some", [ tUnit ]); ("None", []) ]
            Line = __LINE__ } |]
       [| { Expr = varRef "GLOBAL"
            Expected = tBool
@@ -208,7 +208,7 @@ let exprTestCasesError: obj[] list =
            Expected = TypeMismatch(tUnit, tBool)
            Line = __LINE__ } |]
       [| { Expr = matchExpr (ctor "Some" [ litUnit ]) [ ("Some", [ "x" ], litTrue) ] (Some(None, litUnit))
-           Expected = TypeMismatch(tBool, tUnit)
+           Expected = TypeMismatch(tUnit, tBool)
            Line = __LINE__ } |]
       [| { Expr = matchExpr (ctor "Foo" []) [] None
            Expected = EmptyMatch
@@ -350,7 +350,7 @@ let exprTestCasesError: obj[] list =
            Line = __LINE__ } |]
       [| { Expr =
              matchExpr (ctor "Some" [ litUnit ]) [ ("Some", [ "x" ], boolNot (varRef "x")); ("None", [], litTrue) ] None
-           Expected = TypeMismatch(tBool, tUnit)
+           Expected = TypeMismatch(tUnit, tBool)
            Line = __LINE__ } |] ]
 
 [<Theory>]
@@ -381,9 +381,7 @@ Actual:   %s{formatTypeError actual}"""
 
 [<Fact>]
 let focused () =
-    let expr = listNth (litEmpty (tList tBool)) (litNat 0u) in
-
-    let expected = TypeMismatch(tBool, tUnit) in
+    let expr = matchExpr (ctor "Some" [ litUnit ]) [ ("Some", [ "x" ], litTrue); ("None", [], litFalse) ] None in
 
     let tOption = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ] in
     let tFoo = tUnion "foo" [ ("Foo", []) ] in
@@ -391,18 +389,18 @@ let focused () =
     let tenv = TypeEnv.from [ ("GLOBAL", tBool) ] in
 
     match infer cm 0u Map.empty tenv expr with
-    | Ok(actual) -> Assert.Fail $"\n%s{Expr.format typeAnnotation actual}"
+    | Ok(actual) -> Assert.Fail $"""
+Inferred as:
+%s{Expr.format typeAnnotation actual}
+"""
     | Error terr ->
         let actual = unwrapTypeError terr in
 
-        Assert.True(
-            (expected = actual),
+        Assert.Fail(
             $"""
-
 Expr:
 %s{Expr.format noAnnotation expr}
 
-Expected: %s{formatTypeError expected}
-Actual:   %s{formatTypeError actual}
+Error:   %s{formatTypeError actual}
 """
         )
