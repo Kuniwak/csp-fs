@@ -1,6 +1,7 @@
 module CSP.Core.TypeInfer
 
 open CSP.Core.LineNum
+open CSP.Core.TypeCstr
 open CSP.Core.Util
 open CSP.Core.Var
 open CSP.Core.Ctor
@@ -39,9 +40,7 @@ let formatTypeError (terr: TypeError) : string =
         | At(terr, hint) -> $"%s{formatTypeError terr}\n\tat %s{hint}"
         | TypeNotDerived(t, tcClassName) -> $"type not derived %s{tcClassName}: %s{format t}"
         | UnionNameMismatch(un1, un2) -> $"union name mismatch: %s{un1} vs %s{un2}"
-        | TypeMismatch(s) ->
-            let s = String.concat " vs " (List.map format (Set.toList s)) in
-            $"type mismatch: %s{s}"
+        | TypeMismatch(s) -> let s = String.concat " vs " (List.map format (Set.toList s)) in $"type mismatch: %s{s}"
         | NotUnion t -> $"not union: %s{format t}"
         | NotTuple t -> $"not tuple: %s{format t}"
         | TupleIndexOutOfBounds(t, idx) -> $"tuple index out of bounds: %s{format t} at %d{idx}"
@@ -105,9 +104,7 @@ let resolve (m: Map<TVarId, Type>) (t: Type) : Result<Type, TypeError> =
                     (fun accRes ctor ts ->
                         let tsRes =
                             List.foldBack
-                                (fun t ->
-                                    Result.bind
-                                        (fun ts -> Result.map (fun t -> t :: ts) (resolve visited t)))
+                                (fun t -> Result.bind (fun ts -> Result.map (fun t -> t :: ts) (resolve visited t)))
                                 ts
                                 (Ok([]))
 
@@ -122,9 +119,7 @@ let resolve (m: Map<TVarId, Type>) (t: Type) : Result<Type, TypeError> =
         | TSet tcV -> Result.map TSet (resolve visited tcV)
         | TList tcV -> Result.map TList (resolve visited tcV)
         | TMap(tcK, tcV) ->
-            Result.bind
-                (fun tcK -> Result.map (fun tcV -> TMap(tcK, tcV)) (resolve visited tcV))
-                (resolve visited tcK)
+            Result.bind (fun tcK -> Result.map (fun tcV -> TMap(tcK, tcV)) (resolve visited tcV)) (resolve visited tcK)
 
     resolve (Set []) t
 
@@ -137,7 +132,11 @@ let unify (m: Map<TVarId, Type>) (t1: Type) (t2: Type) : Result<Type * Map<TVarI
                 match t1, t2 with
                 | TVar n, _ -> Ok(t2, Map.add n t2 m)
                 | _, TVar n -> Ok(t1, Map.add n t1 m)
-                | _, _ -> if t1 = t2 then Ok(t1, m) else Error(TypeMismatch(Set [t1; t2]))
+                | _, _ ->
+                    if t1 = t2 then
+                        Ok(t1, m)
+                    else
+                        Error(TypeMismatch(Set [ t1; t2 ]))
             | Error(terr), _ -> Error terr // NOTE: Occurence check failed.
             | _, Error(terr) -> Error terr // NOTE: Occurence check failed.
         | _, TVar _ ->
@@ -146,7 +145,11 @@ let unify (m: Map<TVarId, Type>) (t1: Type) (t2: Type) : Result<Type * Map<TVarI
                 match t1, t2 with
                 | TVar n, _ -> Ok(t2, Map.add n t2 m)
                 | _, TVar n -> Ok(t1, Map.add n t1 m)
-                | _, _ -> if t1 = t2 then Ok(t1, m) else Error(TypeMismatch(Set [t1; t2]))
+                | _, _ ->
+                    if t1 = t2 then
+                        Ok(t1, m)
+                    else
+                        Error(TypeMismatch(Set [ t1; t2 ]))
             | Error(terr), _ -> Error terr // NOTE: Occurence check failed.
             | _, Error(terr) -> Error terr // NOTE: Occurence check failed.
         | TBool, TBool -> Ok(TBool, m)
@@ -216,14 +219,36 @@ let unify (m: Map<TVarId, Type>) (t1: Type) (t2: Type) : Result<Type * Map<TVarI
                 match unify m tcV1 tcV2 with
                 | Error terr -> Error(At(terr, $"the value type of the set: {format t1} vs {format t2}"))
                 | Ok(tcV, m) -> Ok(TMap(tcK, tcV), m)
-        | _, _ -> Error(TypeMismatch(Set [t1; t2]))
+        | _, _ -> Error(TypeMismatch(Set [ t1; t2 ]))
 
     unify m t1 t2
 
+type InferState =
+    { ForAllVarMap: TypeCstrForAllVar.VarMap
+      UncertainVarMap: TypeCstrUncertainVar.VarMap }
+
+let newForAllVar (s: InferState): ForAllVarId * InferState =
+    let id, fam = TypeCstrForAllVar.number s.ForAllVarMap in
+    (id, { s with ForAllVarMap = fam })
+    
+let newUncertainVar (s: InferState): UncertainVarId * InferState =
+    let id, fam = TypeCstrUncertainVar.number s.UncertainVarMap in
+    (id, { s with UncertainVarMap =  fam })
+
+let generalize (t: Type) (s: InferState): TypeCstr * State =
+    let rec generalize m t s =
+        match t with
+        | TVar n ->
+            match Map.tryFind n m with
+            | Some n -> (n, s)
+            | None ->
+                let n, s = newUncertainVar s
+            
+    generalize Map.empty t s
+
 let infer
     (cm: CtorMap)
-    (n: TVarId)
-    (m: Map<TVarId, Type>)
+    (s: InferState)
     (tenv: TypeEnv)
     (expr: Expr<unit>)
     : Result<Expr<Type> * Map<TVarId, Type>, TypeError> =
@@ -697,7 +722,7 @@ let infer
                     | x -> failwith $"unification between TMap and any must return TMap, but come: %A{x}"
         | Univ(t, _, line) -> Ok(Univ(t, TSet t, line), m, n)
 
-    match infer n m tenv expr with
+    match infer n tenv expr with
     | Error err -> Error err
     | Ok(expr, m, _) ->
         let expr = map (get >> resolve m) expr in
@@ -713,7 +738,6 @@ let infer
                         match get expr with
                         | Ok t -> t
                         | Error err -> failwith (formatTypeError err))
-                    expr,
-                m
+                    expr
             )
         | Error err -> Error err

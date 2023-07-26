@@ -35,6 +35,9 @@
         <Compile Include="ProcShorthand.fs" />
         <Compile Include="ProcMap.fs" />
         <Compile Include="TypeEnv.fs" />
+        <Compile Include="TypeCstr.fs" />
+        <Compile Include="TypeCstrForAllVar.fs" />
+        <Compile Include="TypeCstrUncertainVar.fs" />
         <Compile Include="TypeInfer.fs" />
         <Compile Include="State.fs" />
         <Compile Include="Event.fs" />
