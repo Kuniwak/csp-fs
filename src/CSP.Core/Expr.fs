@@ -19,7 +19,7 @@ type Expr<'a> =
     | Union of Ctor * Expr<'a> list * 'a * LineNum
     | Tuple of Expr<'a> list * 'a * LineNum
     | If of Expr<'a> * Expr<'a> * Expr<'a> * 'a * LineNum
-    | Match of Expr<'a> * Map<Ctor, Var list * Expr<'a>> * (Var option * Expr<'a>) option * 'a * LineNum
+    | Match of Expr<'a> * Map<Ctor option, Var option list * Expr<'a>> * 'a * LineNum
     | Eq of Type * Expr<'a> * Expr<'a> * 'a * LineNum
     | Less of Type * Expr<'a> * Expr<'a> * 'a * LineNum
     | Plus of Type * Expr<'a> * Expr<'a> * 'a * LineNum
@@ -70,34 +70,52 @@ let format (fmt: string -> 'a -> string) (expr: Expr<'a>) : string =
 {render indent}else
 {render indent1}%s{format indent2 e3})"""
                 x
-        | Match(e, cs, d, x, _) ->
-            let lines =
+        | Match(e, cs, x, _) ->
+            let s =
                 String.concat
                     ""
                     (List.map
-                        (fun (ctor, (vars, e')) ->
-                            match List.length vars with
-                            | 0 ->
-                                $"\n{render indent}| %s{Ctor.format ctor} ->\n{render indent1}%s{format indent2 e'}"
-                            | _ ->
-                                let s = String.concat " " (List.map Var.format vars) in
-                                $"\n{render indent}| %s{Ctor.format ctor} %s{s} ->\n{render indent1}%s{format indent2 e'}")
+                        (fun (ctorOpt, (varOpts, e')) ->
+                            match ctorOpt, List.length varOpts with
+                            | Some ctor, 0 ->
+                                $"""
+{render indent}| %s{Ctor.format ctor} ->
+{render indent1}%s{format indent2 e'}"""
+                            | Some ctor, _ ->
+                                let s =
+                                    String.concat
+                                        " "
+                                        (List.map
+                                            (fun varOpt ->
+                                                match varOpt with
+                                                | Some var -> Var.format var
+                                                | None -> "_")
+                                            varOpts) in
+
+                                $"""
+{render indent}| %s{Ctor.format ctor} %s{s} ->
+{render indent1}%s{format indent2 e'}"""
+                            | None, 0 ->
+                                $"""
+{render indent}| _ ->
+{render indent1}%s{format indent2 e'}"""
+                            | None, _ ->
+                                let s =
+                                    String.concat
+                                        " "
+                                        (List.map
+                                            (fun varOpt ->
+                                                match varOpt with
+                                                | Some var -> Var.format var
+                                                | None -> "_")
+                                            varOpts) in
+
+                                $"""
+{render indent}| %s{s} ->
+{render indent1}%s{format indent2 e'}""")
                         (Map.toList cs)) in
 
-            match d with
-            | Some(Some v, e') ->
-                fmt
-                    $"""(match %s{format indent1 e} with%s{lines}
-{render indent}| %s{Var.format v} ->
-{render indent1}%s{format indent2 e'})"""
-                    x
-            | Some(None, e') ->
-                fmt
-                    $"""(match %s{format indent1 e} with{lines}
-{render indent}| _ ->
-{render indent1}%s{format indent2 e'})"""
-                    x
-            | None -> fmt $"(match %s{format indent1 e} with%s{lines})" x
+            fmt $"(match %s{format indent1 e} with %s{s})" x
         | VarRef(v, x, _) -> fmt (Var.format v) x
         | BoolNot(expr, x, _) -> fmt $"""(not %s{format indent2 expr})""" x
         | Eq(t, expr1, expr2, x, _) ->
@@ -210,7 +228,7 @@ let line (expr: Expr<'a>) : LineNum =
     | LitEmpty(_, _, line) -> line
     | Union(_, _, _, line) -> line
     | If(_, _, _, _, line) -> line
-    | Match(_, _, _, _, line) -> line
+    | Match(_, _, _, line) -> line
     | VarRef(_, _, line) -> line
     | BoolNot(_, _, line) -> line
     | Plus(_, _, _, _, line) -> line
@@ -240,7 +258,7 @@ let get (expr: Expr<'a>) : 'a =
     | LitEmpty(_, x, _) -> x
     | Union(_, _, x, _) -> x
     | If(_, _, _, x, _) -> x
-    | Match(_, _, _, x, _) -> x
+    | Match(_, _, x, _) -> x
     | VarRef(_, x, _) -> x
     | BoolNot(_, x, _) -> x
     | Plus(_, _, _, x, _) -> x
@@ -271,12 +289,7 @@ let children (expr: Expr<'a>) : Expr<'a> list =
     | Union(_, exprs, _, _) -> exprs
     | VarRef _ -> []
     | If(expr1, expr2, expr3, _, _) -> [ expr1; expr2; expr3 ]
-    | Match(expr, vs, dOpt, _, _) ->
-        let es = Map.fold (fun acc _ (_, expr) -> acc @ [ expr ]) [ expr ] vs in
-
-        match dOpt with
-        | Some(_, expr) -> es @ [ expr ]
-        | None -> es
+    | Match(expr, vs, _, _) -> Map.fold (fun acc _ (_, expr) -> acc @ [ expr ]) [ expr ] vs
     | BoolNot(expr, _, _) -> [ expr ]
     | Eq(_, expr1, expr2, _, _) -> [ expr1; expr2 ]
     | Less(_, expr1, expr2, _, _) -> [ expr1; expr2 ]
@@ -319,43 +332,36 @@ let rec fold (f: 'State -> Expr<'a> -> 'State) (s: 'State) (expr: Expr<'a>) =
 
 let map (f: Expr<'a> -> 'b) (expr: Expr<'a>) : Expr<'b> =
     let rec mapType expr =
-        let y = f expr in
         match expr with
-        | LitTrue(_, line) -> LitTrue(y, line)
-        | LitFalse(_, line) -> LitFalse(y, line)
-        | LitNat(n, _, line) -> LitNat(n, y, line)
-        | LitEmpty(t, _, line) -> LitEmpty(t, y, line)
-        | Union(ctor, exprs, _, line) -> Union(ctor, List.map mapType exprs, y, line)
+        | LitTrue(_, line) -> LitTrue(f expr, line)
+        | LitFalse(_, line) -> LitFalse(f expr, line)
+        | LitNat(n, _, line) -> LitNat(n, f expr, line)
+        | LitEmpty(t, _, line) -> LitEmpty(t, f expr, line)
+        | Union(ctor, exprs, _, line) -> Union(ctor, List.map mapType exprs, f expr, line)
         | If(exprCond, exprThen, exprFalse, _, line) ->
-            If(mapType exprCond, mapType exprThen, mapType exprFalse, y, line)
-        | Match(exprUnion, exprMap, exprDef, _, line) ->
-            Match(
-                mapType exprUnion,
-                Map.map (fun _ (var, expr) -> (var, mapType expr)) exprMap,
-                Option.map (fun (var, expr) -> (var, mapType expr)) exprDef,
-                y,
-                line
-            )
-        | VarRef(var, _, line) -> VarRef(var, y, line)
-        | BoolNot(expr, _, line) -> BoolNot(mapType expr, y, line)
-        | Plus(t, expr1, expr2, _, line) -> Plus(t, mapType expr1, mapType expr2, y, line)
-        | Times(t, expr1, expr2, _, line) -> Times(t, mapType expr1, mapType expr2, y, line)
-        | Minus(t, expr1, expr2, _, line) -> Minus(t, mapType expr1, mapType expr2, y, line)
-        | Less(t, expr1, expr2, _, line) -> Less(t, mapType expr1, mapType expr2, y, line)
-        | Eq(t, expr1, expr2, _, line) -> Eq(t, mapType expr1, mapType expr2, y, line)
-        | Size(t, expr, _, line) -> Size(t, mapType expr, y, line)
-        | Filter(t, var, exprCond, expr, _, line) -> Filter(t, var, mapType exprCond, mapType expr, y, line)
-        | Exists(t, var, exprCond, expr, _, line) -> Exists(t, var, mapType exprCond, mapType expr, y, line)
-        | Tuple(exprs, _, line) -> Tuple(List.map mapType exprs, y, line)
-        | ListCons(exprElem, exprList, _, line) -> ListCons(mapType exprElem, mapType exprList, y, line)
-        | TupleNth(exprList, idx, _, line) -> TupleNth(mapType exprList, idx, y, line)
-        | ListNth(exprList, exprIdx, _, line) -> ListNth(mapType exprList, mapType exprIdx, y, line)
-        | SetRange(exprLower, exprUpper, _, line) -> SetRange(mapType exprLower, mapType exprUpper, y, line)
-        | SetInsert(exprElem, exprSet, _, line) -> SetInsert(mapType exprElem, mapType exprSet, y, line)
-        | SetMem(exprElem, exprSet, _, line) -> SetMem(mapType exprElem, mapType exprSet, y, line)
+            If(mapType exprCond, mapType exprThen, mapType exprFalse, f expr, line)
+        | Match(exprUnion, exprMap, _, line) ->
+            Match(mapType exprUnion, Map.map (fun _ (var, expr) -> (var, mapType expr)) exprMap, f expr, line)
+        | VarRef(var, _, line) -> VarRef(var, f expr, line)
+        | BoolNot(exprBool, _, line) -> BoolNot(mapType exprBool, f expr, line)
+        | Plus(t, expr1, expr2, _, line) -> Plus(t, mapType expr1, mapType expr2, f expr, line)
+        | Times(t, expr1, expr2, _, line) -> Times(t, mapType expr1, mapType expr2, f expr, line)
+        | Minus(t, expr1, expr2, _, line) -> Minus(t, mapType expr1, mapType expr2, f expr, line)
+        | Less(t, expr1, expr2, _, line) -> Less(t, mapType expr1, mapType expr2, f expr, line)
+        | Eq(t, expr1, expr2, _, line) -> Eq(t, mapType expr1, mapType expr2, f expr, line)
+        | Size(t, exprSize, _, line) -> Size(t, mapType exprSize, f expr, line)
+        | Filter(t, var, exprCond, exprEnum, _, line) -> Filter(t, var, mapType exprCond, mapType exprEnum, f expr, line)
+        | Exists(t, var, exprCond, exprEnum, _, line) -> Exists(t, var, mapType exprCond, mapType exprEnum, f expr, line)
+        | Tuple(exprs, _, line) -> Tuple(List.map mapType exprs, f expr, line)
+        | ListCons(exprElem, exprList, _, line) -> ListCons(mapType exprElem, mapType exprList, f expr, line)
+        | TupleNth(exprList, idx, _, line) -> TupleNth(mapType exprList, idx, f expr, line)
+        | ListNth(exprList, exprIdx, _, line) -> ListNth(mapType exprList, mapType exprIdx, f expr, line)
+        | SetRange(exprLower, exprUpper, _, line) -> SetRange(mapType exprLower, mapType exprUpper, f expr, line)
+        | SetInsert(exprElem, exprSet, _, line) -> SetInsert(mapType exprElem, mapType exprSet, f expr, line)
+        | SetMem(exprElem, exprSet, _, line) -> SetMem(mapType exprElem, mapType exprSet, f expr, line)
         | MapAdd(exprKey, exprVal, exprMap, _, line) ->
-            MapAdd(mapType exprKey, mapType exprVal, mapType exprMap, y, line)
-        | MapFindOpt(exprKey, exprMap, _, line) -> MapFindOpt(mapType exprKey, mapType exprMap, y, line)
-        | Univ(t, _, line) -> Univ(t, y, line)
+            MapAdd(mapType exprKey, mapType exprVal, mapType exprMap, f expr, line)
+        | MapFindOpt(exprKey, exprMap, _, line) -> MapFindOpt(mapType exprKey, mapType exprMap, f expr, line)
+        | Univ(t, _, line) -> Univ(t, f expr, line)
 
     mapType expr

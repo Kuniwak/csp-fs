@@ -7,6 +7,7 @@ open CSP.Core.LineNum
 open CSP.Core.Type
 open CSP.Core.UnivError
 open CSP.Core.Val
+open CSP.Core.Var
 
 
 type EvalError =
@@ -25,6 +26,7 @@ type EvalError =
     | NoSuchCtor of Ctor
     | Thrown of UserDefinedErrorMessage
     | NoClauseMatched of Ctor
+    | DefaultClauseArgumentLenMustBe1 of Var option list
 
 let atLine (err: EvalError) (line: LineNum) : EvalError = At(err, $"line %s{line}")
 
@@ -46,3 +48,15 @@ let rec format (err: EvalError) : string =
     | NoSuchCtor ctor -> $"no such constructor: %s{Ctor.format ctor}"
     | Thrown msg -> $"thrown: %s{msg}"
     | NoClauseMatched ctor -> $"no clause matched: %s{Ctor.format ctor}"
+    | DefaultClauseArgumentLenMustBe1 vars ->
+        let s =
+            String.concat
+                ", "
+                (List.map
+                    (fun varOpt ->
+                        match varOpt with
+                        | Some var -> Var.format var
+                        | None -> "_")
+                    vars) in
+
+        $"length of arguments for default clause must be 1, but got: [%s{s}]"

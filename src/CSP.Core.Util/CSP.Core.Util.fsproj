@@ -8,6 +8,7 @@
     <ItemGroup>
         <Compile Include="Range.fs" />
         <Compile Include="ListEx.fs" />
+        <Compile Include="MapEx.fs" />
         <Compile Include="Univ.fs" />
     </ItemGroup>
 

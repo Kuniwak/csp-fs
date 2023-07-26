@@ -84,21 +84,31 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
             | Ok(VBool false) -> Result.mapError (fun err -> atLine err line) (eval env e3)
             | Ok(v) -> Error(atLine (ValNotBool v) line)
             | Error err -> Error(atLine err line)
-        | Match(exprUnion, exprMap, exprDef, _, line) ->
+        | Match(exprUnion, exprMap, _, line) ->
             match eval env exprUnion with
             | Ok(VUnion(ctor, vs)) ->
-                match Map.tryFind ctor exprMap with
-                | Some(vars, e1) ->
-                    match bindAll (List.zip vars vs) env with
-                    | Ok(env) -> Result.mapError (fun err -> atLine err line) (eval env e1)
-                    | Error err -> Error(atLine (EnvError err) line)
-                | None ->
-                    match exprDef with
-                    | Some(Some var, e2) ->
-                        match bind1 var (VUnion(ctor, vs)) env with
-                        | Ok(env) -> eval env e2
+                match Map.tryFind (Some ctor) exprMap with
+                | Some(varOpts, e1) ->
+                    if List.length varOpts = List.length vs then
+                        let vars = List.collect Option.toList varOpts in
+                        match bindAll (List.zip vars vs) env with
+                        | Ok(env) -> Result.mapError (fun err -> atLine err line) (eval env e1)
                         | Error err -> Error(atLine (EnvError err) line)
-                    | Some(None, e2) -> eval env e2
+                    else
+                        Error(atLine (UnionValuesLenMismatch(ctor, List.length varOpts, List.length vs)) line)
+                | None ->
+                    match Map.tryFind None exprMap with
+                    | Some(varOpts, e2) ->
+                        match List.length varOpts with
+                        | 1 ->
+                            let envRes = 
+                                match List.head varOpts with
+                                | Some var -> bind1 var (VUnion(ctor, vs)) env
+                                | None -> Ok(env)
+                            match envRes with
+                            | Ok(env) -> eval env e2
+                            | Error err -> Error(atLine (EnvError err) line)
+                        | _ -> Error(atLine (DefaultClauseArgumentLenMustBe1 varOpts) line)
                     | None -> Error(atLine (NoClauseMatched ctor) line)
             | Ok(v) -> Error(atLine (ValNotUnion v) line)
             | Error err -> Error(atLine err line)

@@ -1,6 +1,7 @@
 module CSP.Core.TypeInfer
 
 open CSP.Core.LineNum
+open CSP.Core.Util
 open CSP.Core.Var
 open CSP.Core.Ctor
 open CSP.Core.CtorMap
@@ -16,12 +17,13 @@ type TypeError =
     | NotTuple of Type
     | TupleIndexOutOfBounds of Type * uint
     | TupleLengthMismatch of Type list * Type list
-    | TypeMismatch of Type * Type
+    | TypeMismatch of Set<Type>
     | NoSuchCtor of Ctor
     | CtorsMismatch of Set<Ctor> * Set<Ctor>
     | UnboundVariable of Var
     | UnionValueLenMismatch of Ctor * int * int
     | EmptyMatch
+    | DefaultClauseArgumentsLenMustBe1 of Var option list
     | Recursion of TVarId * Map<TVarId, Type>
 
 let atLine (err: TypeError) (line: LineNum) : TypeError = At(err, $"line %s{line}")
@@ -37,7 +39,9 @@ let formatTypeError (terr: TypeError) : string =
         | At(terr, hint) -> $"%s{formatTypeError terr}\n\tat %s{hint}"
         | TypeNotDerived(t, tcClassName) -> $"type not derived %s{tcClassName}: %s{format t}"
         | UnionNameMismatch(un1, un2) -> $"union name mismatch: %s{un1} vs %s{un2}"
-        | TypeMismatch(t1, t2) -> $"type mismatch: %s{format t1} vs %s{format t2}"
+        | TypeMismatch(s) ->
+            let s = String.concat " vs " (List.map format (Set.toList s)) in
+            $"type mismatch: %s{s}"
         | NotUnion t -> $"not union: %s{format t}"
         | NotTuple t -> $"not tuple: %s{format t}"
         | TupleIndexOutOfBounds(t, idx) -> $"tuple index out of bounds: %s{format t} at %d{idx}"
@@ -51,6 +55,18 @@ let formatTypeError (terr: TypeError) : string =
             let s2 = String.concat ", " (Seq.map Ctor.format s2) in
             $"constructors mismatch: {{%s{s1}}} vs {{%s{s2}}}"
         | EmptyMatch -> "match must be have at least one clause that including a default clause"
+        | DefaultClauseArgumentsLenMustBe1(vars) ->
+            let s =
+                String.concat
+                    ","
+                    (List.map
+                        (fun varOpt ->
+                            match varOpt with
+                            | Some var -> Var.format var
+                            | None -> "_")
+                        vars) in
+
+            $"length of arguments for default clause must be 1, but got: [%s{s}]"
         | Recursion(u, m) ->
             let s =
                 String.concat "\n" (List.map (fun (u, t) -> $"  %d{u} -> %s{format t}") (Map.toList m)) in
@@ -61,62 +77,56 @@ let formatTypeError (terr: TypeError) : string =
 
 
 let resolve (m: Map<TVarId, Type>) (t: Type) : Result<Type, TypeError> =
-    let resolve (m: Map<TVarId, Type>) (u: TVarId) : Result<Type, TypeError> =
-        let rec resolve visited t =
-            match t with
-            | TVar u' ->
-                if Set.contains u' visited then
-                    Error(Recursion(u, m))
-                else
-                    match Map.tryFind u' m with
-                    | Some t -> resolve (Set.add u' visited) t
-                    | None -> Ok(TVar u')
-            | TBool -> Ok TBool
-            | TNat -> Ok TNat
-            | TTuple(ts) ->
-                Result.map
-                    TTuple
-                    (List.foldBack
-                        (fun t tsOpt ->
-                            match tsOpt, resolve visited t with
-                            | Ok ts, Ok t -> Ok(t :: ts)
-                            | Error err, _ -> Error err
-                            | _, Error err -> Error err)
-                        ts
-                        (Ok []))
-            | TUnion(un, cm) ->
-                let cmRes =
-                    Map.fold
-                        (fun accRes ctor ts ->
-                            let tsRes =
-                                List.foldBack
-                                    (fun t tsRes ->
-                                        Result.bind
-                                            (fun ts -> Result.map (fun t -> t :: ts) (resolve visited t))
-                                            tsRes)
-                                    ts
-                                    (Ok([]))
+    let rec resolve visited t =
+        match t with
+        | TVar u' ->
+            if Set.contains u' visited then
+                Error(Recursion(u', m))
+            else
+                match Map.tryFind u' m with
+                | Some t -> resolve (Set.add u' visited) t
+                | None -> Ok(TVar u')
+        | TBool -> Ok TBool
+        | TNat -> Ok TNat
+        | TTuple(ts) ->
+            Result.map
+                TTuple
+                (List.foldBack
+                    (fun t tsOpt ->
+                        match tsOpt, resolve visited t with
+                        | Ok ts, Ok t -> Ok(t :: ts)
+                        | Error err, _ -> Error err
+                        | _, Error err -> Error err)
+                    ts
+                    (Ok []))
+        | TUnion(un, cm) ->
+            let cmRes =
+                Map.fold
+                    (fun accRes ctor ts ->
+                        let tsRes =
+                            List.foldBack
+                                (fun t ->
+                                    Result.bind
+                                        (fun ts -> Result.map (fun t -> t :: ts) (resolve visited t)))
+                                ts
+                                (Ok([]))
 
-                            match accRes, tsRes with
-                            | Ok cm, Ok ts -> Ok(Map.add ctor ts cm)
-                            | Error err, _ -> Error err
-                            | _, Error err -> Error err)
-                        (Ok Map.empty)
-                        cm in
+                        match accRes, tsRes with
+                        | Ok cm, Ok ts -> Ok(Map.add ctor ts cm)
+                        | Error err, _ -> Error err
+                        | _, Error err -> Error err)
+                    (Ok Map.empty)
+                    cm in
 
-                Result.map (fun cm -> TUnion(un, cm)) cmRes
-            | TSet tcV -> Result.map TSet (resolve visited tcV)
-            | TList tcV -> Result.map TSet (resolve visited tcV)
-            | TMap(tcK, tcV) ->
-                Result.bind
-                    (fun tcK -> Result.map (fun tcV -> TMap(tcK, tcV)) (resolve visited tcV))
-                    (resolve visited tcK)
+            Result.map (fun cm -> TUnion(un, cm)) cmRes
+        | TSet tcV -> Result.map TSet (resolve visited tcV)
+        | TList tcV -> Result.map TList (resolve visited tcV)
+        | TMap(tcK, tcV) ->
+            Result.bind
+                (fun tcK -> Result.map (fun tcV -> TMap(tcK, tcV)) (resolve visited tcV))
+                (resolve visited tcK)
 
-        resolve (Set []) (TVar u)
-
-    match t with
-    | TVar u -> resolve m u
-    | _ -> Ok(t)
+    resolve (Set []) t
 
 let unify (m: Map<TVarId, Type>) (t1: Type) (t2: Type) : Result<Type * Map<TVarId, Type>, TypeError> =
     let rec unify m t1 t2 =
@@ -127,7 +137,7 @@ let unify (m: Map<TVarId, Type>) (t1: Type) (t2: Type) : Result<Type * Map<TVarI
                 match t1, t2 with
                 | TVar n, _ -> Ok(t2, Map.add n t2 m)
                 | _, TVar n -> Ok(t1, Map.add n t1 m)
-                | _, _ -> if t1 = t2 then Ok(t1, m) else Error(TypeMismatch(t1, t2))
+                | _, _ -> if t1 = t2 then Ok(t1, m) else Error(TypeMismatch(Set [t1; t2]))
             | Error(terr), _ -> Error terr // NOTE: Occurence check failed.
             | _, Error(terr) -> Error terr // NOTE: Occurence check failed.
         | _, TVar _ ->
@@ -136,7 +146,7 @@ let unify (m: Map<TVarId, Type>) (t1: Type) (t2: Type) : Result<Type * Map<TVarI
                 match t1, t2 with
                 | TVar n, _ -> Ok(t2, Map.add n t2 m)
                 | _, TVar n -> Ok(t1, Map.add n t1 m)
-                | _, _ -> if t1 = t2 then Ok(t1, m) else Error(TypeMismatch(t1, t2))
+                | _, _ -> if t1 = t2 then Ok(t1, m) else Error(TypeMismatch(Set [t1; t2]))
             | Error(terr), _ -> Error terr // NOTE: Occurence check failed.
             | _, Error(terr) -> Error terr // NOTE: Occurence check failed.
         | TBool, TBool -> Ok(TBool, m)
@@ -206,7 +216,7 @@ let unify (m: Map<TVarId, Type>) (t1: Type) (t2: Type) : Result<Type * Map<TVarI
                 match unify m tcV1 tcV2 with
                 | Error terr -> Error(At(terr, $"the value type of the set: {format t1} vs {format t2}"))
                 | Ok(tcV, m) -> Ok(TMap(tcK, tcV), m)
-        | _, _ -> Error(TypeMismatch(t1, t2))
+        | _, _ -> Error(TypeMismatch(Set [t1; t2]))
 
     unify m t1 t2
 
@@ -216,8 +226,8 @@ let infer
     (m: Map<TVarId, Type>)
     (tenv: TypeEnv)
     (expr: Expr<unit>)
-    : Result<Expr<Type>, TypeError> =
-    let rec infer n m tenv expr =
+    : Result<Expr<Type> * Map<TVarId, Type>, TypeError> =
+    let rec infer n m tenv (expr: Expr<unit>) =
         match expr with
         | LitTrue(_, line) -> Ok(LitTrue(TBool, line), m, n)
         | LitFalse(_, line) -> Ok(LitFalse(TBool, line), m, n)
@@ -280,67 +290,78 @@ let infer
                             match unify m tcThen tcElse with
                             | Error terr -> Error(atLine terr line)
                             | Ok(t, m) -> Ok(If(exprCond, exprThen, exprElse, t, line), m, n)
-        | Match(exprUnion, exprMap, defExpr, _, line) ->
+        | Match(exprUnion, exprMap, _, line) ->
             match infer n m tenv exprUnion with
             | Error terr -> Error(atLine terr line)
             | Ok(exprUnion, m, n) ->
-                let tcUnion = get exprUnion in
+                let tUnion = get exprUnion in
 
-                match tcUnion with
+                match tUnion with
                 | TUnion(_, cm) ->
+                    let inferClause
+                        n
+                        m
+                        ctorOpt
+                        varOpts
+                        expr
+                        : Result<Expr<Type> * Map<TVarId, Type> * TVarId, TypeError> =
+                        match ctorOpt with
+                        | Some ctor ->
+                            match Map.tryFind ctor cm with
+                            | None -> Error(atLine (NoSuchCtor ctor) line)
+                            | Some ts ->
+                                if List.length ts = List.length varOpts then
+                                    let tenv =
+                                        List.fold
+                                            (fun tenv (t, varOpt) ->
+                                                match varOpt with
+                                                | Some var -> Map.add var t tenv
+                                                | None -> tenv)
+                                            tenv
+                                            (List.zip ts varOpts) in
+
+                                    match infer n m tenv expr with
+                                    | Error terr -> Error(atLine terr line)
+                                    | Ok(expr, m, n) -> Ok(expr, m, n)
+                                else
+                                    Error(UnionValueLenMismatch(ctor, List.length varOpts, List.length ts))
+                        | None ->
+                            Result.bind
+                                (fun tenv ->
+                                    match infer n m tenv expr with
+                                    | Error terr -> Error(atLine terr line)
+                                    | Ok(expr, m, n) -> Ok(expr, m, n))
+                                (match List.length varOpts with
+                                 | 1 ->
+                                     match List.head varOpts with
+                                     | Some var -> Ok(Map.add var tUnion tenv)
+                                     | None -> Ok(tenv)
+                                 | _ -> Error(DefaultClauseArgumentsLenMustBe1(varOpts)))
+
+
                     let accRes =
-                        Map.fold
-                            (fun accRes ctor (vars, expr) ->
+                        MapEx.tryFold1
+                            (fun accRes ctorOpt (vars, expr) ->
                                 match accRes with
                                 | Error s -> Error s
                                 | Ok(t, exprMap, n, m) ->
-                                    match Map.tryFind ctor cm with
-                                    | None -> Error(atLine (NoSuchCtor ctor) line)
-                                    | Some ts ->
-                                        if List.length ts = List.length vars then
-                                            let tenv =
-                                                List.fold
-                                                    (fun tenv (t, var) -> Map.add var t tenv)
-                                                    tenv
-                                                    (List.zip ts vars) in
-
-                                            match infer n m tenv expr with
+                                    Result.bind
+                                        (fun (expr, m, n) ->
+                                            match unify m t (get expr) with
                                             | Error terr -> Error(atLine terr line)
-                                            | Ok(expr, m, n) ->
-                                                let t' = get expr in
-
-                                                match unify m t t' with
-                                                | Error terr -> Error(atLine terr line)
-                                                | Ok(t, m) -> Ok(t, Map.add ctor (vars, expr) exprMap, n, m)
-                                        else
-                                            Error(UnionValueLenMismatch(ctor, List.length vars, List.length ts)))
-                            (Ok(TVar n, Map.empty, n + 1u, m))
+                                            | Ok(t, m) -> Ok(t, Map.add ctorOpt (vars, expr) exprMap, n, m))
+                                        (inferClause n m ctorOpt vars expr))
+                            (fun ctorOpt (vars, expr) ->
+                                Result.map
+                                    (fun (expr, m, n) -> (get expr, Map [ (ctorOpt, (vars, expr)) ], n, m))
+                                    (inferClause n m ctorOpt vars expr))
                             exprMap in
 
                     match accRes with
-                    | Error terr -> Error(atLine terr line)
-                    | Ok(t, exprMap, n, m) ->
-                        match defExpr with
-                        | None ->
-                            if Map.isEmpty exprMap then
-                                Error EmptyMatch
-                            else
-                                Ok(Match(exprUnion, exprMap, None, t, line), m, n)
-                        | Some(varOpt, expr) ->
-                            let tenv =
-                                match varOpt with
-                                | Some var -> Map.add var tcUnion tenv
-                                | None -> tenv in
-
-                            match infer n m tenv expr with
-                            | Error terr -> Error(atLine terr line)
-                            | Ok(expr, m, n) ->
-                                let t' = get expr in
-
-                                match unify m t t' with
-                                | Error terr -> Error(atLine terr line)
-                                | Ok(t, m) -> Ok(Match(exprUnion, exprMap, Some(varOpt, expr), t, line), m, n)
-                | _ -> Error(atLine (NotUnion(tcUnion)) line)
+                    | None -> Error(atLine EmptyMatch line)
+                    | Some(Error terr) -> Error(atLine terr line)
+                    | Some(Ok(t, exprMap, n, m)) -> Ok(Match(exprUnion, exprMap, t, line), m, n)
+                | _ -> Error(atLine (NotUnion(tUnion)) line)
         | VarRef(var, _, line) ->
             match Map.tryFind var tenv with
             | Some t -> Ok(VarRef(var, t, line), m, n)
@@ -688,10 +709,11 @@ let infer
         | Ok _ ->
             Ok(
                 map
-                    (fun tRes ->
-                        match get tRes with
+                    (fun expr ->
+                        match get expr with
                         | Ok t -> t
                         | Error err -> failwith (formatTypeError err))
-                    expr
+                    expr,
+                m
             )
         | Error err -> Error err

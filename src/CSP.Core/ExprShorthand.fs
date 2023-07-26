@@ -14,11 +14,12 @@ let ctor ctor expr = Union(Ctor ctor, expr, (), unknown)
 let ifExpr exprCond exprThen exprElse =
     If(exprCond, exprThen, exprElse, (), unknown)
 
-let matchExpr exprUnion exprMap exprDef =
+let matchExpr exprUnion exprMap =
     Match(
         exprUnion,
-        Map [ for ctor, vs, expr in exprMap -> (Ctor ctor, (List.map Var vs, expr)) ],
-        Option.map (fun (varOpt, expr) -> (Option.map Var varOpt, expr)) exprDef,
+        Map
+            [ for ctorOpt, vars, expr in exprMap ->
+                  (Option.map Ctor ctorOpt, (List.map (fun v -> if v = "_" then None else Some(Var v)) vars, expr)) ],
         (),
         unknown
     )
@@ -60,8 +61,7 @@ let setRange exprLower exprUpper =
 let setInsert exprElem exprSet =
     SetInsert(exprElem, exprSet, (), unknown)
 
-let setMem exprElem exprSet =
-    SetMem(exprElem, exprSet, (), unknown)
+let setMem exprElem exprSet = SetMem(exprElem, exprSet, (), unknown)
 
 let mapAdd exprKey exprVal exprMap =
     MapAdd(exprKey, exprVal, exprMap, (), unknown)
