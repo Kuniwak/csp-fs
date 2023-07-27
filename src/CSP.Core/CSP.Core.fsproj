@@ -38,6 +38,7 @@
         <Compile Include="TypeCstrShorthand.fs" />
         <Compile Include="TypeCstrUncertainVar.fs" />
         <Compile Include="TypeEnv.fs" />
+        <Compile Include="TypeError.fs" />
         <Compile Include="TypeInfer.fs" />
         <Compile Include="State.fs" />
         <Compile Include="Event.fs" />

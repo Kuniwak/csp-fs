@@ -8,6 +8,7 @@ open CSP.Core.Ctor
 open CSP.Core.ExprShorthand
 open CSP.Core.TypeShorthand
 open CSP.Core.TypeCstrShorthand
+open CSP.Core.TypeError
 open CSP.Core.TypeInfer
 
 let tcFmt (p: uint * Type.Type) =
@@ -188,7 +189,7 @@ Expr:
 %s{Expr.format noAnnotation tc.Expr}
 
 Expected: (no error)
-Actual:   %s{formatTypeError terr}
+Actual:   %s{format terr}
 """
 
 
@@ -396,6 +397,6 @@ TVar mapping:
             tc.Expected = actual,
             $"""line %s{tc.Line}
 
-Expected: %s{formatTypeError tc.Expected}
-Actual:   %s{formatTypeError actual}"""
+Expected: %s{format tc.Expected}
+Actual:   %s{format actual}"""
         )
