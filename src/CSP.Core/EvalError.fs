@@ -28,7 +28,7 @@ type EvalError =
     | NoClauseMatched of Ctor
     | DefaultClauseArgumentLenMustBe1 of Var option list
 
-let atLine (err: EvalError) (line: LineNum) : EvalError = At(err, $"line %s{line}")
+let atLine (line: LineNum) (err: EvalError) : EvalError = At(err, $"line %s{line}")
 
 let rec format (err: EvalError) : string =
     match err with

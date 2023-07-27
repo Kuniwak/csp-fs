@@ -39,8 +39,8 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
             if ClassEmpty.derivedBy t then
                 Ok(ClassEmpty.empty t)
             else
-                Error(atLine (TypeNotDerived(t, ClassEmpty.name)) line)
-        | VarRef(var, _, line) -> Result.mapError (fun err -> atLine (EnvError err) line) (valOf var env)
+                Error(atLine line (TypeNotDerived(t, ClassEmpty.name)))
+        | VarRef(var, _, line) -> Result.mapError (fun err -> atLine line (EnvError err)) (valOf var env)
         | Tuple(exprs, _, line) ->
             let vsRes =
                 List.foldBack
@@ -54,7 +54,7 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
 
             match vsRes with
             | Ok vs -> Ok(VTuple(vs))
-            | Error err -> Error(atLine err line)
+            | Error err -> Error(atLine line err)
 
         | Union(ctor, exprs, _, line) ->
             match Map.tryFind ctor cm with
@@ -73,17 +73,17 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
 
                     match vsRes with
                     | Ok(vs) -> Ok(VUnion(ctor, vs))
-                    | Error(err) -> Error(atLine err line)
+                    | Error(err) -> Error(atLine line err)
 
-                | Some ts -> Error(atLine (UnionValuesLenMismatch(ctor, List.length exprs, List.length ts)) line)
-                | None -> Error(atLine (NoSuchCtor ctor) line)
-            | None -> Error(atLine (NoSuchCtor ctor) line)
+                | Some ts -> Error(atLine line (UnionValuesLenMismatch(ctor, List.length exprs, List.length ts)))
+                | None -> Error(atLine line (NoSuchCtor ctor))
+            | None -> Error(atLine line (NoSuchCtor ctor))
         | If(e1, e2, e3, _, line) ->
             match eval env e1 with
-            | Ok(VBool true) -> Result.mapError (fun err -> atLine err line) (eval env e2)
-            | Ok(VBool false) -> Result.mapError (fun err -> atLine err line) (eval env e3)
-            | Ok(v) -> Error(atLine (ValNotBool v) line)
-            | Error err -> Error(atLine err line)
+            | Ok(VBool true) -> Result.mapError (fun err -> atLine line err) (eval env e2)
+            | Ok(VBool false) -> Result.mapError (fun err -> atLine line err) (eval env e3)
+            | Ok(v) -> Error(atLine line (ValNotBool v))
+            | Error err -> Error(atLine line err)
         | Match(exprUnion, exprMap, _, line) ->
             match eval env exprUnion with
             | Ok(VUnion(ctor, vs)) ->
@@ -91,73 +91,75 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                 | Some(varOpts, e1) ->
                     if List.length varOpts = List.length vs then
                         let vars = List.collect Option.toList varOpts in
+
                         match bindAll (List.zip vars vs) env with
-                        | Ok(env) -> Result.mapError (fun err -> atLine err line) (eval env e1)
-                        | Error err -> Error(atLine (EnvError err) line)
+                        | Ok(env) -> Result.mapError (fun err -> atLine line err) (eval env e1)
+                        | Error err -> Error(atLine line (EnvError err))
                     else
-                        Error(atLine (UnionValuesLenMismatch(ctor, List.length varOpts, List.length vs)) line)
+                        Error(atLine line (UnionValuesLenMismatch(ctor, List.length varOpts, List.length vs)))
                 | None ->
                     match Map.tryFind None exprMap with
                     | Some(varOpts, e2) ->
                         match List.length varOpts with
                         | 1 ->
-                            let envRes = 
+                            let envRes =
                                 match List.head varOpts with
                                 | Some var -> bind1 var (VUnion(ctor, vs)) env
                                 | None -> Ok(env)
+
                             match envRes with
                             | Ok(env) -> eval env e2
-                            | Error err -> Error(atLine (EnvError err) line)
-                        | _ -> Error(atLine (DefaultClauseArgumentLenMustBe1 varOpts) line)
-                    | None -> Error(atLine (NoClauseMatched ctor) line)
-            | Ok(v) -> Error(atLine (ValNotUnion v) line)
-            | Error err -> Error(atLine err line)
+                            | Error err -> Error(atLine line (EnvError err))
+                        | _ -> Error(atLine line (DefaultClauseArgumentLenMustBe1 varOpts))
+                    | None -> Error(atLine line (NoClauseMatched ctor))
+            | Ok(v) -> Error(atLine line (ValNotUnion v))
+            | Error err -> Error(atLine line err)
         | Eq(t, e1, e2, _, line) ->
             if ClassEq.derivedBy t then
                 match eval env e1 with
-                | Error err -> Error(atLine err line)
+                | Error err -> Error(atLine line err)
                 | Ok(v1) ->
                     if chkType t v1 then
                         match eval env e2 with
-                        | Error err -> Error(atLine err line)
+                        | Error err -> Error(atLine line err)
                         | Ok(v2) ->
                             if chkType t v2 then
                                 Ok(VBool(ClassEq.eq v1 v2))
                             else
-                                Error(atLine (TypeMismatch(v2, t)) line)
+                                Error(atLine line (TypeMismatch(v2, t)))
                     else
-                        Error(atLine (TypeMismatch(v1, t)) line)
+                        Error(atLine line (TypeMismatch(v1, t)))
             else
-                Error(atLine (TypeNotDerived(t, ClassEq.name)) line)
+                Error(atLine line (TypeNotDerived(t, ClassEq.name)))
         | Less(t, e1, e2, _, line) ->
             if ClassOrd.derivedBy t then
                 match eval env e1 with
-                | Error err -> Error(atLine err line)
+                | Error err -> Error(atLine line err)
                 | Ok(v1) ->
                     if chkType t v1 then
                         match eval env e2 with
-                        | Error err -> Error(atLine err line)
+                        | Error err -> Error(atLine line err)
                         | Ok(v2) ->
                             if chkType t v2 then
                                 Ok(VBool(ClassOrd.less v1 v2))
                             else
-                                Error(atLine (TypeMismatch(v2, t)) line)
+                                Error(atLine line (TypeMismatch(v2, t)))
                     else
-                        Error(atLine (TypeMismatch(v1, t)) line)
+                        Error(atLine line (TypeMismatch(v1, t)))
             else
-                Error(atLine (TypeNotDerived(t, ClassOrd.name)) line)
+                Error(atLine line (TypeNotDerived(t, ClassOrd.name)))
         | Size(t, expr, _, line) ->
             if ClassSize.derivedBy t then
                 match eval env expr with
                 | Ok v -> Ok(VNat(ClassSize.size v))
-                | Error err -> Error(atLine err line)
+                | Error err -> Error(atLine line err)
             else
-                Error(atLine (TypeNotDerived(t, ClassSize.name)) line)
+                Error(atLine line (TypeNotDerived(t, ClassSize.name)))
         | BoolNot(e, _, line) ->
             match eval env e with
             | Ok(VBool b) -> Ok(VBool(not b))
-            | Ok(v) -> Error(atLine (TypeMismatch(v, TBool)) line)
-            | Error err -> Error(atLine err line)
+            | Ok(v) -> Error(atLine line (TypeMismatch(v, TBool)))
+            | Error err -> Error(atLine line err)
         | Plus(t, e1, e2, _, line) ->
             if ClassPlus.derivedBy t then
                 match eval env e1 with
@@ -169,12 +171,12 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                                 Ok(ClassPlus.plus v1 v2)
                             else
                                 Error(TypeMismatch(v2, t))
-                        | Error err -> Error(atLine err line)
+                        | Error err -> Error(atLine line err)
                     else
                         Error(TypeMismatch(v1, t))
-                | Error err -> Error(atLine err line)
+                | Error err -> Error(atLine line err)
             else
-                Error(atLine (TypeNotDerived(t, ClassPlus.name)) line)
+                Error(atLine line (TypeNotDerived(t, ClassPlus.name)))
         | Times(t, e1, e2, _, line) ->
             if ClassTimes.derivedBy t then
                 match eval env e1 with
@@ -186,12 +188,12 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                                 Ok(ClassTimes.times v1 v2)
                             else
                                 Error(TypeMismatch(v2, t))
-                        | Error err -> Error(atLine err line)
+                        | Error err -> Error(atLine line err)
                     else
                         Error(TypeMismatch(v1, t))
-                | Error err -> Error(atLine err line)
+                | Error err -> Error(atLine line err)
             else
-                Error(atLine (TypeNotDerived(t, ClassTimes.name)) line)
+                Error(atLine line (TypeNotDerived(t, ClassTimes.name)))
         | Minus(t, e1, e2, _, line) ->
             if ClassMinus.derivedBy t then
                 match eval env e1 with
@@ -203,20 +205,20 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                                 Ok(ClassMinus.minus v1 v2)
                             else
                                 Error(TypeMismatch(v2, t))
-                        | Error err -> Error(atLine err line)
+                        | Error err -> Error(atLine line err)
                     else
                         Error(TypeMismatch(v1, t))
-                | Error err -> Error(atLine err line)
+                | Error err -> Error(atLine line err)
             else
-                Error(atLine (TypeNotDerived(t, ClassMinus.name)) line)
+                Error(atLine line (TypeNotDerived(t, ClassMinus.name)))
         | TupleNth(expr, idx, _, line) ->
             match eval env expr with
             | Ok(VTuple(vs)) ->
                 match List.tryItem (Checked.int idx) vs with
                 | Some v -> Ok(v)
-                | None -> Error(atLine (TupleIndexOutOfRange(VTuple(vs), idx)) line)
-            | Ok(v) -> Error(atLine (NotTuple(v)) line)
-            | Error err -> Error(atLine err line)
+                | None -> Error(atLine line (TupleIndexOutOfRange(VTuple(vs), idx)))
+            | Ok(v) -> Error(atLine line (NotTuple(v)))
+            | Error err -> Error(atLine line err)
         | ListNth(exprList, exprIdx, _, line) ->
             match eval env exprList with
             | Ok(VList vs) ->
@@ -224,44 +226,44 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                 | Ok(VNat idx) ->
                     match List.tryItem (Checked.int idx) vs with
                     | Some v -> Ok v
-                    | None -> Error(atLine (ListIndexOutOfRange(VList vs, idx)) line)
-                | Ok(v) -> Error(atLine (TypeMismatch(v, TNat)) line)
-                | Error err -> Error(atLine err line)
-            | Ok(v) -> Error(atLine (TypeMismatch(v, TList(TVar 0u))) line)
-            | Error err -> Error(atLine err line)
+                    | None -> Error(atLine line (ListIndexOutOfRange(VList vs, idx)))
+                | Ok(v) -> Error(atLine line (TypeMismatch(v, TNat)))
+                | Error err -> Error(atLine line err)
+            | Ok(v) -> Error(atLine line (TypeMismatch(v, TList(TVar 0u))))
+            | Error err -> Error(atLine line err)
         | ListCons(exprElem, exprList, _, line) ->
             match eval env exprList with
             | Ok(VList vs) ->
                 match eval env exprElem with
                 | Ok(v) -> Ok(VList(v :: vs))
-                | Error err -> Error(atLine err line)
-            | Ok(v) -> Error(atLine (TypeMismatch(v, TList(TVar 0u))) line)
-            | Error err -> Error(atLine err line)
+                | Error err -> Error(atLine line err)
+            | Ok(v) -> Error(atLine line (TypeMismatch(v, TList(TVar 0u))))
+            | Error err -> Error(atLine line err)
         | SetRange(e1, e2, _, line) ->
             match eval env e1 with
             | Ok(VNat n1) ->
                 match eval env e2 with
                 | Ok(VNat n2) -> Ok(VSet(Set.map VNat (Range.ofSet n1 n2)))
-                | Ok(v) -> Error(atLine (TypeMismatch(v, TNat)) line)
-                | Error err -> Error(atLine err line)
-            | Ok(v) -> Error(atLine (TypeMismatch(v, TNat)) line)
-            | Error err -> Error(atLine err line)
+                | Ok(v) -> Error(atLine line (TypeMismatch(v, TNat)))
+                | Error err -> Error(atLine line err)
+            | Ok(v) -> Error(atLine line (TypeMismatch(v, TNat)))
+            | Error err -> Error(atLine line err)
         | SetInsert(exprElem, exprSet, _, line) ->
             match eval env exprSet with
             | Ok(VSet s) ->
                 match eval env exprElem with
                 | Ok(v) -> Ok(VSet(Set.add v s))
-                | Error err -> Error(atLine err line)
-            | Ok(v) -> Error(atLine (TypeMismatch(v, TSet(TVar 0u))) line)
-            | Error err -> Error(atLine err line)
+                | Error err -> Error(atLine line err)
+            | Ok(v) -> Error(atLine line (TypeMismatch(v, TSet(TVar 0u))))
+            | Error err -> Error(atLine line err)
         | SetMem(exprElem, exprSet, _, line) ->
             match eval env exprSet with
             | Ok(VSet s) ->
                 match eval env exprElem with
                 | Ok(v) -> Ok(VBool(Set.contains v s))
-                | Error err -> Error(atLine err line)
-            | Ok(v) -> Error(atLine (TypeMismatch(v, TSet(TVar 0u))) line)
-            | Error err -> Error(atLine err line)
+                | Error err -> Error(atLine line err)
+            | Ok(v) -> Error(atLine line (TypeMismatch(v, TSet(TVar 0u))))
+            | Error err -> Error(atLine line err)
         | Filter(t, var, e1, e2, _, line) ->
             if ClassEnum.derivedBy t then
                 match eval env e2 with
@@ -284,7 +286,7 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
 
                     match sRes with
                     | Ok s -> Ok(VSet s)
-                    | Error err -> Error(atLine err line)
+                    | Error err -> Error(atLine line err)
                 | Ok(VList vs) ->
                     let vsRes =
                         List.foldBack
@@ -304,7 +306,7 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
 
                     match vsRes with
                     | Ok vs -> Ok(VList vs)
-                    | Error err -> Error(atLine err line)
+                    | Error err -> Error(atLine line err)
                 | Ok(VMap m) ->
                     let mAcc =
                         (Map.fold
@@ -324,11 +326,11 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
 
                     match mAcc with
                     | Ok m -> Ok(VMap m)
-                    | Error err -> Error(atLine err line)
+                    | Error err -> Error(atLine line err)
                 | Ok(v) -> failwith $"cannot filter: %s{Val.format v}"
-                | Error err -> Error(atLine err line)
+                | Error err -> Error(atLine line err)
             else
-                Error(atLine (TypeNotDerived(t, ClassEnum.name)) line)
+                Error(atLine line (TypeNotDerived(t, ClassEnum.name)))
         | Exists(t, var, e1, e2, _, line) ->
             if ClassEnum.derivedBy t then
                 match eval env e2 with
@@ -351,7 +353,7 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
 
                     match bRes with
                     | Ok b -> Ok(VBool b)
-                    | Error err -> Error(atLine err line)
+                    | Error err -> Error(atLine line err)
                 | Ok(VList vs) ->
                     let bRes =
                         List.foldBack
@@ -371,7 +373,7 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
 
                     match bRes with
                     | Ok b -> Ok(VBool b)
-                    | Error err -> Error(atLine err line)
+                    | Error err -> Error(atLine line err)
                 | Ok(VMap m) ->
                     let bRes =
                         Map.fold
@@ -391,11 +393,11 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
 
                     match bRes with
                     | Ok b -> Ok(VBool b)
-                    | Error err -> Error(atLine err line)
+                    | Error err -> Error(atLine line err)
                 | Ok(v) -> failwith $"cannot satisfy exists: %s{Val.format v}"
-                | Error err -> Error(atLine err line)
+                | Error err -> Error(atLine line err)
             else
-                Error(atLine (TypeNotDerived(t, ClassEnum.name)) line)
+                Error(atLine line (TypeNotDerived(t, ClassEnum.name)))
         | MapAdd(exprKey, exprVal, exprMap, _, line) ->
             match eval env exprKey with
             | Ok(vK) ->
@@ -403,10 +405,10 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                 | Ok(vV) ->
                     match eval env exprMap with
                     | Ok(VMap m) -> Ok(VMap(Map.add vK vV m))
-                    | Ok(v) -> Error(atLine (TypeMismatch(v, TMap(TVar 0u, TVar 1u))) line)
-                    | Error err -> Error(atLine err line)
-                | Error err -> Error(atLine err line)
-            | Error err -> Error(atLine err line)
+                    | Ok(v) -> Error(atLine line (TypeMismatch(v, TMap(TVar 0u, TVar 1u))))
+                    | Error err -> Error(atLine line err)
+                | Error err -> Error(atLine line err)
+            | Error err -> Error(atLine line err)
         | MapFindOpt(exprKey, exprMap, _, line) ->
             match eval env exprKey with
             | Ok(vK) ->
@@ -415,12 +417,12 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                     match Map.tryFind vK m with
                     | Some v -> Ok(VUnion(Ctor "Some", [ v ]))
                     | None -> Ok(VUnion(Ctor "None", []))
-                | Ok(v) -> Error(atLine (TypeMismatch(v, TMap(TVar 0u, TVar 1u))) line)
-                | Error err -> Error(atLine err line)
-            | Error err -> Error(atLine err line)
+                | Ok(v) -> Error(atLine line (TypeMismatch(v, TMap(TVar 0u, TVar 1u))))
+                | Error err -> Error(atLine line err)
+            | Error err -> Error(atLine line err)
         | Univ(t, _, line) ->
             match univ cfg.UnivConfig t with
             | Ok vs -> Ok(VSet(Set.ofList vs))
-            | Error err -> Error(atLine (UnivError err) line)
+            | Error err -> Error(atLine line (UnivError err))
 
     eval env expr

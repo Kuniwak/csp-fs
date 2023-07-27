@@ -21,8 +21,7 @@ type Proc =
     | If of Expr<unit> * Proc * Proc * LineNum
     | Match of
         Expr<unit> *
-        Map<Ctor, Var list * Proc> *
-        (Var option * Proc) option *
+        Map<Ctor option, Var option list * Proc> *
         LineNum
     | InterfaceParallel of Proc * Expr<unit> * Proc * LineNum
     | Interleave of Proc * Proc * LineNum
@@ -52,13 +51,10 @@ let format (m: Map<ProcId, 'Var option * Proc>) (p0: Proc) : string =
         | ExtCh(p1, p2, _) -> $"({f p1 false} □ {f p2 false})"
         | Seq(p1, p2, _) -> $"({f p1 false} ; {f p2 false})"
         | If(expr, p1, p2, _) -> $"(if {format expr} then {f p1 false} else {f p2 false})"
-        | Match(expr, cs, dc, _) ->
+        | Match(expr, cs, _) ->
             let sep = " | " in
-            let cs' = List.map (fun (c, (v, p')) -> $"{c} {v} -> {f p' false}") (Map.toList cs)
-
-            match dc with
-            | Some(v, p') -> $"(match {format expr} with {String.concat sep cs'} | {v} -> {f p' false})"
-            | None -> $"(match {format expr} with {String.concat sep cs'})"
+            let cs' = List.map (fun (ctorOpt, (varOpts, p')) -> $"{ctorOpt} {varOpts} -> {f p' false}") (Map.toList cs)
+            $"(match {format expr} with {String.concat sep cs'})"
         | InterfaceParallel(p1, expr, p2, _) -> $"({f p1 false} ⟦{format expr}⟧ {f p2 false})"
         | Interleave(p1, p2, _) -> $"({f p1 false} ||| {f p2 false})"
         | Hide(p, expr, _) -> $"({f p false} \\\\ {format expr})"
@@ -77,7 +73,7 @@ let line (p: Proc): LineNum =
     | ExtCh(_, _, line) -> line
     | Seq(_, _, line) -> line
     | If(_, _, _, line) -> line
-    | Match(_, _, _, line) -> line
+    | Match(_, _, line) -> line
     | InterfaceParallel(_, _, _, line) -> line
     | Interleave(_, _, line) -> line
     | Hide(_, _, line) -> line
@@ -94,12 +90,7 @@ let children (p: Proc) : Proc list =
     | ExtCh(p1, p2, _) -> [ p1; p2 ]
     | Seq(p1, p2, _) -> [ p1; p2 ]
     | If(_, p1, p2, _) -> [ p1; p2 ]
-    | Match(_, mp, pOpt, _) ->
-        let ps = List.map snd (Seq.toList (Map.values mp)) in
-
-        match pOpt with
-        | Some(_, p) -> ps @ [ p ]
-        | None -> ps
+    | Match(_, mp, _) -> List.ofSeq (Seq.map snd (Map.values mp))
     | InterfaceParallel(p1, _, p2, _) -> [ p1; p2 ]
     | Interleave(p1, p2, _) -> [ p1; p2 ]
     | Hide(p, _, _) -> [ p ]

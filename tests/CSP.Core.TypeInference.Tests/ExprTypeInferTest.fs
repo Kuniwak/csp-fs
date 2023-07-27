@@ -1,6 +1,7 @@
-module CSP.Core.Tests.TypeTest
+module CSP.Core.Tests.ExprTypeInferTest
 
 open Xunit
+open CSP.Core.Util
 open CSP.Core
 open CSP.Core.Var
 open CSP.Core.Expr
@@ -8,12 +9,10 @@ open CSP.Core.Ctor
 open CSP.Core.ExprShorthand
 open CSP.Core.TypeShorthand
 open CSP.Core.TypeCstrShorthand
+open CSP.Core.TypeEnvError
 open CSP.Core.TypeError
-open CSP.Core.TypeInfer
-
-let tcFmt (p: uint * Type.Type) =
-    match p with
-    | n, t -> $"({n}, {Type.format t})"
+open CSP.Core.TypeInference
+open CSP.Core.ExprTypeInference
 
 type ExprTestCaseOk =
     { Expr: Expr<unit>
@@ -164,9 +163,9 @@ let inferExprOk (tc: ExprTestCaseOk) =
     let tOption = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ] in
     let tFoo = tUnion "foo" [ ("Foo", []) ] in
     let cm = CtorMap.from [ tOption; tFoo ] in
-    let tenv = TypeEnv.from [ ("GLOBAL", tBool) ] in
-
-    match infer cm tenv tc.Expr with
+    let tenv, s = ResultEx.get TypeEnvError.format (from [ ("GLOBAL", tBool) ]) in
+    
+    match postProcess (infer cm tenv tc.Expr s) with
     | Ok(actual, s) ->
         Assert.True(
             tc.Expected = get actual,
@@ -230,7 +229,7 @@ let exprTestCasesError: obj[] list =
            Expected = DefaultClauseArgumentsLenMustBe1([ Some(Var "x"); Some(Var "y") ])
            Line = __LINE__ } |]
       [| { Expr = varRef "undefined"
-           Expected = UnboundVariable(Var "undefined")
+           Expected = TypeEnvError(UnboundVariable(Var "undefined"))
            Line = __LINE__ } |]
       [| { Expr = eq tBool litFalse litUnit
            Expected = TypeMismatch(Set [tcBool; tcUnit])
@@ -377,9 +376,9 @@ let inferExprError (tc: ExprTestCaseError) =
     let tOption = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ] in
     let tFoo = tUnion "foo" [ ("Foo", []) ] in
     let cm = CtorMap.from [ tOption; tFoo ] in
-    let tenv = TypeEnv.from [ ("GLOBAL", tBool) ] in
+    let tenv, s = ResultEx.get TypeEnvError.format (from [ ("GLOBAL", tBool) ]) in
 
-    match infer cm tenv tc.Expr with
+    match postProcess (infer cm tenv tc.Expr s) with
     | Ok(actual, s) ->
         Assert.Fail
             $"""line %s{tc.Line}

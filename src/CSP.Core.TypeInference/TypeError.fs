@@ -3,6 +3,7 @@ module CSP.Core.TypeError
 open CSP.Core.Ctor
 open CSP.Core.LineNum
 open CSP.Core.TypeCstr
+open CSP.Core.TypeEnvError
 open CSP.Core.Var
 open CSP.Core.Type
 
@@ -17,13 +18,13 @@ type TypeError =
     | TypeMismatch of Set<TypeCstr>
     | NoSuchCtor of Ctor
     | CtorsMismatch of Set<Ctor> * Set<Ctor>
-    | UnboundVariable of Var
     | UnionValueLenMismatch of Ctor * int * int
     | EmptyMatch
     | DefaultClauseArgumentsLenMustBe1 of Var option list
     | Recursion of UncertainVarId * TypeCstrUncertainVar.VarMap
+    | TypeEnvError of TypeEnvError
 
-let atLine (err: TypeError) (line: LineNum) : TypeError = At(err, $"line %s{line}")
+let atLine (line: LineNum) (err: TypeError) : TypeError = At(err, $"line %s{line}")
 
 let rec unwrapTypeError (terr: TypeError) : TypeError =
     match terr with
@@ -49,7 +50,6 @@ let format (terr: TypeError) : string =
         | UnionValueLenMismatch(ctor, actual, expected) ->
             $"length of associated values mismatch: %s{Ctor.format ctor} (got %d{actual}, want {expected})"
         | NoSuchCtor ctor -> $"no such data constructor: %s{Ctor.format ctor}"
-        | UnboundVariable var -> $"unbound variable: %s{Var.format var}"
         | CtorsMismatch(s1, s2) ->
             let s1 = String.concat ", " (Seq.map Ctor.format s1) in
             let s2 = String.concat ", " (Seq.map Ctor.format s2) in
@@ -76,6 +76,7 @@ let format (terr: TypeError) : string =
                         (Map.toList m.Map)) in
 
             $"type recursion: %s{TypeCstr.format (TCUncertain u)} in\n%s{s}"
+        | TypeEnvError(err) -> TypeEnvError.format err
 
     $"""type error: {format terr}"""
 

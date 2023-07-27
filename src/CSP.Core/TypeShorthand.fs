@@ -16,3 +16,9 @@ let tMap tK tV = TMap(tK, tV)
 
 let tUnion un cm =
     TUnion(un, Map(Seq.map (fun (ctor, ts) -> (Ctor ctor, ts)) cm))
+
+let tOption t =
+    tUnion "option" [ ("Some", [ t ]); ("None", []) ]
+
+let tEither tL tR =
+    tUnion "either" [ ("Left", [ tL ]); ("Right", [ tR ]) ]

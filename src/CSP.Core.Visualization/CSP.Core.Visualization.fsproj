@@ -6,11 +6,15 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="ResultEx.fs" />
-        <Compile Include="Range.fs" />
-        <Compile Include="ListEx.fs" />
-        <Compile Include="MapEx.fs" />
-        <Compile Include="Univ.fs" />
+        <Compile Include="Graph.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\CSP.Core\CSP.Core.fsproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="FSharpPlus" Version="1.4.1" />
     </ItemGroup>
 
 </Project>

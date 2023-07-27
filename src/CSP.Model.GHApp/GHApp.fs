@@ -7,122 +7,120 @@ open CSP.Core.Val
 open CSP.Core.Type
 open CSP.Core.ProcShorthand
 open CSP.Core.ExprShorthand
+open CSP.Core.TypeShorthand
 open CSP.Core.ProcMap
 
-let tEvent = TUnion("tEvent", TUnit)
-let tPAT = TUnion("pat", TUnit)
-let tQuery = TUnion("query", TUnit)
-let tUser = TUnion("user", TUnit)
+let tEvent =
+    tUnion "event" [ ("EvLoginBtn", []); ("EvLogoutBtn", []); ("EvSearchBtn", []) ]
 
-let tRepo = TUnion("repo", TUnit)
+let tPAT = tUnion "pat" [ ("Pat1", []); ("Pat2", []); ("PatEmpty", []) ]
+let tQuery = tUnion "query" [ ("Query1", []); ("Query2", []); ("QueryEmpty", []) ]
+let tUser = tUnion "user" [ ("User1", []) ]
+let tRepo = tUnion "repo" [ ("Repo1", []); ("Repo2", []); ("Repo3", []) ]
 
-let tGHAuthError = TUnion("ghAuthError", TUnit)
-let tGHSearchError = TUnion("ghSearchError", TUnit)
+let tGHAuthError = tUnion "ghAuthError" [ ("GHAuthError", []) ]
+let tGHSearchError = tUnion "ghSearchError" [ ("GHSearchError", []) ]
 
-let tGHSearchMoreError = TUnion("ghSearchMoreError", TUnit)
+let tGHSearchMoreError = tUnion "ghSearchMoreError" [ ("GHSearchMoreError", []) ]
 
-let tGHChkStarError = TUnion("ghChkStarError", TUnit)
-let tGHStarError = TUnion("ghStarError", TUnit)
-let tGHUnstarError = TUnion("ghUnstarError", TUnit)
+let tGHChkStarError = tUnion "ghChkStarError" [ ("GHChkStarError", []) ]
+let tGHStarError = tUnion "ghStarError" [ ("GHStarError", []) ]
+let tGHUnstarError = tUnion "ghUnstarError" [ ("GHUnstarError", []) ]
 
-let tDispLoginError = TUnion("dispLoginError", TUnit)
+let tDispLoginError = tUnion "dispLoginError" [ ("DispLoginError", []) ]
 
-let tDispLogin = TUnion("either", Map [])
+let tDispLogin = tUnion "either" [ ("Left", [ TVar 0u ]); ("Right", [ TVar 1u ]) ]
 
 let tDispSearchError =
-    TUnion(
-        "tDispSearchError",
-        Map
-            [ (Ctor AppSearchError, TUnit)
-              (Ctor AppSearchMoreError, TUnit)
-              (Ctor AppChkStarError, TUnit)
-              (Ctor AppStarError, TUnit)
-              (Ctor AppUnstarError, TUnit) ]
-    )
+    tUnion
+        "tDispSearchError"
+        [ ("AppSearchError", [])
+          ("AppSearchMoreError", [])
+          ("AppChkStarError", [])
+          ("AppStarError", [])
+          ("AppUnstarError", []) ]
 
 let tDispSearch =
-    TUnion(
-        "either",
-        Map
-            [ (CtorLeft, tDispSearchError)
-              (CtorRight, TTuple(TList tRepo, TTuple(TMap(tRepo, tOption TBool), TBool))) ]
-    )
+    tEither tDispSearchError (tTuple [ tList tRepo; tMap tRepo (tOption tBool); TBool ])
 
-let tChAuthReq = TUnion("tChAuthReq", Map [ (Ctor ChAuthReq, tPAT) ])
+let tChAuthReq = tUnion "tChAuthReq" [ ("ChAuthReq", [ tPAT ]) ]
 
 let tChAuthRes =
-    TUnion("tChAuthRes", Map [ (Ctor ChAuthRes, tEither tGHAuthError (tOption tUser)) ])
+    tUnion "tChAuthRes" [ ("ChAuthRes", [ tEither tGHAuthError (tOption tUser) ]) ]
 
 let tChSearchReq =
-    TUnion("tChSearchReq", Map [ (Ctor ChSearchReq, TTuple(tQuery, TNat)) ])
+    tUnion "tChSearchReq" [ ("ChSearchReq", [ tTuple2 tQuery tNat ]) ]
 
 let tChSearchRes =
-    TUnion("tChSearchRes", Map [ (Ctor ChSearchRes, tEither tGHSearchError (TTuple(TList tRepo, TBool))) ])
+    tUnion "tChSearchRes" [ ("ChSearchRes", [ tEither tGHSearchError (tTuple2 (TList tRepo) TBool) ]) ]
 
 let tChChkStarReq =
-    TUnion("tChChkStarReq", Map [ (Ctor ChChkStarReq, TTuple(tRepo, tPAT)) ])
+    tUnion "tChChkStarReq" [ ("ChChkStarReq", [ tTuple2 tRepo tPAT ]) ]
 
 let tChChkStarRes =
-    TUnion("tChChkStarRes", Map [ (Ctor ChChkStarRes, tEither tGHChkStarError TBool) ])
+    tUnion "tChChkStarRes" [ ("ChChkStarRes", [ tEither tGHChkStarError tBool ]) ]
 
-let tChStarReq = TUnion("tChStarReq", Map [ (Ctor ChStarReq, TTuple(tRepo, tPAT)) ])
+let tChStarReq = tUnion "tChStarReq" [ ("ChStarReq", [ tTuple2 tRepo tPAT ]) ]
 
 let tChStarRes =
-    TUnion("tChStarRes", Map [ (Ctor ChStarRes, tEither tGHStarError TBool) ])
+    tUnion "tChStarRes" [ ("ChStarRes", [ tEither tGHStarError TBool ]) ]
 
-let tChUnstarReq =
-    TUnion("tChUnstarReq", Map [ (Ctor ChUnstarReq, TTuple(tRepo, tPAT)) ])
+let tChUnstarReq = tUnion "tChUnstarReq" [ ("ChUnstarReq", [ tTuple2 tRepo tPAT ]) ]
 
 let tChUnstarRes =
-    TUnion("tChUnstarRes", Map [ (Ctor ChUnstarRes, tEither tGHUnstarError TBool) ])
+    tUnion "tChUnstarRes" [ ("ChUnstarRes", [ tEither tGHUnstarError tBool ]) ]
 
-let tChPATField = TUnion("tChPATField", Map [ (Ctor ChPATField, tPAT) ])
-let tChSearchField = TUnion("tChSearchField", Map [ (Ctor ChSearchField, tQuery) ])
-let tChChkStarBtn = TUnion("tChChkStarBtn", Map [ (Ctor ChChkStarBtn, tRepo) ])
-let tChStarBtn = TUnion("tChStarBtn", Map [ (Ctor ChStarBtn, tRepo) ])
-let tChUnstarBtn = TUnion("tChUnstarBtn", Map [ (Ctor ChUnstarBtn, tRepo) ])
-let tChDispLogin = TUnion("tChDispLogin", Map [ (Ctor ChDispLogin, tDispLogin) ])
+let tChPATField = tUnion "tChPATField" [ ("ChPATField", [ tPAT ]) ]
+let tChSearchField = tUnion "tChSearchField" [ ("ChSearchField", [ tQuery ]) ]
+let tChChkStarBtn = tUnion "tChChkStarBtn" [ ("ChChkStarBtn", [ tRepo ]) ]
+let tChStarBtn = tUnion "tChStarBtn" [ ("ChStarBtn", [ tRepo ]) ]
+let tChUnstarBtn = tUnion "tChUnstarBtn" [ ("ChUnstarBtn", [ tRepo ]) ]
+let tChDispLogin = tUnion "tChDispLogin" [ ("ChDispLogin", [ tDispLogin ]) ]
 
-let tChDispSearch =
-    TUnion("tChDispSearch", Map [ (Ctor ChDispSearch, tDispSearch) ])
+let tChDispSearch = tUnion "tChDispSearch" [ ("ChDispSearch", [ tDispSearch ]) ]
+
 let cm =
     CtorMap.from
-        [ ("event", Ctor "EvLoginBtn", TUnit)
-          ("event", Ctor "EvLogoutBtn", TUnit)
-          ("event", Ctor "EvSearchBtn", TUnit)
-          ("pat", Ctor "Pat1", TUnit)
-          ("pat", Ctor "Pat2", TUnit)
-          ("pat", Ctor "PatEmpty", TUnit)
-          ("query", Ctor "Query1", TUnit)
-          ("query", Ctor "Query2", TUnit)
-          ("query", Ctor "QueryEmpty", TUnit)
-          ("user", Ctor "User1", TUnit)
-          ("repo", Ctor "Repo1", TUnit)
-          ("repo", Ctor "Repo2", TUnit)
-          ("repo", Ctor "Repo3", TUnit)
-          ("ghAuthError", Ctor "GHAuthError", TUnit)
-          ("ghSearchError", Ctor "GHSearchError", TUnit)
-          ("ghSearchMoreError", Ctor "GHSearchMoreError", TUnit)
-          ("ghChkStarError", Ctor "GHChkStarError", TUnit)
-          ("ghStarError", Ctor "GHStarError", TUnit)
-          ("ghUnstarError", Ctor "GHUnstarError", TUnit)
-          ("appAuthError", Ctor "AppAuthError", TUnit)
-          ("appAuthFailed", Ctor "AppAuthFailed", TUnit)
-          (Ctor "Left", tDispLoginError)
-          (Ctor "Right", tOption tUser) 
-           ]
+        [
+          tEvent
+          tPAT
+          tQuery
+          tUser
+          tRepo
+          tGHAuthError
+          tGHSearchError
+          tGHSearchMoreError
+          tGHChkStarError
+          tGHStarError
+          tGHUnstarError
+          tDispLoginError
+          tDispLogin
+          tDispSearchError
+          tDispSearch
+          tChAuthReq
+          tChAuthRes
+          tChSearchReq
+          tChSearchRes
+          tChChkStarReq
+          tChChkStarRes
+          tChStarReq
+          tChStarRes
+          tChUnstarReq
+          tChUnstarRes
+          tChPATField
+          tChSearchField
+          tChChkStarBtn
+          tChStarBtn
+          tChUnstarBtn
+          tChDispLogin
+          tChDispSearch ]
 
 let model =
-    ProcMap
-        [ (("GHAuth", None), prefixRecv (Univ tChAuthReq) "p" (unwind GHAuthRecv (Some(varRef "p"))))
-          (("GHAuthRecv", Some "p"),
-           intCh (unwind "GHAuthWillFail" (Some(varRef "p"))) (unwind "GHAuthWillResp" (Some(varRef "p"))))
-          (("GHAuthWillFail", Some "p"),
-           prefix (unionExpr "ChAuthRes" (union "Left" (union "GHAuthError" LitUnit))) (unwind "GHAuth" None))
-          (("GHAuthWillResp", Some "p"),
-           (prefix
-               (union "ChAuthRes" (union "Right" (mapFindOpt (varRef "p", varRef "PAT_REL"))))
-               (Unwind "GHAuth" None)))
+    from
+        [ (("GHAuth", None), prefixRecv (univ tChAuthReq) "p" (unwind "GHAuthRecv" (Some(varRef "p"))))
+          (("GHAuthRecv", Some "p"), intCh (unwind "GHAuthWillFail" (Some(varRef "p"))) (unwind "GHAuthWillResp" (Some(varRef "p"))))
+          (("GHAuthWillFail", Some "p"), prefix (ctor "ChAuthRes" [(ctor "Left" [(ctor "GHAuthError" [litUnit])])]) (unwind "GHAuth" None))
+          (("GHAuthWillResp", Some "p"), (prefix (ctor "ChAuthRes" [(ctor "Right" [(mapFindOpt (varRef "p", varRef "PAT_REL"))])]) (unwind "GHAuth" None)))
 
           (GHSearch, (None, PrefixRecv(Univ tChSearchReq, R, Unwind(GHSearchRecv, Some(VarRef R)))))
           (GHSearchRecv, (Some R, IntCh(Unwind(GHSearchWillFail, None), Unwind(GHSearchWillResp, Some(VarRef R)))))

@@ -23,7 +23,7 @@ type State =
     | ExtCh of State * State
     | Seq of State * State
     | If of Env * Expr<unit> * State * State
-    | Match of Env * Expr<unit> * Map<Ctor, Var list * State> * (Var option * State) option
+    | Match of Env * Expr<unit> * Map<Ctor option, Var option list * State>
     | InterfaceParallel of Env * State * Expr<unit> * State
     | Hide of Env * State * Expr<unit>
     | Omega
@@ -65,7 +65,7 @@ let rec bind1 (var: Var) (v: Val) (s: State) : Result<State, EnvError> =
         | Error err, _, _ -> Error(err)
         | _, Error err, _ -> Error(err)
         | _, _, Error err -> Error(err)
-    | Match(env, e, sm, ds) ->
+    | Match(env, e, sm) ->
         let smRes =
             Map.fold
                 (fun smAccRes ctor (vars, s) ->
@@ -75,19 +75,10 @@ let rec bind1 (var: Var) (v: Val) (s: State) : Result<State, EnvError> =
                 (Ok Map.empty)
                 sm in
 
-        let dsRes =
-            match ds with
-            | Some(varOpt, s) ->
-                match bind1 var v s with
-                | Ok(s) -> Ok(Some(varOpt, s))
-                | Error err -> Error err
-            | None -> Ok(None) in
-
-        match Env.bind1 var v env, smRes, dsRes with
-        | Ok(env), Ok(sm), Ok(ds) -> Ok(Match(env, e, sm, ds))
-        | Error(err), _, _ -> Error err
-        | _, Error(err), _ -> Error err
-        | _, _, Error(err) -> Error err
+        match Env.bind1 var v env, smRes with
+        | Ok(env), Ok(sm) -> Ok(Match(env, e, sm))
+        | Error(err), _ -> Error err
+        | _, Error(err) -> Error err
     | InterfaceParallel(env, s1, expr, s2) ->
         match Env.bind1 var v env, bind1 var v s1, bind1 var v s2 with
         | Ok(env), Ok(s1), Ok(s2) -> Ok(InterfaceParallel(env, s1, expr, s2))
@@ -102,8 +93,14 @@ let rec bind1 (var: Var) (v: Val) (s: State) : Result<State, EnvError> =
     | Omega -> Ok(Omega)
     | ErrorState(msg, s) -> Ok(ErrorState(msg, s))
 
-let bindAll (xs: (Var * Val) seq) (s: State) =
-    Seq.fold (fun sRes (var, v) -> Result.bind (bind1 var v) sRes) (Ok(s)) xs
+let bindAll (xs: (Var option * Val) seq) (s: State) =
+    Seq.fold
+        (fun sRes (varOpt, v) ->
+            match varOpt with
+            | Some var -> Result.bind (bind1 var v) sRes
+            | None -> sRes)
+        (Ok(s))
+        xs
 
 let ofProc (genv: Env) (p: Proc) : State =
     let rec ofProc p =
@@ -129,11 +126,7 @@ let ofProc (genv: Env) (p: Proc) : State =
             let s1 = ofProc p1 in
             let s2 = ofProc p2 in
             If(genv, e, s1, s2)
-        | Proc.Match(e, mp, dp, _) ->
-            let ms = Map.map (fun _ (var, p) -> (var, ofProc p)) mp in
-            let ds = Option.map (fun (var, p) -> (var, ofProc p)) dp
-
-            Match(genv, e, ms, ds)
+        | Proc.Match(e, mp, _) -> Match(genv, e, Map.map (fun _ (varOpts, p) -> (varOpts, ofProc p)) mp)
         | Proc.InterfaceParallel(p1, expr, p2, _) ->
             let s1 = ofProc p1 in
             let s2 = ofProc p2 in
@@ -190,6 +183,7 @@ let unwind (cfg: UnwindConfig) (pm: ProcMap) (cm: CtorMap) (genv: Env) (s0: Stat
 
 let format (cfg: UnwindConfig) (pm: ProcMap) (cm: CtorMap) (genv: Env) (s0: State) : string =
     let formatExpr = Expr.format noAnnotation
+
     let rec f s isTop =
         match s with
         | Unwind(env, n, eOpt) ->
@@ -209,22 +203,34 @@ let format (cfg: UnwindConfig) (pm: ProcMap) (cm: CtorMap) (genv: Env) (s0: Stat
         | Seq(s1, s2) -> $"(%s{f s1 false} ; %s{f s2 false})"
         | If(env, expr, s1, s2) ->
             $"(if %s{formatExpr expr} then %s{f s1 false} else %s{f s2 false}) env=%s{Env.format genv env})"
-        | Match(env, expr, sm, ds) ->
+        | Match(env, expr, sm) ->
             let sep = " | " in
 
             let cs' =
                 List.map
-                    (fun (c, (vs, p')) ->
-                        let s = String.concat " " (List.map Var.format vs) in
-                        $"%s{Ctor.format c} %s{s} -> %s{f p' false}")
+                    (fun (ctorOpt, (varOpts, p')) ->
+                        let s1 =
+                            match ctorOpt with
+                            | Some ctor -> Ctor.format ctor
+                            | None -> "_" in
+
+                        let s2 =
+                            if List.isEmpty varOpts then
+                                ""
+                            else
+                                String.concat
+                                    ""
+                                    (List.map
+                                        (fun varOpt ->
+                                            match varOpt with
+                                            | Some var -> $" %s{Var.format var}"
+                                            | None -> " _")
+                                        varOpts) in
+
+                        $"%s{s1}%s{s2} -> %s{f p' false}")
                     (Map.toList sm) in
 
-            match ds with
-            | Some(Some var, p') ->
-                $"(match %s{formatExpr expr} with %s{String.concat sep cs'} | %s{Var.format var} -> %s{f p' false} env=%s{Env.format genv env})"
-            | Some(None, p') ->
-                $"(match %s{formatExpr expr} with %s{String.concat sep cs'} | _ -> %s{f p' false} env=%s{Env.format genv env})"
-            | None -> $"(match %s{formatExpr expr} with %s{String.concat sep cs'} env=%s{Env.format genv env})"
+            $"(match %s{formatExpr expr} with %s{String.concat sep cs'} env=%s{Env.format genv env})"
         | InterfaceParallel(env, s1, expr, s2) ->
             $"(%s{f s1 false} ⟦%s{formatExpr expr}⟧ %s{f s2 false} env=%s{Env.format genv env})"
         | Hide(env, s, expr) -> $"(%s{f s false} \\\\ %s{formatExpr expr} env=%s{Env.format genv env})"

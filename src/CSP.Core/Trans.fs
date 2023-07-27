@@ -93,28 +93,32 @@ let trans (cfg: TransConfig) (pm: ProcMap) (cm: CtorMap) (genv: Env) (s0: State)
             | Ok(VBool false) -> trans s2
             | Ok(v) -> [ (ErrorEvent, ErrorState(EvalError.format (TypeMismatch(v, TBool)), s)) ]
             | Error(err) -> [ (ErrorEvent, ErrorState(EvalError.format err, s)) ]
-        | Match(env, expr, sm, ds) ->
+        | Match(env, expr, sm) ->
             match eval env expr with
             | Ok(VUnion(ctor, vs)) ->
-                match Map.tryFind ctor sm with
-                | Some(vars, p2) ->
-                    if List.length vars = List.length vs then
-                        match bindAll (List.zip vars vs) p2 with
+                match Map.tryFind (Some ctor) sm with
+                | Some(varOpts, p2) ->
+                    if List.length varOpts = List.length vs then
+                        match bindAll (List.zip varOpts vs) p2 with
                         | Ok(p2) -> trans p2
                         | Error(err) -> [ (ErrorEvent, ErrorState(EnvError.format err, s)) ]
                     else
                         [ (ErrorEvent,
                            ErrorState(
-                               EvalError.format (UnionValuesLenMismatch(ctor, List.length vars, List.length vs)),
+                               EvalError.format (UnionValuesLenMismatch(ctor, List.length varOpts, List.length vs)),
                                s
                            )) ]
                 | None ->
-                    match ds with
-                    | Some(Some var, p2) ->
-                        match bind1 var (VUnion(ctor, vs)) p2 with
-                        | Ok(p2) -> trans p2
-                        | Error(err) -> [ (ErrorEvent, ErrorState(EnvError.format err, s)) ]
-                    | Some(None, p2) -> trans p2
+                    match Map.tryFind None sm with
+                    | Some(varOpts, p2) ->
+                        match varOpts with
+                        | [ Some var ] ->
+                            match bind1 var (VUnion(ctor, vs)) p2 with
+                            | Ok(p2) -> trans p2
+                            | Error(err) -> [ (ErrorEvent, ErrorState(EnvError.format err, s)) ]
+                        | [ None ] -> trans p2
+                        | _ ->
+                            [ (ErrorEvent, ErrorState(EvalError.format (DefaultClauseArgumentLenMustBe1 varOpts), s)) ]
                     | None -> [ (ErrorEvent, ErrorState(EvalError.format (NoClauseMatched ctor), s)) ]
             | Ok(v) -> [ (ErrorEvent, ErrorState(EvalError.format (ValNotUnion v), s)) ]
             | Error(err) -> [ (ErrorEvent, ErrorState(EvalError.format err, s)) ]
