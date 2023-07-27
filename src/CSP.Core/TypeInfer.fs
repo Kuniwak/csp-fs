@@ -17,15 +17,15 @@ type TypeError =
     | NotUnion of Type
     | NotTuple of Type
     | TupleIndexOutOfBounds of Type * uint
-    | TupleLengthMismatch of Type list * Type list
-    | TypeMismatch of Set<Type>
+    | TupleLengthMismatch of Set<TypeCstr list>
+    | TypeMismatch of Set<TypeCstr>
     | NoSuchCtor of Ctor
     | CtorsMismatch of Set<Ctor> * Set<Ctor>
     | UnboundVariable of Var
     | UnionValueLenMismatch of Ctor * int * int
     | EmptyMatch
     | DefaultClauseArgumentsLenMustBe1 of Var option list
-    | Recursion of TVarId * Map<TVarId, Type>
+    | Recursion of UncertainVarId * TypeCstrUncertainVar.VarMap
 
 let atLine (err: TypeError) (line: LineNum) : TypeError = At(err, $"line %s{line}")
 
@@ -40,11 +40,16 @@ let formatTypeError (terr: TypeError) : string =
         | At(terr, hint) -> $"%s{formatTypeError terr}\n\tat %s{hint}"
         | TypeNotDerived(t, tcClassName) -> $"type not derived %s{tcClassName}: %s{format t}"
         | UnionNameMismatch(un1, un2) -> $"union name mismatch: %s{un1} vs %s{un2}"
-        | TypeMismatch(s) -> let s = String.concat " vs " (List.map format (Set.toList s)) in $"type mismatch: %s{s}"
+        | TypeMismatch(s) ->
+            let s = String.concat " vs " (List.map TypeCstr.format (Set.toList s)) in $"type mismatch: %s{s}"
         | NotUnion t -> $"not union: %s{format t}"
         | NotTuple t -> $"not tuple: %s{format t}"
         | TupleIndexOutOfBounds(t, idx) -> $"tuple index out of bounds: %s{format t} at %d{idx}"
-        | TupleLengthMismatch(ts1, ts2) -> $"tuple length mismatch: %s{format (TTuple ts1)} vs %s{format (TTuple ts2)}"
+        | TupleLengthMismatch(s) ->
+            let s =
+                String.concat " vs " (List.map (fun tcs -> TypeCstr.format (TCTuple tcs)) (Set.toList s))
+
+            $"tuple length mismatch: %s{s}"
         | UnionValueLenMismatch(ctor, actual, expected) ->
             $"length of associated values mismatch: %s{Ctor.format ctor} (got %d{actual}, want {expected})"
         | NoSuchCtor ctor -> $"no such data constructor: %s{Ctor.format ctor}"
@@ -68,28 +73,43 @@ let formatTypeError (terr: TypeError) : string =
             $"length of arguments for default clause must be 1, but got: [%s{s}]"
         | Recursion(u, m) ->
             let s =
-                String.concat "\n" (List.map (fun (u, t) -> $"  %d{u} -> %s{format t}") (Map.toList m)) in
+                String.concat
+                    "\n"
+                    (List.map
+                        (fun (u, t) -> $"  %s{TypeCstr.format (TCUncertain u)} -> %s{TypeCstr.format t}")
+                        (Map.toList m.Map)) in
 
-            $"type recursion: %d{u} in\n%s{s}"
+            $"type recursion: %s{TypeCstr.format (TCUncertain u)} in\n%s{s}"
 
     $"""type error: {formatTypeError terr}"""
 
+type InferState =
+    { UncertainVarMap: TypeCstrUncertainVar.VarMap }
 
-let resolve (m: Map<TVarId, Type>) (t: Type) : Result<Type, TypeError> =
+let newUncertainVarId (s: InferState) : UncertainVarId * InferState =
+    let id, fam = TypeCstrUncertainVar.newId s.UncertainVarMap in (id, { s with UncertainVarMap = fam })
+
+let bindUncertainVar (id: UncertainVarId) (tc: TypeCstr) (s: InferState) : InferState =
+    let fum = TypeCstrUncertainVar.bind id tc s.UncertainVarMap in { s with UncertainVarMap = fum }
+
+let resolveUncertainVar (id: UncertainVarId) (s: InferState) : TypeCstr option =
+    TypeCstrUncertainVar.resolve id s.UncertainVarMap
+
+let resolve (s: InferState) (t: TypeCstr) : Result<TypeCstr, TypeError> =
     let rec resolve visited t =
         match t with
-        | TVar u' ->
-            if Set.contains u' visited then
-                Error(Recursion(u', m))
+        | TCUncertain u ->
+            if Set.contains u visited then
+                Error(Recursion(u, s.UncertainVarMap))
             else
-                match Map.tryFind u' m with
-                | Some t -> resolve (Set.add u' visited) t
-                | None -> Ok(TVar u')
-        | TBool -> Ok TBool
-        | TNat -> Ok TNat
-        | TTuple(ts) ->
+                match TypeCstrUncertainVar.resolve u s.UncertainVarMap with
+                | Some t -> resolve (Set.add u visited) t
+                | None -> Ok(TCUncertain u)
+        | TCBool -> Ok TCBool
+        | TCNat -> Ok TCNat
+        | TCTuple(ts) ->
             Result.map
-                TTuple
+                TCTuple
                 (List.foldBack
                     (fun t tsOpt ->
                         match tsOpt, resolve visited t with
@@ -98,7 +118,7 @@ let resolve (m: Map<TVarId, Type>) (t: Type) : Result<Type, TypeError> =
                         | _, Error err -> Error err)
                     ts
                     (Ok []))
-        | TUnion(un, cm) ->
+        | TCUnion(un, cm) ->
             let cmRes =
                 Map.fold
                     (fun accRes ctor ts ->
@@ -115,23 +135,23 @@ let resolve (m: Map<TVarId, Type>) (t: Type) : Result<Type, TypeError> =
                     (Ok Map.empty)
                     cm in
 
-            Result.map (fun cm -> TUnion(un, cm)) cmRes
-        | TSet tcV -> Result.map TSet (resolve visited tcV)
-        | TList tcV -> Result.map TList (resolve visited tcV)
-        | TMap(tcK, tcV) ->
-            Result.bind (fun tcK -> Result.map (fun tcV -> TMap(tcK, tcV)) (resolve visited tcV)) (resolve visited tcK)
+            Result.map (fun cm -> TCUnion(un, cm)) cmRes
+        | TCSet tcV -> Result.map TCSet (resolve visited tcV)
+        | TCList tcV -> Result.map TCList (resolve visited tcV)
+        | TCMap(tcK, tcV) ->
+            Result.bind (fun tcK -> Result.map (fun tcV -> TCMap(tcK, tcV)) (resolve visited tcV)) (resolve visited tcK)
 
     resolve (Set []) t
 
-let unify (m: Map<TVarId, Type>) (t1: Type) (t2: Type) : Result<Type * Map<TVarId, Type>, TypeError> =
+let unify (s: InferState) (t1: TypeCstr) (t2: TypeCstr) : Result<Type * InferState, TypeError> =
     let rec unify m t1 t2 =
         match t1, t2 with
-        | TVar _, _ ->
+        | TCUncertain n, _ ->
             match resolve m t1, resolve m t2 with
             | Ok(t1), Ok(t2) ->
                 match t1, t2 with
-                | TVar n, _ -> Ok(t2, Map.add n t2 m)
-                | _, TVar n -> Ok(t1, Map.add n t1 m)
+                | TCUncertain n, _ -> Ok(t2, bindUncertainVar n t2 s)
+                | _, TCUncertain n -> Ok(t1, bindUncertainVar n t1 s)
                 | _, _ ->
                     if t1 = t2 then
                         Ok(t1, m)
@@ -139,37 +159,42 @@ let unify (m: Map<TVarId, Type>) (t1: Type) (t2: Type) : Result<Type * Map<TVarI
                         Error(TypeMismatch(Set [ t1; t2 ]))
             | Error(terr), _ -> Error terr // NOTE: Occurence check failed.
             | _, Error(terr) -> Error terr // NOTE: Occurence check failed.
-        | _, TVar _ ->
+        | _, TCUncertain n ->
             match resolve m t1, resolve m t2 with
             | Ok(t1), Ok(t2) ->
                 match t1, t2 with
-                | TVar n, _ -> Ok(t2, Map.add n t2 m)
-                | _, TVar n -> Ok(t1, Map.add n t1 m)
+                | TCUncertain n, _ -> Ok(t2, bindUncertainVar n t2 s)
+                | _, TCUncertain n -> Ok(t1, bindUncertainVar n t1 s)
                 | _, _ ->
                     if t1 = t2 then
-                        Ok(t1, m)
+                        Ok(t1, s)
                     else
                         Error(TypeMismatch(Set [ t1; t2 ]))
             | Error(terr), _ -> Error terr // NOTE: Occurence check failed.
             | _, Error(terr) -> Error terr // NOTE: Occurence check failed.
-        | TBool, TBool -> Ok(TBool, m)
-        | TNat, TNat -> Ok(TNat, m)
-        | TTuple(ts1), TTuple(ts2) ->
+        | TCBool, TCBool -> Ok(TCBool, s)
+        | TCNat, TCNat -> Ok(TCNat, s)
+        | TCTuple(ts1), TCTuple(ts2) ->
             if List.length ts1 = List.length ts2 then
                 Result.map
-                    (fun (ts, m) -> (TTuple(ts), m))
+                    (fun (ts, m) -> (TCTuple(ts), m))
                     (List.foldBack
                         (fun (i, t1, t2) ->
                             Result.bind (fun (ts, m) ->
-                                match unify m t1 t2 with
+                                match unify s t1 t2 with
                                 | Error terr ->
-                                    Error(At(terr, $"the %d{i}th element of the tuple: {format t1} vs {format t2}"))
+                                    Error(
+                                        At(
+                                            terr,
+                                            $"the %d{i}th element of the tuple: {TypeCstr.format t1} vs {TypeCstr.format t2}"
+                                        )
+                                    )
                                 | Ok(t, m) -> Ok(t :: ts, m)))
                         (List.mapi (fun i (t1, t2) -> (i, t1, t2)) (List.zip ts1 ts2))
-                        (Ok([], m)))
+                        (Ok([], s)))
             else
-                Error(TupleLengthMismatch(ts1, ts2))
-        | TUnion(un1, cm1), TUnion(un2, cm2) ->
+                Error(TupleLengthMismatch(Set [ts1; ts2]))
+        | TCUnion(un1, cm1), TCUnion(un2, cm2) ->
             if un1 = un2 then
                 let ctors1 = Set.ofSeq (Map.keys cm1) in
                 let ctors2 = Set.ofSeq (Map.keys cm2) in
@@ -189,7 +214,7 @@ let unify (m: Map<TVarId, Type>) (t1: Type) (t2: Type) : Result<Type * Map<TVarI
                                             (fun (t1, t2) ->
                                                 Result.bind (fun (ts, m) ->
                                                     match unify m t1 t2 with
-                                                    | Ok(t, m) -> Ok(t :: ts, m)
+                                                    | Ok(t, m) -> Ok(t :: ts, s)
                                                     | Error terr ->
                                                         Error(At(terr, $"the type list of %s{Ctor.format ctor}"))))
                                             (List.zip ts1 ts2)
@@ -199,15 +224,15 @@ let unify (m: Map<TVarId, Type>) (t1: Type) (t2: Type) : Result<Type * Map<TVarI
                         ctors
 
                 match cmRes with
-                | Ok(cm, m) -> Ok(TUnion(un1, cm), m)
+                | Ok(cm, m) -> Ok(TCUnion(un1, cm), s)
                 | Error terr -> Error terr
             else
                 Error(UnionNameMismatch(un1, un2))
-        | TList tcV1, TList tcV2 ->
+        | TCList tcV1, TCList tcV2 ->
             match unify m tcV1 tcV2 with
-            | Error terr -> Error(At(terr, $"the element type of the list: {format t1} vs {format t2}"))
-            | Ok(tcV, m) -> Ok(TList(tcV), m)
-        | TSet tcV1, TSet tcV2 ->
+            | Error terr -> Error(At(terr, $"the element type of the list: {TypeCstr.format t1} vs {TypeCstr.format t2}"))
+            | Ok(tcV, m) -> Ok(TCList(tcV), m)
+        | TCSet tcV1, TCSet tcV2 ->
             match unify m tcV1 tcV2 with
             | Error terr -> Error(At(terr, $"the element type of the set: {format t1} vs {format t2}"))
             | Ok(tcV, m) -> Ok(TSet(tcV), m)
@@ -216,35 +241,58 @@ let unify (m: Map<TVarId, Type>) (t1: Type) (t2: Type) : Result<Type * Map<TVarI
             match unify m tcK1 tcK2 with
             | Error terr -> Error(At(terr, $"the key type of the set: {format t1} vs {format t2}"))
             | Ok(tcK, m) ->
-                match unify m tcV1 tcV2 with
+                match unify s tcV1 tcV2 with
                 | Error terr -> Error(At(terr, $"the value type of the set: {format t1} vs {format t2}"))
                 | Ok(tcV, m) -> Ok(TMap(tcK, tcV), m)
         | _, _ -> Error(TypeMismatch(Set [ t1; t2 ]))
 
     unify m t1 t2
 
-type InferState =
-    { ForAllVarMap: TypeCstrForAllVar.VarMap
-      UncertainVarMap: TypeCstrUncertainVar.VarMap }
-
-let newForAllVar (s: InferState): ForAllVarId * InferState =
-    let id, fam = TypeCstrForAllVar.number s.ForAllVarMap in
-    (id, { s with ForAllVarMap = fam })
-    
-let newUncertainVar (s: InferState): UncertainVarId * InferState =
-    let id, fam = TypeCstrUncertainVar.number s.UncertainVarMap in
-    (id, { s with UncertainVarMap =  fam })
-
-let generalize (t: Type) (s: InferState): TypeCstr * State =
-    let rec generalize m t s =
+let generalize (t: Type) (s: InferState) : TypeCstr * InferState * Map<TVarId, UncertainVarId> =
+    let rec generalize t s m =
         match t with
         | TVar n ->
             match Map.tryFind n m with
-            | Some n -> (n, s)
+            | Some n' -> (TCUncertain n', s, m)
             | None ->
-                let n, s = newUncertainVar s
-            
-    generalize Map.empty t s
+                let n', s = newUncertainVarId s
+                (TCUncertain n', s, Map.add n n' m)
+        | TBool -> (TCBool, s, m)
+        | TNat -> (TCNat, s, m)
+        | TTuple(ts) ->
+            let tcs, s, m =
+                List.foldBack (fun t (tcs, s, m) -> let tc, s, m = generalize t s m in (tc :: tcs, s, m)) ts ([], s, m)
+
+            (TCTuple tcs, s, m)
+        | TUnion(un, cm) ->
+            let cm, s, m =
+                Map.fold
+                    (fun (cm, s, m) ctor ts ->
+                        let tcs, s, m =
+                            List.foldBack
+                                (fun t (tcs, s, m) -> let tc, s, m = generalize t s m in (tc :: tcs, s, m))
+                                ts
+                                ([], s, m) in
+
+                        let cm = Map.add ctor tcs cm in
+
+                        (cm, s, m))
+                    (Map.empty, s, m)
+                    cm in
+
+            (TCUnion(un, cm), s, m)
+        | TSet tElem ->
+            let tc, s, m = generalize t s m
+            (TCSet tc, s, m)
+        | TList tElem ->
+            let tc, s, m = generalize t s m
+            (TCList tc, s, m)
+        | TMap(tK, tV) ->
+            let tcK, s, m = generalize tK s m
+            let tcV, s, m = generalize tV s m
+            (TCMap(tcK, tcV), s, m)
+
+    generalize t s Map.empty
 
 let infer
     (cm: CtorMap)

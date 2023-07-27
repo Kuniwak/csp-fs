@@ -6,12 +6,15 @@ type VarMap =
     { Map: Map<UncertainVarId, TypeCstr>
       Next: UncertainVarId }
 
-let fix (id: UncertainVarId) (tc: TypeCstr) (m: VarMap) =
+let bind (id: UncertainVarId) (tc: TypeCstr) (m: VarMap) =
     { m with
         Map = Map.add id tc m.Map
         Next = m.Next }
 
-let number (m: VarMap) : UncertainVarId * VarMap =
+let resolve (id: UncertainVarId) (m: VarMap) : TypeCstr option = Map.tryFind id m.Map
+
+
+let newId (m: VarMap) : UncertainVarId * VarMap =
     (m.Next,
      { m with
          Map = m.Map
