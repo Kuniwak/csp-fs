@@ -14,9 +14,9 @@ type TypeError =
     | At of TypeError * string
     | TypeNotDerived of Type * TypeClassName
     | UnionNameMismatch of UnionName * UnionName
-    | NotUnion of Type
-    | NotTuple of Type
-    | TupleIndexOutOfBounds of Type * uint
+    | NotUnion of TypeCstr
+    | NotTuple of TypeCstr
+    | TupleIndexOutOfBounds of TypeCstr * uint
     | TupleLengthMismatch of Set<TypeCstr list>
     | TypeMismatch of Set<TypeCstr>
     | NoSuchCtor of Ctor
@@ -42,9 +42,9 @@ let formatTypeError (terr: TypeError) : string =
         | UnionNameMismatch(un1, un2) -> $"union name mismatch: %s{un1} vs %s{un2}"
         | TypeMismatch(s) ->
             let s = String.concat " vs " (List.map TypeCstr.format (Set.toList s)) in $"type mismatch: %s{s}"
-        | NotUnion t -> $"not union: %s{format t}"
-        | NotTuple t -> $"not tuple: %s{format t}"
-        | TupleIndexOutOfBounds(t, idx) -> $"tuple index out of bounds: %s{format t} at %d{idx}"
+        | NotUnion t -> $"not union: %s{TypeCstr.format t}"
+        | NotTuple t -> $"not tuple: %s{TypeCstr.format t}"
+        | TupleIndexOutOfBounds(t, idx) -> $"tuple index out of bounds: %s{TypeCstr.format t} at %d{idx}"
         | TupleLengthMismatch(s) ->
             let s =
                 String.concat " vs " (List.map (fun tcs -> TypeCstr.format (TCTuple tcs)) (Set.toList s))
@@ -95,6 +95,8 @@ let bindUncertainVar (id: UncertainVarId) (tc: TypeCstr) (s: InferState) : Infer
 let resolveUncertainVar (id: UncertainVarId) (s: InferState) : TypeCstr option =
     TypeCstrUncertainVar.resolve id s.UncertainVarMap
 
+let initState: InferState = { UncertainVarMap = TypeCstrUncertainVar.init }
+
 let resolve (s: InferState) (t: TypeCstr) : Result<TypeCstr, TypeError> =
     let rec resolve visited t =
         match t with
@@ -143,112 +145,96 @@ let resolve (s: InferState) (t: TypeCstr) : Result<TypeCstr, TypeError> =
 
     resolve (Set []) t
 
-let unify (s: InferState) (t1: TypeCstr) (t2: TypeCstr) : Result<Type * InferState, TypeError> =
-    let rec unify m t1 t2 =
-        match t1, t2 with
-        | TCUncertain n, _ ->
-            match resolve m t1, resolve m t2 with
-            | Ok(t1), Ok(t2) ->
-                match t1, t2 with
-                | TCUncertain n, _ -> Ok(t2, bindUncertainVar n t2 s)
-                | _, TCUncertain n -> Ok(t1, bindUncertainVar n t1 s)
-                | _, _ ->
-                    if t1 = t2 then
-                        Ok(t1, m)
-                    else
-                        Error(TypeMismatch(Set [ t1; t2 ]))
-            | Error(terr), _ -> Error terr // NOTE: Occurence check failed.
-            | _, Error(terr) -> Error terr // NOTE: Occurence check failed.
-        | _, TCUncertain n ->
-            match resolve m t1, resolve m t2 with
-            | Ok(t1), Ok(t2) ->
-                match t1, t2 with
-                | TCUncertain n, _ -> Ok(t2, bindUncertainVar n t2 s)
-                | _, TCUncertain n -> Ok(t1, bindUncertainVar n t1 s)
-                | _, _ ->
-                    if t1 = t2 then
-                        Ok(t1, s)
-                    else
-                        Error(TypeMismatch(Set [ t1; t2 ]))
-            | Error(terr), _ -> Error terr // NOTE: Occurence check failed.
-            | _, Error(terr) -> Error terr // NOTE: Occurence check failed.
-        | TCBool, TCBool -> Ok(TCBool, s)
-        | TCNat, TCNat -> Ok(TCNat, s)
-        | TCTuple(ts1), TCTuple(ts2) ->
-            if List.length ts1 = List.length ts2 then
-                Result.map
-                    (fun (ts, m) -> (TCTuple(ts), m))
-                    (List.foldBack
-                        (fun (i, t1, t2) ->
-                            Result.bind (fun (ts, m) ->
-                                match unify s t1 t2 with
-                                | Error terr ->
-                                    Error(
-                                        At(
-                                            terr,
-                                            $"the %d{i}th element of the tuple: {TypeCstr.format t1} vs {TypeCstr.format t2}"
+let unify (s: InferState) (tc1: TypeCstr) (tc2: TypeCstr) : Result<TypeCstr * InferState, TypeError> =
+    let rec unify s tc1 tc2 =
+        match resolve s tc1, resolve s tc2 with
+        | Error(terr), _ -> Error terr // NOTE: Occurence check failed.
+        | _, Error(terr) -> Error terr // NOTE: Occurence check failed.
+        | Ok(tc1), Ok(tc2) ->
+            match tc1, tc2 with
+            | TCUncertain n, _ -> Ok(tc2, bindUncertainVar n tc2 s)
+            | _, TCUncertain n -> Ok(tc1, bindUncertainVar n tc1 s)
+            | TCBool, TCBool -> Ok(TCBool, s)
+            | TCNat, TCNat -> Ok(TCNat, s)
+            | TCTuple(tcs1), TCTuple(tcs2) ->
+                if List.length tcs1 = List.length tcs2 then
+                    Result.map
+                        (fun (tcs, m) -> (TCTuple(tcs), m))
+                        (List.foldBack
+                            (fun (i, tc1, tc2) ->
+                                Result.bind (fun (tcs, s) ->
+                                    match unify s tc1 tc2 with
+                                    | Error terr ->
+                                        Error(
+                                            At(
+                                                terr,
+                                                $"the %d{i}th element of the tuple: {TypeCstr.format tc1} vs {TypeCstr.format tc2}"
+                                            )
                                         )
-                                    )
-                                | Ok(t, m) -> Ok(t :: ts, m)))
-                        (List.mapi (fun i (t1, t2) -> (i, t1, t2)) (List.zip ts1 ts2))
-                        (Ok([], s)))
-            else
-                Error(TupleLengthMismatch(Set [ts1; ts2]))
-        | TCUnion(un1, cm1), TCUnion(un2, cm2) ->
-            if un1 = un2 then
-                let ctors1 = Set.ofSeq (Map.keys cm1) in
-                let ctors2 = Set.ofSeq (Map.keys cm2) in
-                let ctors = Set.union ctors1 ctors2 in
+                                    | Ok(tc, m) -> Ok(tc :: tcs, m)))
+                            (List.mapi (fun i (tc1, tc2) -> (i, tc1, tc2)) (List.zip tcs1 tcs2))
+                            (Ok([], s)))
+                else
+                    Error(TupleLengthMismatch(Set [ tcs1; tcs2 ]))
+            | TCUnion(un1, cm1), TCUnion(un2, cm2) ->
+                if un1 = un2 then
+                    let ctors1 = Set.ofSeq (Map.keys cm1) in
+                    let ctors2 = Set.ofSeq (Map.keys cm2) in
+                    let ctors = Set.union ctors1 ctors2 in
 
-                let cmRes =
-                    Set.fold
-                        (fun accRes ctor ->
-                            match accRes with
-                            | Error terr -> Error terr
-                            | Ok(cm, m) ->
-                                match Map.tryFind ctor cm1, Map.tryFind ctor cm2 with
-                                | Some ts1, Some ts2 ->
-                                    Result.map
-                                        (fun (ts, m) -> (Map.add ctor ts cm, m))
-                                        (List.foldBack
-                                            (fun (t1, t2) ->
-                                                Result.bind (fun (ts, m) ->
-                                                    match unify m t1 t2 with
-                                                    | Ok(t, m) -> Ok(t :: ts, s)
-                                                    | Error terr ->
-                                                        Error(At(terr, $"the type list of %s{Ctor.format ctor}"))))
-                                            (List.zip ts1 ts2)
-                                            (Ok([], m)))
-                                | _ -> Error(CtorsMismatch(ctors1, ctors2)))
-                        (Ok(Map.empty, m))
-                        ctors
+                    let cmRes =
+                        Set.fold
+                            (fun accRes ctor ->
+                                match accRes with
+                                | Error terr -> Error terr
+                                | Ok(cm, m) ->
+                                    match Map.tryFind ctor cm1, Map.tryFind ctor cm2 with
+                                    | Some tcs1, Some tcs2 ->
+                                        Result.map
+                                            (fun (tcs, m) -> (Map.add ctor tcs cm, m))
+                                            (List.foldBack
+                                                (fun (tc1, tc2) ->
+                                                    Result.bind (fun (tcs, m) ->
+                                                        match unify m tc1 tc2 with
+                                                        | Ok(tc, s) -> Ok(tc :: tcs, s)
+                                                        | Error terr ->
+                                                            Error(At(terr, $"the type list of %s{Ctor.format ctor}"))))
+                                                (List.zip tcs1 tcs2)
+                                                (Ok([], m)))
+                                    | _ -> Error(CtorsMismatch(ctors1, ctors2)))
+                            (Ok(Map.empty, s))
+                            ctors
 
-                match cmRes with
-                | Ok(cm, m) -> Ok(TCUnion(un1, cm), s)
-                | Error terr -> Error terr
-            else
-                Error(UnionNameMismatch(un1, un2))
-        | TCList tcV1, TCList tcV2 ->
-            match unify m tcV1 tcV2 with
-            | Error terr -> Error(At(terr, $"the element type of the list: {TypeCstr.format t1} vs {TypeCstr.format t2}"))
-            | Ok(tcV, m) -> Ok(TCList(tcV), m)
-        | TCSet tcV1, TCSet tcV2 ->
-            match unify m tcV1 tcV2 with
-            | Error terr -> Error(At(terr, $"the element type of the set: {format t1} vs {format t2}"))
-            | Ok(tcV, m) -> Ok(TSet(tcV), m)
-        | TMap(tcK1, tcV1), TMap(tcK2, tcV2) ->
-            // NOTE: Do not use Result.mapError. It make hard to read.
-            match unify m tcK1 tcK2 with
-            | Error terr -> Error(At(terr, $"the key type of the set: {format t1} vs {format t2}"))
-            | Ok(tcK, m) ->
+                    match cmRes with
+                    | Ok(cm, s) -> Ok(TCUnion(un1, cm), s)
+                    | Error terr -> Error terr
+                else
+                    Error(UnionNameMismatch(un1, un2))
+            | TCList tcV1, TCList tcV2 ->
                 match unify s tcV1 tcV2 with
-                | Error terr -> Error(At(terr, $"the value type of the set: {format t1} vs {format t2}"))
-                | Ok(tcV, m) -> Ok(TMap(tcK, tcV), m)
-        | _, _ -> Error(TypeMismatch(Set [ t1; t2 ]))
+                | Error terr ->
+                    Error(At(terr, $"the element type of the list: {TypeCstr.format tc1} vs {TypeCstr.format tc2}"))
+                | Ok(tcV, s) -> Ok(TCList(tcV), s)
+            | TCSet tcV1, TCSet tcV2 ->
+                match unify s tcV1 tcV2 with
+                | Error terr ->
+                    Error(At(terr, $"the element type of the set: {TypeCstr.format tc1} vs {TypeCstr.format tc2}"))
+                | Ok(tcV, s) -> Ok(TCSet(tcV), s)
+            | TCMap(tcK1, tcV1), TCMap(tcK2, tcV2) ->
+                // NOTE: Do not use Result.mapError. It make hard to read.
+                match unify s tcK1 tcK2 with
+                | Error terr ->
+                    Error(At(terr, $"the key type of the set: {TypeCstr.format tc1} vs {TypeCstr.format tc2}"))
+                | Ok(tcK, s) ->
+                    match unify s tcV1 tcV2 with
+                    | Error terr ->
+                        Error(At(terr, $"the value type of the set: {TypeCstr.format tc1} vs {TypeCstr.format tc2}"))
+                    | Ok(tcV, s) -> Ok(TCMap(tcK, tcV), s)
+            | _, _ -> Error(TypeMismatch(Set [ tc1; tc2 ]))
 
-    unify m t1 t2
+    unify s tc1 tc2
 
-let generalize (t: Type) (s: InferState) : TypeCstr * InferState * Map<TVarId, UncertainVarId> =
+let generalize (t: Type) (s: InferState) : TypeCstr * InferState =
     let rec generalize t s m =
         match t with
         | TVar n ->
@@ -282,32 +268,42 @@ let generalize (t: Type) (s: InferState) : TypeCstr * InferState * Map<TVarId, U
 
             (TCUnion(un, cm), s, m)
         | TSet tElem ->
-            let tc, s, m = generalize t s m
+            let tc, s, m = generalize tElem s m
             (TCSet tc, s, m)
         | TList tElem ->
-            let tc, s, m = generalize t s m
+            let tc, s, m = generalize tElem s m
             (TCList tc, s, m)
         | TMap(tK, tV) ->
             let tcK, s, m = generalize tK s m
             let tcV, s, m = generalize tV s m
             (TCMap(tcK, tcV), s, m)
 
-    generalize t s Map.empty
+    let tc, s, _ = generalize t s Map.empty
+    (tc, s)
 
-let infer
-    (cm: CtorMap)
-    (s: InferState)
-    (tenv: TypeEnv)
-    (expr: Expr<unit>)
-    : Result<Expr<Type> * Map<TVarId, Type>, TypeError> =
-    let rec infer n m tenv (expr: Expr<unit>) =
+let generalizeAll (ts: Type list) (s: InferState) : TypeCstr list * InferState =
+    List.foldBack (fun t (tcs, s) -> let tc, s = generalize t s in (tc :: tcs, s)) ts ([], s)
+
+let rec instantiate (tc: TypeCstr) : Type =
+    match tc with
+    | TCUncertain(UncertainVarId u) -> TVar u
+    | TCBool -> TBool
+    | TCNat -> TNat
+    | TCTuple(tcs) -> TTuple(List.map instantiate tcs)
+    | TCUnion(un, cm) -> TUnion(un, Map.map (fun _ -> List.map instantiate) cm)
+    | TCSet(tc) -> TSet(instantiate tc)
+    | TCList(tc) -> TList(instantiate tc)
+    | TCMap(tcK, tcV) -> TMap(instantiate tcK, instantiate tcV)
+
+let infer (cm: CtorMap) (tenv: TypeEnv) (expr: Expr<unit>) : Result<Expr<Type> * InferState, TypeError> =
+    let rec infer s tenv expr =
         match expr with
-        | LitTrue(_, line) -> Ok(LitTrue(TBool, line), m, n)
-        | LitFalse(_, line) -> Ok(LitFalse(TBool, line), m, n)
-        | LitNat(n, _, line) -> Ok(LitNat(n, TNat, line), m, n)
+        | LitTrue(_, line) -> Ok(LitTrue(TCBool, line), s)
+        | LitFalse(_, line) -> Ok(LitFalse(TCBool, line), s)
+        | LitNat(n, _, line) -> Ok(LitNat(n, TCNat, line), s)
         | LitEmpty(t, _, line) ->
             if ClassEmpty.derivedBy t then
-                Ok(LitEmpty(t, t, line), m, n)
+                let tc, s = generalize t s in Ok(LitEmpty(t, tc, line), s)
             else
                 Error(atLine (TypeNotDerived(t, ClassEmpty.name)) line)
         | Union(ctor, exprs, _, line) ->
@@ -318,92 +314,93 @@ let infer
                 | None -> Error(NoSuchCtor ctor)
                 | Some ts ->
                     if List.length ts = List.length exprs then
-                        let t = TUnion(un, cm) in
+                        let cm, s =
+                            Map.fold
+                                (fun (cm, s) ctor ts -> let tcs, s = generalizeAll ts s in (Map.add ctor tcs cm, s))
+                                (Map.empty, s)
+                                cm in
+
+                        let tcs = Map.find ctor cm in
+                        let t = TCUnion(un, cm) in
 
                         let exprsRes =
                             List.foldBack
-                                (fun (t, expr) exprsRes ->
+                                (fun (tc, expr) exprsRes ->
                                     match exprsRes with
                                     | Error terr -> Error terr
-                                    | Ok(exprs, m, n) ->
-                                        match infer n m tenv expr with
+                                    | Ok(exprs, s) ->
+                                        match infer s tenv expr with
                                         | Error terr -> Error(atLine terr line)
-                                        | Ok(expr, m, n) ->
-                                            let t' = get expr in
+                                        | Ok(expr, s) ->
+                                            let tc' = get expr in
 
-                                            match unify m t t' with
+                                            match unify s tc tc' with
                                             | Error terr -> Error(atLine terr line)
-                                            | Ok(_, m) -> Ok(expr :: exprs, m, n))
-                                (List.zip ts exprs)
-                                (Ok([], m, n)) in
+                                            | Ok(_, s) -> Ok(expr :: exprs, s))
+                                (List.zip tcs exprs)
+                                (Ok([], s)) in
 
-                        Result.map (fun (exprs, m, n) -> (Union(ctor, exprs, t, line), m, n)) exprsRes
+                        Result.map (fun (exprs, s) -> (Union(ctor, exprs, t, line), s)) exprsRes
                     else
                         Error(UnionValueLenMismatch(ctor, List.length exprs, List.length ts))
 
         | If(exprCond, exprThen, exprElse, _, line) ->
-            match infer n m tenv exprCond with
+            match infer s tenv exprCond with
             | Error terr -> Error(atLine terr line)
-            | Ok(exprCond, m, n) ->
+            | Ok(exprCond, s) ->
                 let tcCond = get exprCond in
 
-                match unify m tcCond TBool with
+                match unify s tcCond TCBool with
                 | Error terr -> Error(atLine terr line)
-                | Ok(_, m) ->
-                    match infer n m tenv exprThen with
+                | Ok(_, s) ->
+                    match infer s tenv exprThen with
                     | Error terr -> Error(atLine terr line)
-                    | Ok(exprThen, m, n) ->
+                    | Ok(exprThen, s) ->
                         let tcThen = get exprThen in
 
-                        match infer n m tenv exprElse with
+                        match infer s tenv exprElse with
                         | Error terr -> Error(atLine terr line)
-                        | Ok(exprElse, m, n) ->
+                        | Ok(exprElse, s) ->
                             let tcElse = get exprElse in
 
-                            match unify m tcThen tcElse with
+                            match unify s tcThen tcElse with
                             | Error terr -> Error(atLine terr line)
-                            | Ok(t, m) -> Ok(If(exprCond, exprThen, exprElse, t, line), m, n)
+                            | Ok(t, s) -> Ok(If(exprCond, exprThen, exprElse, t, line), s)
         | Match(exprUnion, exprMap, _, line) ->
-            match infer n m tenv exprUnion with
+            match infer s tenv exprUnion with
             | Error terr -> Error(atLine terr line)
-            | Ok(exprUnion, m, n) ->
+            | Ok(exprUnion, s) ->
                 let tUnion = get exprUnion in
 
                 match tUnion with
-                | TUnion(_, cm) ->
-                    let inferClause
-                        n
-                        m
-                        ctorOpt
-                        varOpts
-                        expr
-                        : Result<Expr<Type> * Map<TVarId, Type> * TVarId, TypeError> =
+                | TCUnion(_, cm) ->
+                    let inferClause s ctorOpt varOpts expr : Result<Expr<TypeCstr> * InferState, TypeError> =
                         match ctorOpt with
                         | Some ctor ->
                             match Map.tryFind ctor cm with
                             | None -> Error(atLine (NoSuchCtor ctor) line)
-                            | Some ts ->
-                                if List.length ts = List.length varOpts then
+                            | Some tcs ->
+                                if List.length tcs = List.length varOpts then
                                     let tenv =
                                         List.fold
-                                            (fun tenv (t, varOpt) ->
+                                            (fun tenv (tc, varOpt) ->
                                                 match varOpt with
-                                                | Some var -> Map.add var t tenv
+                                                | Some var -> Map.add var tc tenv
                                                 | None -> tenv)
                                             tenv
-                                            (List.zip ts varOpts) in
+                                            (List.zip tcs varOpts) in
 
-                                    match infer n m tenv expr with
+                                    match infer s tenv expr with
                                     | Error terr -> Error(atLine terr line)
-                                    | Ok(expr, m, n) -> Ok(expr, m, n)
+                                    | Ok(expr, s) -> Ok(expr, s)
                                 else
-                                    Error(UnionValueLenMismatch(ctor, List.length varOpts, List.length ts))
+                                    Error(UnionValueLenMismatch(ctor, List.length varOpts, List.length tcs))
                         | None ->
                             Result.bind
                                 (fun tenv ->
-                                    match infer n m tenv expr with
+                                    match infer s tenv expr with
                                     | Error terr -> Error(atLine terr line)
-                                    | Ok(expr, m, n) -> Ok(expr, m, n))
+                                    | Ok(expr, s) -> Ok(expr, s))
                                 (match List.length varOpts with
                                  | 1 ->
                                      match List.head varOpts with
@@ -417,201 +414,214 @@ let infer
                             (fun accRes ctorOpt (vars, expr) ->
                                 match accRes with
                                 | Error s -> Error s
-                                | Ok(t, exprMap, n, m) ->
+                                | Ok(tc, exprMap, s) ->
                                     Result.bind
-                                        (fun (expr, m, n) ->
-                                            match unify m t (get expr) with
+                                        (fun (expr, s) ->
+                                            match unify s tc (get expr) with
                                             | Error terr -> Error(atLine terr line)
-                                            | Ok(t, m) -> Ok(t, Map.add ctorOpt (vars, expr) exprMap, n, m))
-                                        (inferClause n m ctorOpt vars expr))
+                                            | Ok(tc, s) -> Ok(tc, Map.add ctorOpt (vars, expr) exprMap, s))
+                                        (inferClause s ctorOpt vars expr))
                             (fun ctorOpt (vars, expr) ->
                                 Result.map
-                                    (fun (expr, m, n) -> (get expr, Map [ (ctorOpt, (vars, expr)) ], n, m))
-                                    (inferClause n m ctorOpt vars expr))
+                                    (fun (expr, s) -> (get expr, Map [ (ctorOpt, (vars, expr)) ], s))
+                                    (inferClause s ctorOpt vars expr))
                             exprMap in
 
                     match accRes with
                     | None -> Error(atLine EmptyMatch line)
                     | Some(Error terr) -> Error(atLine terr line)
-                    | Some(Ok(t, exprMap, n, m)) -> Ok(Match(exprUnion, exprMap, t, line), m, n)
+                    | Some(Ok(tc, exprMap, s)) -> Ok(Match(exprUnion, exprMap, tc, line), s)
                 | _ -> Error(atLine (NotUnion(tUnion)) line)
         | VarRef(var, _, line) ->
             match Map.tryFind var tenv with
-            | Some t -> Ok(VarRef(var, t, line), m, n)
+            | Some tc -> Ok(VarRef(var, tc, line), s)
             | None -> Error(atLine (UnboundVariable var) line)
         | Eq(t, expr1, expr2, _, line) ->
             if ClassEq.derivedBy t then
-                match infer n m tenv expr1 with
+                match infer s tenv expr1 with
                 | Error terr -> Error(atLine terr line)
-                | Ok(expr1, m, n) ->
-                    let t1 = get expr1 in
+                | Ok(expr1, s) ->
+                    let tc1 = get expr1 in
 
-                    match infer n m tenv expr2 with
+                    match infer s tenv expr2 with
                     | Error terr -> Error(atLine terr line)
-                    | Ok(expr2, m, n) ->
-                        let t2 = get expr2 in
+                    | Ok(expr2, s) ->
+                        let tc2 = get expr2 in
 
-                        match unify m t1 t2 with
+                        match unify s tc1 tc2 with
                         | Error terr -> Error(atLine terr line)
-                        | Ok(tcEq, m) ->
-                            match unify m tcEq t with
+                        | Ok(tcEq, s) ->
+                            let tc, s = generalize t s in
+
+                            match unify s tcEq tc with
                             | Error terr -> Error(atLine terr line)
-                            | Ok(_, m) -> Ok(Eq(t, expr1, expr2, TBool, line), m, n)
+                            | Ok(_, s) -> Ok(Eq(t, expr1, expr2, TCBool, line), s)
             else
                 Error(atLine (TypeNotDerived(t, ClassEq.name)) line)
         | BoolNot(expr, _, line) ->
-            match infer n m tenv expr with
+            match infer s tenv expr with
             | Error terr -> Error(atLine terr line)
-            | Ok(expr, m, n) ->
+            | Ok(expr, s) ->
                 let t = get expr in
 
-                match unify m t TBool with
+                match unify s t TCBool with
                 | Error terr -> Error(atLine terr line)
-                | Ok(t, m) -> Ok(BoolNot(expr, t, line), m, n)
+                | Ok(t, s) -> Ok(BoolNot(expr, t, line), s)
         | Less(t, expr1, expr2, _, line) ->
             if ClassOrd.derivedBy t then
-                match infer n m tenv expr1 with
+                match infer s tenv expr1 with
                 | Error terr -> Error(atLine terr line)
-                | Ok(expr1, m, n) ->
-                    let t1 = get expr1 in
+                | Ok(expr1, s) ->
+                    let tc1 = get expr1 in
 
-                    match infer n m tenv expr2 with
+                    match infer s tenv expr2 with
                     | Error terr -> Error(atLine terr line)
-                    | Ok(expr2, m, n) ->
-                        let t2 = get expr2 in
+                    | Ok(expr2, s) ->
+                        let tc2 = get expr2 in
 
-                        match unify m t1 t2 with
+                        match unify s tc1 tc2 with
                         | Error terr -> Error(atLine terr line)
-                        | Ok(tcLess, m) ->
-                            match unify m tcLess t with
+                        | Ok(tcLess, s) ->
+                            let tc, s = generalize t s in
+
+                            match unify s tcLess tc with
                             | Error terr -> Error(atLine terr line)
-                            | Ok(_, m) -> Ok(Less(t, expr1, expr2, TBool, line), m, n)
+                            | Ok(_, s) -> Ok(Less(t, expr1, expr2, TCBool, line), s)
             else
                 Error(atLine (TypeNotDerived(t, ClassOrd.name)) line)
         | Plus(t, expr1, expr2, _, line) ->
             if ClassPlus.derivedBy t then
-                match infer n m tenv expr1 with
+                match infer s tenv expr1 with
                 | Error terr -> Error(atLine terr line)
-                | Ok(expr1, m, n) ->
-                    let t1 = get expr1 in
+                | Ok(expr1, s) ->
+                    let tc1 = get expr1 in
 
-                    match infer n m tenv expr2 with
+                    match infer s tenv expr2 with
                     | Error terr -> Error(atLine terr line)
-                    | Ok(expr2, m, n) ->
-                        let t2 = get expr2 in
+                    | Ok(expr2, s) ->
+                        let tc2 = get expr2 in
 
-                        match unify m t1 t2 with
+                        match unify s tc1 tc2 with
                         | Error terr -> Error(atLine terr line)
-                        | Ok(tcPlus, m) ->
-                            match unify m tcPlus t with
+                        | Ok(tcPlus, s) ->
+                            let tc, s = generalize t s in
+
+                            match unify s tcPlus tc with
                             | Error terr -> Error(atLine terr line)
-                            | Ok(tcPlus, m) -> Ok(Plus(t, expr1, expr2, tcPlus, line), m, n)
+                            | Ok(tcPlus, s) -> Ok(Plus(t, expr1, expr2, tcPlus, line), s)
             else
                 Error(atLine (TypeNotDerived(t, ClassPlus.name)) line)
         | Minus(t, expr1, expr2, _, line) ->
             if ClassMinus.derivedBy t then
-                match infer n m tenv expr1 with
+                match infer s tenv expr1 with
                 | Error terr -> Error(atLine terr line)
-                | Ok(expr1, m, n) ->
-                    let t1 = get expr1 in
+                | Ok(expr1, s) ->
+                    let tc1 = get expr1 in
 
-                    match infer n m tenv expr2 with
+                    match infer s tenv expr2 with
                     | Error terr -> Error(atLine terr line)
-                    | Ok(expr2, m, n) ->
-                        let t2 = get expr2 in
+                    | Ok(expr2, s) ->
+                        let tc2 = get expr2 in
 
-                        match unify m t1 t2 with
+                        match unify s tc1 tc2 with
                         | Error terr -> Error(atLine terr line)
-                        | Ok(tcMinus, m) ->
-                            match unify m tcMinus t with
+                        | Ok(tcMinus, s) ->
+                            let tc, s = generalize t s in
+
+                            match unify s tcMinus tc with
                             | Error terr -> Error(atLine terr line)
-                            | Ok(tcMinus, m) -> Ok(Minus(t, expr1, expr2, tcMinus, line), m, n)
+                            | Ok(tcMinus, s) -> Ok(Minus(t, expr1, expr2, tcMinus, line), s)
             else
                 Error(atLine (TypeNotDerived(t, ClassMinus.name)) line)
         | Times(t, expr1, expr2, _, line) ->
             if ClassTimes.derivedBy t then
-                match infer n m tenv expr1 with
+                match infer s tenv expr1 with
                 | Error terr -> Error(atLine terr line)
-                | Ok(expr1, m, n) ->
-                    let t1 = get expr1 in
+                | Ok(expr1, s) ->
+                    let tc1 = get expr1 in
 
-                    match infer n m tenv expr2 with
+                    match infer s tenv expr2 with
                     | Error terr -> Error(atLine terr line)
-                    | Ok(expr2, m, n) ->
-                        let t2 = get expr2 in
+                    | Ok(expr2, s) ->
+                        let tc2 = get expr2 in
 
-                        match unify m t1 t2 with
+                        match unify s tc1 tc2 with
                         | Error terr -> Error(atLine terr line)
-                        | Ok(tcTimes, m) ->
-                            match unify m tcTimes t with
+                        | Ok(tcTimes, s) ->
+                            let tc, s = generalize t s in
+
+                            match unify s tcTimes tc with
                             | Error terr -> Error(atLine terr line)
-                            | Ok(tcTimes, m) -> Ok(Times(t, expr1, expr2, tcTimes, line), m, n)
+                            | Ok(tcTimes, s) -> Ok(Times(t, expr1, expr2, tcTimes, line), s)
             else
                 Error(atLine (TypeNotDerived(t, ClassTimes.name)) line)
         | Size(t, expr, _, line) ->
             if ClassSize.derivedBy t then
-                match infer n m tenv expr with
+                match infer s tenv expr with
                 | Error terr -> Error(atLine terr line)
-                | Ok(expr, m, n) ->
-                    let t' = get expr in
+                | Ok(expr, s) ->
+                    let tc, s = generalize t s in
+                    let tc' = get expr in
 
-                    match unify m t t' with
+                    match unify s tc tc' with
                     | Error terr -> Error(atLine terr line)
-                    | Ok(_, m) -> Ok(Size(t, expr, TNat, line), m, n)
+                    | Ok(_, s) -> Ok(Size(t, expr, TCNat, line), s)
             else
                 Error(atLine (TypeNotDerived(t, ClassSize.name)) line)
         | Filter(t, var, expr1, expr2, _, line) ->
             if ClassEnum.derivedBy t then
-                let elemT =
+                let elemTC, s =
                     match t with
-                    | TSet tElem -> tElem
-                    | TList tElem -> tElem
-                    | TMap(tK, _) -> tK
+                    | TSet tElem -> generalize tElem s
+                    | TList tElem -> generalize tElem s
+                    | TMap(tK, _) -> generalize tK s
                     | _ -> failwith $"cannot get element type: %s{format t}" in
 
-                match infer n m (Map.add var elemT tenv) expr1 with
+                match infer s (Map.add var elemTC tenv) expr1 with
                 | Error terr -> Error(atLine terr line)
-                | Ok(expr1, m, n) ->
-                    let t1 = get expr1 in
+                | Ok(expr1, s) ->
+                    let tc1 = get expr1 in
 
-                    match unify m t1 TBool with
+                    match unify s tc1 TCBool with
                     | Error terr -> Error(atLine terr line)
-                    | Ok(_, m) ->
-                        match infer n m tenv expr2 with
+                    | Ok(_, s) ->
+                        match infer s tenv expr2 with
                         | Error terr -> Error(atLine terr line)
-                        | Ok(expr2, m, n) ->
-                            let t2 = get expr2 in
+                        | Ok(expr2, s) ->
+                            let tc, s = generalize t s in
+                            let tc2 = get expr2 in
 
-                            match unify m t2 t with
+                            match unify s tc2 tc with
                             | Error terr -> Error(atLine terr line)
-                            | Ok(tcFilter, m) -> Ok(Filter(t, var, expr1, expr2, tcFilter, line), m, n)
+                            | Ok(tcFilter, s) -> Ok(Filter(t, var, expr1, expr2, tcFilter, line), s)
             else
                 Error(atLine (TypeNotDerived(t, ClassEnum.name)) line)
         | Exists(t, var, expr1, expr2, _, line) ->
             if ClassEnum.derivedBy t then
-                let elemT =
+                let elemTC, s =
                     match t with
-                    | TSet tElem -> tElem
-                    | TList tElem -> tElem
-                    | TMap(tK, _) -> tK
+                    | TSet tElem -> generalize tElem s
+                    | TList tElem -> generalize tElem s
+                    | TMap(tK, _) -> generalize tK s
                     | _ -> failwith $"cannot get element type: %s{format t}" in
 
-                match infer n m (Map.add var elemT tenv) expr1 with
+                match infer s (Map.add var elemTC tenv) expr1 with
                 | Error terr -> Error(atLine terr line)
-                | Ok(expr1, m, n) ->
-                    let t1 = get expr1 in
+                | Ok(expr1, s) ->
+                    let tc1 = get expr1 in
 
-                    match unify m t1 TBool with
+                    match unify s tc1 TCBool with
                     | Error terr -> Error(atLine terr line)
-                    | Ok(_, m) ->
-                        match infer n m tenv expr2 with
+                    | Ok(_, s) ->
+                        match infer s tenv expr2 with
                         | Error terr -> Error(atLine terr line)
-                        | Ok(expr2, m, n) ->
-                            let t2 = get expr2 in
+                        | Ok(expr2, s) ->
+                            let tc2 = get expr2 in
+                            let tc, s = generalize t s in
 
-                            match unify m t2 t with
+                            match unify s tc2 tc with
                             | Error terr -> Error(atLine terr line)
-                            | Ok(_, m) -> Ok(Exists(t, var, expr1, expr2, TBool, line), m, n)
+                            | Ok(_, s) -> Ok(Exists(t, var, expr1, expr2, TCBool, line), s)
             else
                 Error(atLine (TypeNotDerived(t, ClassEnum.name)) line)
         | Tuple(exprs, _, line) ->
@@ -620,160 +630,167 @@ let infer
                     (fun expr accRes ->
                         match accRes with
                         | Error terr -> Error terr
-                        | Ok(exprs, m, n) ->
-                            match infer n m tenv expr with
+                        | Ok(exprs, s) ->
+                            match infer s tenv expr with
                             | Error terr -> Error terr
-                            | Ok(expr, m, n) -> Ok(expr :: exprs, m, n))
+                            | Ok(expr, s) -> Ok(expr :: exprs, s))
                     exprs
-                    (Ok([], m, n)) in
+                    (Ok([], s)) in
 
             match accRes with
-            | Ok(exprs, m, n) -> Ok(Tuple(exprs, TTuple(List.map get exprs), line), m, n)
+            | Ok(exprs, s) -> Ok(Tuple(exprs, TCTuple(List.map get exprs), line), s)
             | Error terr -> Error(atLine terr line)
         | TupleNth(exprTuple, idx, _, line) ->
-            match infer n m tenv exprTuple with
+            match infer s tenv exprTuple with
             | Error terr -> Error(atLine terr line)
-            | Ok(exprTuple, m, n) ->
+            | Ok(exprTuple, s) ->
                 let tcTuple = get exprTuple in
 
                 match tcTuple with
-                | TTuple(ts) ->
+                | TCTuple(ts) ->
                     match List.tryItem (Checked.int idx) ts with
-                    | Some t -> Ok(TupleNth(exprTuple, idx, t, line), m, n)
+                    | Some t -> Ok(TupleNth(exprTuple, idx, t, line), s)
                     | None -> Error(At(TupleIndexOutOfBounds(tcTuple, idx), $"line %s{line}"))
                 | _ -> Error(At(NotTuple(tcTuple), $"line %s{line}"))
 
         | ListCons(exprElem, exprList, _, line) ->
-            match infer n m tenv exprElem with
+            match infer s tenv exprElem with
             | Error terr -> Error(atLine terr line)
-            | Ok(exprElem, m, n) ->
+            | Ok(exprElem, s) ->
                 let tcElem = get exprElem in
 
-                match infer n m tenv exprList with
+                match infer s tenv exprList with
                 | Error terr -> Error(atLine terr line)
-                | Ok(exprList, m, n) ->
+                | Ok(exprList, s) ->
                     let tcList = get exprList in
 
-                    match unify m tcList (TList tcElem) with
+                    match unify s tcList (TCList tcElem) with
                     | Error terr -> Error(atLine terr line)
-                    | Ok(tcList, m) -> Ok(ListCons(exprElem, exprList, tcList, line), m, n)
+                    | Ok(tcList, s) -> Ok(ListCons(exprElem, exprList, tcList, line), s)
         | ListNth(exprList, exprIdx, _, line) ->
-            match infer n m tenv exprList with
+            match infer s tenv exprList with
             | Error terr -> Error(atLine terr line)
-            | Ok(exprList, m, n) ->
+            | Ok(exprList, s) ->
                 let tcList = get exprList in
+                let u, s = newUncertainVarId s in
 
-                match unify m tcList (TList(TVar n)) with
+                match unify s tcList (TCList(TCUncertain u)) with
                 | Error terr -> Error(atLine terr line)
-                | Ok(TList(tcElem), m) ->
-                    match infer (n + 1u) m tenv exprIdx with
+                | Ok(TCList(tcElem), s) ->
+                    match infer s tenv exprIdx with
                     | Error terr -> Error(atLine terr line)
-                    | Ok(exprIdx, m, n) ->
+                    | Ok(exprIdx, s) ->
                         let tcIdx = get exprIdx in
 
-                        match unify m tcIdx TNat with
+                        match unify s tcIdx TCNat with
                         | Error terr -> Error(atLine terr line)
-                        | Ok(_, m) -> Ok(ListNth(exprList, exprIdx, tcElem, line), m, n)
+                        | Ok(_, s) -> Ok(ListNth(exprList, exprIdx, tcElem, line), s)
                 | x -> failwith $"unification between TList and any must return TList, but come: %A{x}"
         | SetRange(exprLower, exprUpper, _, line) ->
-            match infer n m tenv exprLower with
+            match infer s tenv exprLower with
             | Error terr -> Error(atLine terr line)
-            | Ok(exprLower, m, n) ->
+            | Ok(exprLower, s) ->
                 let tcLower = get exprLower in
 
-                match unify m tcLower TNat with
+                match unify s tcLower TCNat with
                 | Error terr -> Error(atLine terr line)
-                | Ok(_, m) ->
-                    match infer n m tenv exprUpper with
+                | Ok(_, s) ->
+                    match infer s tenv exprUpper with
                     | Error terr -> Error(atLine terr line)
-                    | Ok(exprUpper, m, n) ->
+                    | Ok(exprUpper, s) ->
                         let tcUpper = get exprUpper in
 
-                        match unify m tcUpper TNat with
+                        match unify s tcUpper TCNat with
                         | Error terr -> Error(atLine terr line)
-                        | Ok(_, m) -> Ok(ListNth(exprLower, exprUpper, TSet(TNat), line), m, n)
+                        | Ok(_, s) -> Ok(ListNth(exprLower, exprUpper, TCSet(TCNat), line), s)
 
         | SetInsert(exprElem, exprSet, _, line) ->
-            match infer n m tenv exprElem with
+            match infer s tenv exprElem with
             | Error terr -> Error(atLine terr line)
-            | Ok(exprElem, m, n) ->
+            | Ok(exprElem, s) ->
                 let tcElem = get exprElem in
 
-                match infer n m tenv exprSet with
+                match infer s tenv exprSet with
                 | Error terr -> Error(atLine terr line)
-                | Ok(exprSet, m, n) ->
+                | Ok(exprSet, s) ->
                     let tcSet = get exprSet in
 
-                    match unify m tcSet (TSet(tcElem)) with
+                    match unify s tcSet (TCSet(tcElem)) with
                     | Error terr -> Error(atLine terr line)
-                    | Ok(tcSet, m) -> Ok(SetInsert(exprElem, exprSet, tcSet, line), m, n)
+                    | Ok(tcSet, s) -> Ok(SetInsert(exprElem, exprSet, tcSet, line), s)
 
         | SetMem(exprElem, exprSet, _, line) ->
-            match infer n m tenv exprElem with
+            match infer s tenv exprElem with
             | Error terr -> Error(atLine terr line)
-            | Ok(exprElem, m, n) ->
+            | Ok(exprElem, s) ->
                 let tcElem = get exprElem in
 
-                match infer n m tenv exprSet with
+                match infer s tenv exprSet with
                 | Error terr -> Error(atLine terr line)
-                | Ok(exprSet, m, n) ->
+                | Ok(exprSet, s) ->
                     let tcSet = get exprSet in
 
-                    match unify m tcSet (TSet(tcElem)) with
+                    match unify s tcSet (TCSet(tcElem)) with
                     | Error terr -> Error(atLine terr line)
-                    | Ok(_, m) -> Ok(SetMem(exprElem, exprSet, TBool, line), m, n)
+                    | Ok(_, s) -> Ok(SetMem(exprElem, exprSet, TCBool, line), s)
 
         | MapAdd(exprKey, exprVal, exprMap, _, line) ->
-            match infer n m tenv exprKey with
+            match infer s tenv exprKey with
             | Error terr -> Error(atLine terr line)
-            | Ok(exprKey, m, n) ->
+            | Ok(exprKey, s) ->
                 let tcKey = get exprKey in
 
-                match infer n m tenv exprVal with
+                match infer s tenv exprVal with
                 | Error terr -> Error(atLine terr line)
-                | Ok(exprVal, m, n) ->
+                | Ok(exprVal, s) ->
                     let tcVal = get exprVal in
 
-                    match infer n m tenv exprMap with
+                    match infer s tenv exprMap with
                     | Error terr -> Error(atLine terr line)
-                    | Ok(exprMap, m, n) ->
+                    | Ok(exprMap, s) ->
                         let tcMap = get exprMap in
 
-                        match unify m tcMap (TMap(tcKey, tcVal)) with
+                        match unify s tcMap (TCMap(tcKey, tcVal)) with
                         | Error terr -> Error(atLine terr line)
-                        | Ok(tcMap, m) -> Ok(MapAdd(exprKey, exprVal, exprMap, tcMap, line), m, n)
+                        | Ok(tcMap, s) -> Ok(MapAdd(exprKey, exprVal, exprMap, tcMap, line), s)
 
         | MapFindOpt(exprKey, exprMap, _, line) ->
-            match infer n m tenv exprKey with
+            match infer s tenv exprKey with
             | Error terr -> Error(atLine terr line)
-            | Ok(exprKey, m, n) ->
+            | Ok(exprKey, s) ->
                 let tcKey = get exprKey in
 
-                match infer n m tenv exprMap with
+                match infer s tenv exprMap with
                 | Error terr -> Error(atLine terr line)
-                | Ok(exprMap, m, n) ->
+                | Ok(exprMap, s) ->
                     let tcMap = get exprMap in
+                    let u, s = newUncertainVarId s in
 
-                    match unify m tcMap (TMap(tcKey, TVar(n))) with
+                    match unify s tcMap (TCMap(tcKey, TCUncertain u)) with
                     | Error terr -> Error(atLine terr line)
-                    | Ok(TMap(_, tVal), m) ->
+                    | Ok(TCMap(_, tcVal), s) ->
                         Ok(
                             MapFindOpt(
                                 exprKey,
                                 exprMap,
-                                TUnion("option", Map [ (Ctor "Some", [ tVal ]); Ctor "None", [] ]),
+                                TCUnion("option", Map [ (Ctor "Some", [ tcVal ]); Ctor "None", [] ]),
                                 line
                             ),
-                            m,
-                            n + 1u
+                            s
                         )
                     | x -> failwith $"unification between TMap and any must return TMap, but come: %A{x}"
-        | Univ(t, _, line) -> Ok(Univ(t, TSet t, line), m, n)
+        | Univ(t, _, line) -> let tc, s = generalize t s in Ok(Univ(t, TCSet tc, line), s)
 
-    match infer n tenv expr with
+    let tcenv, s =
+        Map.fold
+            (fun (tcenv, s) var t -> let tc, s = generalize t s in (Map.add var tc tcenv, s))
+            (Map.empty, initState)
+            tenv
+
+    match infer s tcenv expr with
     | Error err -> Error err
-    | Ok(expr, m, _) ->
-        let expr = map (get >> resolve m) expr in
+    | Ok(expr, s) ->
+        let expr = map (get >> resolve s) expr in
 
         let exprRes =
             fold (fun accRes expr -> Result.bind (fun _ -> Result.map (fun _ -> ()) (get expr)) accRes) (Ok(())) expr
@@ -784,8 +801,9 @@ let infer
                 map
                     (fun expr ->
                         match get expr with
-                        | Ok t -> t
+                        | Ok tc -> instantiate tc
                         | Error err -> failwith (formatTypeError err))
-                    expr
+                    expr,
+                s
             )
         | Error err -> Error err

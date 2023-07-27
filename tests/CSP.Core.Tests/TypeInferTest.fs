@@ -7,14 +7,12 @@ open CSP.Core.Expr
 open CSP.Core.Ctor
 open CSP.Core.ExprShorthand
 open CSP.Core.TypeShorthand
+open CSP.Core.TypeCstrShorthand
 open CSP.Core.TypeInfer
 
 let tcFmt (p: uint * Type.Type) =
     match p with
     | n, t -> $"({n}, {Type.format t})"
-
-let fmtTVarMapping (m: Map<Type.TVarId, Type.Type>) =
-   String.concat "\n" (List.map (fun (u, t) -> $"  %s{Type.format (tVar u)} -> %s{Type.format t}") (Map.toList m))
 
 type ExprTestCaseOk =
     { Expr: Expr<unit>
@@ -167,8 +165,8 @@ let inferExprOk (tc: ExprTestCaseOk) =
     let cm = CtorMap.from [ tOption; tFoo ] in
     let tenv = TypeEnv.from [ ("GLOBAL", tBool) ] in
 
-    match infer cm 0u Map.empty tenv tc.Expr with
-    | Ok(actual, m) ->
+    match infer cm tenv tc.Expr with
+    | Ok(actual, s) ->
         Assert.True(
             tc.Expected = get actual,
             $"""line %s{tc.Line}
@@ -179,7 +177,7 @@ Inferred as:
 %s{Expr.format typeAnnotation actual}
 
 TVar mapping:
-%s{fmtTVarMapping m}
+%s{TypeCstrUncertainVar.format s.UncertainVarMap}
 """
         )
     | Error terr ->
@@ -207,22 +205,22 @@ let exprTestCasesError: obj[] list =
            Expected = UnionValueLenMismatch(Ctor "Foo", 1, 0)
            Line = __LINE__ } |]
       [| { Expr = ifExpr litUnit litUnit litFalse
-           Expected = TypeMismatch(Set [tUnit; tBool])
+           Expected = TypeMismatch(Set [tcUnit; tcBool])
            Line = __LINE__ } |]
       [| { Expr = ifExpr litTrue litUnit litFalse
-           Expected = TypeMismatch(Set [tUnit; tBool])
+           Expected = TypeMismatch(Set [tcUnit; tcBool])
            Line = __LINE__ } |]
       [| { Expr = matchExpr litUnit [ (None, [], litTrue) ]
-           Expected = NotUnion(tUnit)
+           Expected = NotUnion(tcUnit)
            Line = __LINE__ } |]
       [| { Expr = matchExpr (ctor "Some" [ litUnit ]) [ (Some("Some"), [ "_" ], litTrue); (Some("None"), [], litUnit) ]
-           Expected = TypeMismatch(Set [tUnit; tBool])
+           Expected = TypeMismatch(Set [tcUnit; tcBool])
            Line = __LINE__ } |]
       [| { Expr = matchExpr (ctor "Some" [ litUnit ]) [ (Some("Some"), [ "_" ], litTrue); (None, [ "_" ], litUnit) ]
-           Expected = TypeMismatch(Set [tBool; tUnit])
+           Expected = TypeMismatch(Set [tcBool; tcUnit])
            Line = __LINE__ } |]
       [| { Expr = matchExpr (ctor "Some" [ litUnit ]) [ (Some("Some"), [ "x" ], varRef "x"); (None, [ "_" ], litTrue) ]
-           Expected = TypeMismatch(Set [tUnit; tBool])
+           Expected = TypeMismatch(Set [tcUnit; tcBool])
            Line = __LINE__ } |]
       [| { Expr = matchExpr (ctor "Foo" []) []
            Expected = EmptyMatch
@@ -234,142 +232,142 @@ let exprTestCasesError: obj[] list =
            Expected = UnboundVariable(Var "undefined")
            Line = __LINE__ } |]
       [| { Expr = eq tBool litFalse litUnit
-           Expected = TypeMismatch(Set [tBool; tUnit])
+           Expected = TypeMismatch(Set [tcBool; tcUnit])
            Line = __LINE__ } |]
       [| { Expr = eq tBool litUnit litFalse
-           Expected = TypeMismatch(Set [tUnit; tBool])
+           Expected = TypeMismatch(Set [tcUnit; tcBool])
            Line = __LINE__ } |]
       [| { Expr = eq tBool litUnit litUnit
-           Expected = TypeMismatch(Set [tUnit; tBool])
+           Expected = TypeMismatch(Set [tcUnit; tcBool])
            Line = __LINE__ } |]
       [| { Expr = less tNat litFalse (litNat 0u)
-           Expected = TypeMismatch(Set [tBool; tNat])
+           Expected = TypeMismatch(Set [tcBool; tcNat])
            Line = __LINE__ } |]
       [| { Expr = less tNat (litNat 0u) litFalse
-           Expected = TypeMismatch(Set [tNat; tBool])
+           Expected = TypeMismatch(Set [tcNat; tcBool])
            Line = __LINE__ } |]
       [| { Expr = less tBool litTrue litFalse
            Expected = TypeNotDerived(tBool, ClassOrd.name)
            Line = __LINE__ } |]
       [| { Expr = boolNot litUnit
-           Expected = TypeMismatch(Set [tUnit; tBool])
+           Expected = TypeMismatch(Set [tcUnit; tcBool])
            Line = __LINE__ } |]
       [| { Expr = plus tUnit litUnit litUnit
            Expected = TypeNotDerived(tUnit, ClassPlus.name)
            Line = __LINE__ } |]
       [| { Expr = plus tBool litUnit litTrue
-           Expected = TypeMismatch(Set [tUnit; tBool])
+           Expected = TypeMismatch(Set [tcUnit; tcBool])
            Line = __LINE__ } |]
       [| { Expr = plus tBool litTrue litUnit
-           Expected = TypeMismatch(Set [tBool; tUnit])
+           Expected = TypeMismatch(Set [tcBool; tcUnit])
            Line = __LINE__ } |]
       [| { Expr = minus tUnit litUnit litUnit
            Expected = TypeNotDerived(tUnit, ClassMinus.name)
            Line = __LINE__ } |]
       [| { Expr = minus tNat litUnit (litNat 0u)
-           Expected = TypeMismatch(Set [tUnit; tNat])
+           Expected = TypeMismatch(Set [tcUnit; tcNat])
            Line = __LINE__ } |]
       [| { Expr = minus tNat (litNat 0u) litUnit
-           Expected = TypeMismatch(Set [tNat; tUnit])
+           Expected = TypeMismatch(Set [tcNat; tcUnit])
            Line = __LINE__ } |]
       [| { Expr = times tUnit litUnit litUnit
            Expected = TypeNotDerived(tUnit, ClassTimes.name)
            Line = __LINE__ } |]
       [| { Expr = times tBool litUnit litTrue
-           Expected = TypeMismatch(Set [tUnit; tBool])
+           Expected = TypeMismatch(Set [tcUnit; tcBool])
            Line = __LINE__ } |]
       [| { Expr = times tBool litTrue litUnit
-           Expected = TypeMismatch(Set [tBool; tUnit])
+           Expected = TypeMismatch(Set [tcBool; tcUnit])
            Line = __LINE__ } |]
       [| { Expr = size tUnit litUnit
            Expected = TypeNotDerived(tUnit, ClassSize.name)
            Line = __LINE__ } |]
       [| { Expr = size (tSet tUnit) litUnit
-           Expected = TypeMismatch(Set [tSet tUnit; tUnit])
+           Expected = TypeMismatch(Set [tcSet tcUnit; tcUnit])
            Line = __LINE__ } |]
       [| { Expr = size (tSet tUnit) (litEmpty (tSet tBool))
-           Expected = TypeMismatch(Set [tUnit; tBool])
+           Expected = TypeMismatch(Set [tcUnit; tcBool])
            Line = __LINE__ } |]
       [| { Expr = filter tUnit "x" litTrue litUnit
            Expected = TypeNotDerived(tUnit, ClassEnum.name)
            Line = __LINE__ } |]
       [| { Expr = filter (tSet tUnit) "x" litTrue (litEmpty (tSet tBool))
-           Expected = TypeMismatch(Set [tBool; tUnit])
+           Expected = TypeMismatch(Set [tcBool; tcUnit])
            Line = __LINE__ } |]
       [| { Expr = filter (tSet tUnit) "x" litUnit (litEmpty (tSet tBool))
-           Expected = TypeMismatch(Set [tUnit; tBool])
+           Expected = TypeMismatch(Set [tcUnit; tcBool])
            Line = __LINE__ } |]
       [| { Expr = exists tUnit "x" litTrue litUnit
            Expected = TypeNotDerived(tUnit, ClassEnum.name)
            Line = __LINE__ } |]
       [| { Expr = exists (tSet tUnit) "x" litTrue (litEmpty (tSet tBool))
-           Expected = TypeMismatch(Set [tBool; tUnit])
+           Expected = TypeMismatch(Set [tcBool; tcUnit])
            Line = __LINE__ } |]
       [| { Expr = exists (tSet tUnit) "x" litUnit (litEmpty (tSet tBool))
-           Expected = TypeMismatch(Set [tUnit; tBool])
+           Expected = TypeMismatch(Set [tcUnit; tcBool])
            Line = __LINE__ } |]
       [| { Expr = tupleFst litUnit
-           Expected = TupleIndexOutOfBounds(tUnit, 0u)
+           Expected = TupleIndexOutOfBounds(tcUnit, 0u)
            Line = __LINE__ } |]
       [| { Expr = tupleFst litTrue
-           Expected = NotTuple(tBool)
+           Expected = NotTuple(tcBool)
            Line = __LINE__ } |]
       [| { Expr = tupleSnd litUnit
-           Expected = TupleIndexOutOfBounds(tUnit, 1u)
+           Expected = TupleIndexOutOfBounds(tcUnit, 1u)
            Line = __LINE__ } |]
       [| { Expr = tupleSnd litTrue
-           Expected = NotTuple(tBool)
+           Expected = NotTuple(tcBool)
            Line = __LINE__ } |]
       [| { Expr = listCons litUnit litUnit
-           Expected = TypeMismatch(Set [tUnit; tList tUnit])
+           Expected = TypeMismatch(Set [tcUnit; tcList tcUnit])
            Line = __LINE__ } |]
       [| { Expr = listCons litUnit (litEmpty (tList tBool))
-           Expected = TypeMismatch(Set [tBool; tUnit])
+           Expected = TypeMismatch(Set [tcBool; tcUnit])
            Line = __LINE__ } |]
       [| { Expr = listNth litUnit (litNat 0u)
-           Expected = TypeMismatch(Set [tUnit; tList (tVar 0u)])
+           Expected = TypeMismatch(Set [tcUnit; tcList (tcUncertain 0u)])
            Line = __LINE__ } |]
       [| { Expr = listNth (litEmpty (tList tBool)) litUnit
-           Expected = TypeMismatch(Set [tUnit; tNat])
+           Expected = TypeMismatch(Set [tcUnit; tcNat])
            Line = __LINE__ } |]
       [| { Expr = setRange litUnit (litNat 0u)
-           Expected = TypeMismatch(Set [tUnit; tNat])
+           Expected = TypeMismatch(Set [tcUnit; tcNat])
            Line = __LINE__ } |]
       [| { Expr = setRange (litNat 0u) litUnit
-           Expected = TypeMismatch(Set [tUnit; tNat])
+           Expected = TypeMismatch(Set [tcUnit; tcNat])
            Line = __LINE__ } |]
       [| { Expr = setInsert litUnit litUnit
-           Expected = TypeMismatch(Set [tUnit; tSet tUnit])
+           Expected = TypeMismatch(Set [tcUnit; tcSet tcUnit])
            Line = __LINE__ } |]
       [| { Expr = setInsert litTrue (litEmpty (tSet tUnit))
-           Expected = TypeMismatch(Set [tUnit; tBool])
+           Expected = TypeMismatch(Set [tcUnit; tcBool])
            Line = __LINE__ } |]
       [| { Expr = setMem litUnit litUnit
-           Expected = TypeMismatch(Set [tUnit; tSet tUnit])
+           Expected = TypeMismatch(Set [tcUnit; tcSet tcUnit])
            Line = __LINE__ } |]
       [| { Expr = setMem litTrue (litEmpty (tSet tUnit))
-           Expected = TypeMismatch(Set [tUnit; tBool])
+           Expected = TypeMismatch(Set [tcUnit; tcBool])
            Line = __LINE__ } |]
       [| { Expr = mapAdd litUnit litUnit litUnit
-           Expected = TypeMismatch(Set [tUnit; tMap tUnit tUnit])
+           Expected = TypeMismatch(Set [tcUnit; tcMap tcUnit tcUnit])
            Line = __LINE__ } |]
       [| { Expr = mapAdd litUnit litTrue (litEmpty (tMap tBool tBool))
-           Expected = TypeMismatch(Set [tBool; tUnit])
+           Expected = TypeMismatch(Set [tcBool; tcUnit])
            Line = __LINE__ } |]
       [| { Expr = mapAdd litTrue litUnit (litEmpty (tMap tBool tBool))
-           Expected = TypeMismatch(Set [tBool; tUnit])
+           Expected = TypeMismatch(Set [tcBool; tcUnit])
            Line = __LINE__ } |]
       [| { Expr = mapFindOpt litUnit litUnit
-           Expected = TypeMismatch(Set [tUnit; tMap tUnit (tVar 0u)])
+           Expected = TypeMismatch(Set [tcUnit; tcMap tcUnit (tcUncertain 0u)])
            Line = __LINE__ } |]
       [| { Expr = mapFindOpt litUnit (litEmpty (tMap tBool tBool))
-           Expected = TypeMismatch(Set [tBool; tUnit])
+           Expected = TypeMismatch(Set [tcBool; tcUnit])
            Line = __LINE__ } |]
       [| { Expr =
              matchExpr
                  (ctor "Some" [ litUnit ])
                  [ (Some("Some"), [ "x" ], boolNot (varRef "x")); (Some("None"), [], litTrue) ]
-           Expected = TypeMismatch(Set [tUnit; tBool])
+           Expected = TypeMismatch(Set [tcUnit; tcBool])
            Line = __LINE__ } |] ]
 
 [<Theory>]
@@ -380,8 +378,8 @@ let inferExprError (tc: ExprTestCaseError) =
     let cm = CtorMap.from [ tOption; tFoo ] in
     let tenv = TypeEnv.from [ ("GLOBAL", tBool) ] in
 
-    match infer cm 0u Map.empty tenv tc.Expr with
-    | Ok(actual, m) ->
+    match infer cm tenv tc.Expr with
+    | Ok(actual, s) ->
         Assert.Fail
             $"""line %s{tc.Line}
 
@@ -389,7 +387,7 @@ Inferred as:
 %s{Expr.format typeAnnotation actual}
 
 TVar mapping:
-%s{fmtTVarMapping m}
+%s{TypeCstrUncertainVar.format s.UncertainVarMap}
 """
     | Error terr ->
         let actual = unwrapTypeError terr in
@@ -400,35 +398,4 @@ TVar mapping:
 
 Expected: %s{formatTypeError tc.Expected}
 Actual:   %s{formatTypeError actual}"""
-        )
-
-[<Fact>]
-let focused () =
-    let expr = size (tList tBool) (listCons litTrue (litEmpty (tList tBool))) in
-
-    let tOption = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ] in
-    let tFoo = tUnion "foo" [ ("Foo", []) ] in
-    let cm = CtorMap.from [ tOption; tFoo ] in
-    let tenv = TypeEnv.from [ ("GLOBAL", tBool) ] in
-
-    match infer cm 100u Map.empty tenv expr with
-    | Ok(actual, m) ->
-        Assert.Fail
-          $"""
-Inferred as:
-%s{Expr.format typeAnnotation actual}
-
-TVar mapping:
-%s{fmtTVarMapping m}
-"""
-    | Error terr ->
-        let actual = unwrapTypeError terr in
-
-        Assert.Fail(
-            $"""
-Expr:
-%s{Expr.format noAnnotation expr}
-
-Error:   %s{formatTypeError actual}
-"""
         )
