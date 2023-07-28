@@ -1,4 +1,4 @@
-module CSP.Core.TypeInference.ProcMapTypeInference
+module CSP.Core.ProcMapTypeInference
 
 open CSP.Core.TypeCstr
 open CSP.Core.TypeEnv
@@ -17,20 +17,20 @@ let typeCheck (cm: CtorMap) (tenv: TypeEnv) (pm: ProcMap<unit>) : TypeError opti
     | Ok(tcenv, s) ->
         let sRes =
             fold
-                (fun sRes pn (varOpt, p) ->
+                (fun sRes pn (varOpts, p) ->
                     Result.bind
                         (fun s ->
-                            let u, s = newUncertainVarId s in
+                            let xs, s =
+                                List.foldBack
+                                    (fun varOpt (xs, s) ->
+                                        let u, s = newUncertainVarId s in ((varOpt, TCUncertain u) :: xs, s))
+                                    varOpts
+                                    ([], s)
 
                             let tcenvRes =
-                                match varOpt with
-                                | None -> Ok(tcenv)
-                                | Some(var) ->
-                                    Result.mapError
-                                        (fun terr -> At(TypeEnvError terr, pn))
-                                        (bind1 var (TCUncertain u) tcenv)
+                                Result.mapError (fun terr -> At(TypeEnvError terr, pn)) (bindAll xs tcenv)
 
-                            Result.bind (fun tcenv -> infer cm tcenv p s) tcenvRes)
+                            Result.map snd (Result.bind (fun tcenv -> infer cm tcenv p s) tcenvRes))
                         sRes)
                 (Ok(s))
                 pm

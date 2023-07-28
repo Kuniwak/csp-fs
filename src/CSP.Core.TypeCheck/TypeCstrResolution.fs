@@ -1,7 +1,5 @@
 module CSP.Core.TypeCstrResolution
 
-open CSP.Core.Util
-open CSP.Core.Expr
 open CSP.Core.TypeCstr
 open CSP.Core.TypeError
 open CSP.Core.TypeInference
@@ -55,10 +53,3 @@ let resolve (s: State) (t: TypeCstr) : Result<TypeCstr, TypeError> =
             Result.bind (fun tcK -> Result.map (fun tcV -> TCMap(tcK, tcV)) (resolve visited tcV)) (resolve visited tcK)
 
     resolve (Set []) t
-
-let resolveAll (expr: Expr<TypeCstr>) (s: State) : Result<Expr<TypeCstr>, TypeError> =
-    let expr = map (get >> resolve s) expr in
-
-    Result.map
-        (fun _ -> map (fun expr -> ResultEx.get format (get expr)) expr)
-        (fold (fun accRes expr -> Result.bind (fun _ -> Result.map (fun _ -> ()) (get expr)) accRes) (Ok(())) expr)

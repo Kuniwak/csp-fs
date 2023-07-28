@@ -4,8 +4,6 @@ open Xunit
 open CSP.Core
 open CSP.Core.Search
 open CSP.Core.TypeShorthand
-open CSP.Core.Var
-open CSP.Core.Val
 open CSP.Core.ExprShorthand
 open CSP.Core.ProcMap
 open CSP.Core.ProcShorthand
@@ -22,13 +20,13 @@ let abSkip () =
 
     let pm =
         from
-            [ ("ABSkip", None), seq (unwind "ASkip" None) (unwind "BSkip" None)
-              ("ASkip", None), prefix (ctor "a" []) skip
-              ("BSkip", None), prefix (ctor "b" []) skip ] in
+            [ ("ABSkip", []), seq (unwind "ASkip" []) (unwind "BSkip" [])
+              ("ASkip", []), prefix (ctor "a" []) skip
+              ("BSkip", []), prefix (ctor "b" []) skip ] in
 
     let cm = CtorMap.from [ tEvent ] in
     let genv = Env.empty in
-    let actual = dot pm cm genv "ABSkip" None in
+    let actual = dot pm cm genv "ABSkip" [] in
 
     Assert.True(
         """digraph G {
@@ -52,15 +50,15 @@ let parABC () =
 
     let pm =
         from
-            [ (("ParABC", None),
+            [ (("ParABC", []),
                interleave
                    (prefix (ctor "a" []) skip)
                    (interleave (prefix (ctor "b" []) skip) (prefix (ctor "c" []) skip)))
-              (("P", None), seq (unwind "ParABC" None) (prefix (ctor "d" []) skip)) ] in
+              (("P", []), seq (unwind "ParABC" []) (prefix (ctor "d" []) skip)) ] in
 
     let cm = CtorMap.from [ tEvent ] in
     let genv = Env.empty in
-    let actual = dot pm cm genv "P" None in
+    let actual = dot pm cm genv "P" [] in
 
     Assert.True(
         """digraph G {
@@ -167,11 +165,11 @@ let parABC () =
 [<Fact>]
 let rand2 () =
     let pm =
-        from [ (("P", None), intCh (prefix (litNat 1u) (unwind "P" None)) (prefix (litNat 2u) (unwind "P" None))) ] in
+        from [ (("P", []), intCh (prefix (litNat 1u) (unwind "P" [])) (prefix (litNat 2u) (unwind "P" []))) ] in
 
     let cm = CtorMap.empty
     let genv = Env.empty in
-    let actual = dot pm cm genv "P" None in
+    let actual = dot pm cm genv "P" [] in
 
     Assert.True(
         """digraph G {
@@ -193,14 +191,14 @@ let abs () =
 
     let pm =
         from
-            [ (("ABS", None),
+            [ (("ABS", []),
                (extCh
-                   (intCh (prefix (ctor "a" []) (unwind "ABS" None)) (prefix (ctor "b" []) (unwind "ABS" None)))
+                   (intCh (prefix (ctor "a" []) (unwind "ABS" [])) (prefix (ctor "b" []) (unwind "ABS" [])))
                    (prefix (ctor "s" []) stop))) ] in
 
     let cm = CtorMap.from [ tEvent ]
     let genv = Env.empty in
-    let actual = dot pm cm genv "ABS" None in
+    let actual = dot pm cm genv "ABS" [] in
 
     Assert.True(
         """digraph G {
@@ -226,18 +224,18 @@ let lr () =
 
     let pm =
         from
-            [ (("LR", None),
+            [ (("LR", []),
                (interfaceParallel
-                   (unwind "Left" None)
+                   (unwind "Left" [])
                    (setInsert (ctor "sync" []) (litEmpty (tSet tEvent)))
-                   (unwind "Right" None)))
-              (("Left", None), prefix (ctor "blue" []) (prefix (ctor "sync" []) (unwind "Left" None)))
-              (("Right", None), prefix (ctor "red" []) (prefix (ctor "sync" []) (unwind "Right" None))) ] in
+                   (unwind "Right" [])))
+              (("Left", []), prefix (ctor "blue" []) (prefix (ctor "sync" []) (unwind "Left" [])))
+              (("Right", []), prefix (ctor "red" []) (prefix (ctor "sync" []) (unwind "Right" []))) ] in
 
     let cm = CtorMap.from [ tEvent ] in
 
     let genv = Env.empty in
-    let actual = dot pm cm genv "LR" None in
+    let actual = dot pm cm genv "LR" [] in
 
     Assert.True(
         """digraph G {
@@ -262,25 +260,25 @@ let coinToss () =
 
     let pm =
         from
-            [ (("Coin", None), prefix (ctor "toss" []) (unwind "Coin'" None))
-              (("Coin'", None),
-               intCh (prefix (ctor "heads" []) (unwind "Coin" None)) (prefix (ctor "tails" []) (unwind "Coin" None)))
-              (("Man", None), prefix (ctor "toss" []) (unwind "Man'" None))
-              (("Man'", None),
+            [ (("Coin", []), prefix (ctor "toss" []) (unwind "Coin'" []))
+              (("Coin'", []),
+               intCh (prefix (ctor "heads" []) (unwind "Coin" [])) (prefix (ctor "tails" []) (unwind "Coin" [])))
+              (("Man", []), prefix (ctor "toss" []) (unwind "Man'" []))
+              (("Man'", []),
                extCh
-                   (prefix (ctor "heads" []) (prefix (ctor "left" []) (unwind "Man" None)))
-                   (prefix (ctor "tails" []) (prefix (ctor "right" []) (unwind "Man" None))))
-              (("CoinToss", None),
+                   (prefix (ctor "heads" []) (prefix (ctor "left" []) (unwind "Man" [])))
+                   (prefix (ctor "tails" []) (prefix (ctor "right" []) (unwind "Man" []))))
+              (("CoinToss", []),
                interfaceParallel
-                   (unwind "Coin" None)
+                   (unwind "Coin" [])
                    (setInsert
                        (ctor "toss" [])
                        (setInsert (ctor "heads" []) (setInsert (ctor "tails" []) (litEmpty (tSet tEvent)))))
-                   (unwind "Man" None)) ]
+                   (unwind "Man" [])) ]
 
     let cm = CtorMap.from [ tEvent ] in
     let genv = Env.empty in
-    let actual = dot pm cm genv "CoinToss" None in
+    let actual = dot pm cm genv "CoinToss" [] in
 
     Assert.True(
         """digraph G {
@@ -308,19 +306,19 @@ let lrh () =
 
     let pm =
         from
-            [ (("LRH", None),
+            [ (("LRH", []),
                hide
                    (interfaceParallel
-                       (unwind "Left" None)
+                       (unwind "Left" [])
                        (setInsert (ctor "sync" []) (litEmpty (tSet tEvent)))
-                       (unwind "Right" None))
+                       (unwind "Right" []))
                    (setInsert (ctor "sync" []) (litEmpty (tSet tEvent))))
-              (("Left", None), prefix (ctor "blue" []) (prefix (ctor "sync" []) (unwind "Left" None)))
-              (("Right", None), prefix (ctor "red" []) (prefix (ctor "sync" []) (unwind "Right" None))) ] in
+              (("Left", []), prefix (ctor "blue" []) (prefix (ctor "sync" []) (unwind "Left" [])))
+              (("Right", []), prefix (ctor "red" []) (prefix (ctor "sync" []) (unwind "Right" []))) ] in
 
     let cm = CtorMap.from [ tEvent ] in
     let genv = Env.empty in
-    let actual = dot pm cm genv "LRH" None in
+    let actual = dot pm cm genv "LRH" [] in
 
     Assert.True(
         """digraph G {
@@ -343,11 +341,11 @@ let hide3 () =
     let tEvent = tUnion "event" [ ("a", []) ] in
 
     let pm =
-        from [ ("P", None), hide (prefix (ctor "a" []) skip) (setInsert (ctor "a" []) (litEmpty (tSet tEvent))) ] in
+        from [ ("P", []), hide (prefix (ctor "a" []) skip) (setInsert (ctor "a" []) (litEmpty (tSet tEvent))) ] in
 
     let cm = CtorMap.from [ tEvent ] in
     let genv = Env.empty in
-    let actual = dot pm cm genv "P" None in
+    let actual = dot pm cm genv "P" [] in
 
     Assert.True(
         """digraph G {
@@ -367,18 +365,16 @@ let count () =
 
     let pm =
         from
-            [ (("COUNT", Some(Var "n")),
+            [ (("COUNT", [ "n" ]),
                extCh
                    (guard
                        (less tNat (varRef "n") (litNat 10u))
-                       (prefix (ctor "push" []) (unwind "COUNT" (Some(plus tNat (varRef "n") (litNat 1u))))))
-                   (guard
-                       (eq tNat (varRef "n") (litNat 10u))
-                       (prefix (ctor "reset" []) (unwind "COUNT" (Some(litNat 0u)))))) ] in
+                       (prefix (ctor "push" []) (unwind "COUNT" [ plus tNat (varRef "n") (litNat 1u) ])))
+                   (guard (eq tNat (varRef "n") (litNat 10u)) (prefix (ctor "reset" []) (unwind "COUNT" [ litNat 0u ])))) ] in
 
     let cm = CtorMap.from [ tEvent ] in
     let genv = Env.empty in
-    let actual = dot pm cm genv "COUNT" (Some(VNat 0u)) in
+    let actual = dot pm cm genv "COUNT" [ litNat 0u ] in
 
     Assert.True(
         """digraph G {
@@ -422,35 +418,37 @@ let roVarSys1 () =
 
     let pm =
         from
-            [ (("ROVarSys1", None),
+            [ (("ROVarSys1", []),
                interfaceParallel
-                   (unwind "ROVar" (Some(litNat 0u)))
+                   (unwind "ROVar" [ litNat 0u ])
                    evs
                    (interfaceParallel
-                       (unwind "Reader1" None)
+                       (unwind "Reader1" [])
                        evs
-                       (interfaceParallel (unwind "Reader2" None) evs (unwind "Reader3" None))))
-              (("ROVar", Some(Var "n")),
+                       (interfaceParallel (unwind "Reader2" []) evs (unwind "Reader3" []))))
+              (("ROVar", [ "n" ]),
                prefix
                    (varRef "n")
                    (unwind
                        "ROVar"
-                       (Some(
-                           ifExpr (less tNat (varRef "n") (litNat 4u)) (plus tNat (varRef "n") (litNat 1u)) (litNat 0u)
-                       ))))
-              (("Reader1", None), prefixRecv evs "n" stop)
-              (("Reader2", None), prefixRecv evs "n" stop)
-              (("Reader3", None), prefixRecv evs "n" stop) ] in
+                       [ ifExpr (less tNat (varRef "n") (litNat 4u)) (plus tNat (varRef "n") (litNat 1u)) (litNat 0u) ]))
+              (("Reader1", []), prefixRecv evs "n" stop)
+              (("Reader2", []), prefixRecv evs "n" stop)
+              (("Reader3", []), prefixRecv evs "n" stop) ] in
 
     let cm = CtorMap.empty
     let genv = Env.empty in
-    let actual = dot pm cm genv "ROVarSys1" None in
+    let actual = dot pm cm genv "ROVarSys1" [] in
 
-    Assert.True("""digraph G {
+    Assert.True(
+        """digraph G {
   "(ROVar (if (nat.less n 4) then (nat.plus n 1) else 0) env={n=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ STOP env={}) env={}) env={})"  [fillcolor=red, style=filled, fontcolor=white]
   "(ROVar 0 env={} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader2 ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ Reader3 env={}) env={}) env={})"
   "(ROVar 0 env={} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader2 ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (nat.less n 4) then (nat.plus n 1) else 0) env={n=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ STOP env={}) env={}) env={})" [label="0"]
-}""" = actual, actual)
+}""" =
+            actual,
+        actual
+    )
 
 [<Fact>]
 let roVarSys2 () =
@@ -465,28 +463,27 @@ let roVarSys2 () =
 
     let pm =
         from
-            [ (("ROVarSys2", None),
+            [ (("ROVarSys2", []),
                (interfaceParallel
-                   (unwind "ROVar" (Some(litNat 0u)))
-                   evs 
-                   (interleave (unwind "Reader1" None) (interleave (unwind "Reader2" None) (unwind "Reader3" None)))))
-              (("ROVar", Some(Var "x")),
+                   (unwind "ROVar" [ litNat 0u ])
+                   evs
+                   (interleave (unwind "Reader1" []) (interleave (unwind "Reader2" []) (unwind "Reader3" [])))))
+              (("ROVar", [ "x" ]),
                (prefix
                    (varRef "x")
                    (unwind
                        "ROVar"
-                       (Some(
-                           ifExpr (less tNat (varRef "x") (litNat 4u)) (plus tNat (varRef "x") (litNat 1u)) (litNat 0u)
-                       )))))
-              (("Reader1", None), prefixRecv evs "x" stop)
-              (("Reader2", None), prefixRecv evs "x" stop)
-              (("Reader3", None), prefixRecv evs "x" stop) ] in
+                       [ ifExpr (less tNat (varRef "x") (litNat 4u)) (plus tNat (varRef "x") (litNat 1u)) (litNat 0u) ])))
+              (("Reader1", []), prefixRecv evs "x" stop)
+              (("Reader2", []), prefixRecv evs "x" stop)
+              (("Reader3", []), prefixRecv evs "x" stop) ] in
 
     let cm = CtorMap.empty
     let genv = Env.empty in
-    let actual = dot pm cm genv "ROVarSys2" None in
+    let actual = dot pm cm genv "ROVarSys2" [] in
 
-    Assert.True("""digraph G {
+    Assert.True(
+        """digraph G {
   "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=2} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (STOP ⟦(() set).empty⟧ STOP env={}) env={}) env={})"  [fillcolor=red, style=filled, fontcolor=white]
   "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=1} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ STOP env={}) env={}) env={})"
   "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=1} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (STOP ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})"
@@ -507,4 +504,7 @@ let roVarSys2 () =
   "(ROVar 0 env={} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (STOP ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})" [label="0"]
   "(ROVar 0 env={} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ STOP env={}) env={}) env={})" [label="0"]
   "(ROVar 0 env={} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})" [label="0"]
-}""" = actual, actual)
+}""" =
+            actual,
+        actual
+    )

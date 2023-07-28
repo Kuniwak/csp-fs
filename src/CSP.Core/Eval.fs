@@ -90,9 +90,7 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                 match Map.tryFind (Some ctor) exprMap with
                 | Some(varOpts, e1) ->
                     if List.length varOpts = List.length vs then
-                        let vars = List.collect Option.toList varOpts in
-
-                        match bindAll (List.zip vars vs) env with
+                        match bindAll (List.zip varOpts vs) env with
                         | Ok(env) -> Result.mapError (fun err -> atLine line err) (eval env e1)
                         | Error err -> Error(atLine line (EnvError err))
                     else

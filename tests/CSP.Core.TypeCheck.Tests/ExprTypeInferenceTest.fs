@@ -1,8 +1,8 @@
-module CSP.Core.TypeCheck.Tests.ExprTypeInferTest
+module CSP.Core.ExprTypeInferenceTest
 
 open Xunit
-open CSP.Core.Util
 open CSP.Core
+open CSP.Core.Type
 open CSP.Core.Var
 open CSP.Core.Expr
 open CSP.Core.Ctor
@@ -13,10 +13,11 @@ open CSP.Core.TypeEnvError
 open CSP.Core.TypeError
 open CSP.Core.TypeInference
 open CSP.Core.ExprTypeInference
+open CSP.Core.Util
 
 type ExprTestCaseOk =
     { Expr: Expr<unit>
-      Expected: Type.Type
+      Expected: Type
       Line: string }
 
 let exprTestCasesOk: obj[] list =

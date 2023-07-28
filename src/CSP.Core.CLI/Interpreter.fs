@@ -1,11 +1,11 @@
 ﻿module CSP.Core.CLI
 
 open FSharpPlus
+open CSP.Core.Expr
 open CSP.Core.Proc
 open CSP.Core.CtorMap
 open CSP.Core.Env
 open CSP.Core.ProcMap
-open CSP.Core.Val
 open CSP.Core.State
 open CSP.Core.Univ
 open CSP.Core.Eval
@@ -24,17 +24,27 @@ let listLenMax = 3u
 
 type InterpreterConfig =
     { UnwindConfig: UnwindConfig
-      TransConfig: TransConfig }
+      TransConfig: TransConfig
+      InitConfig: InitConfig }
 
 let interpreterConfig natMax listLenMax =
-    transConfig (evalConfig (univConfig natMax listLenMax))
+    let evalConfig = evalConfig (univConfig natMax listLenMax) in
 
-let cfg: TransConfig = interpreterConfig natMax listLenMax
+    { UnwindConfig = unwindConfig evalConfig
+      TransConfig = transConfig evalConfig
+      InitConfig = initConfig evalConfig }
 
-let start (pm: ProcMap) (cm: CtorMap) (genv: Env) (n: ProcId) (vOpt: Val option) =
-    let format = format cfg.UnwindConfig pm cm genv in
-    let trans = trans cfg pm cm genv in
-    let mutable s = init pm genv n vOpt in
+let cfg: InterpreterConfig = interpreterConfig natMax listLenMax
+
+let start (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (n: ProcId) (exprs: Expr<unit> list) =
+    let format = format genv in
+    let trans = trans cfg.TransConfig pm cm genv in
+
+    let mutable s =
+        match init cfg.InitConfig cm pm genv n exprs with
+        | Ok(s) -> s
+        | Error(err) -> ErrorState(TransError.format err)
+
     let mutable hist = [] in
 
     while true do

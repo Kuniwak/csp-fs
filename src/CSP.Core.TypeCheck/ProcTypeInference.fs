@@ -1,27 +1,33 @@
 module CSP.Core.ProcTypeInference
 
-open CSP.Core.Ctor
 open CSP.Core.CtorMap
 open CSP.Core.Proc
+open CSP.Core.Type
 open CSP.Core.TypeCstrEnv
 open CSP.Core.TypeCstr
 open CSP.Core.TypeError
 open CSP.Core.TypeInference
-open CSP.Core.Var
+open CSP.Core.ExprTypeInference
+open CSP.Core.Util
 
 let infer (cm: CtorMap) (tcenv: TypeCstrEnv) (p: Proc<unit>) (s: State) : Result<Proc<TypeCstr> * State, TypeError> =
-    let exprInfer = ExprTypeInference.infer cm in
+    let exprInfer = infer cm in
 
     let rec procInfer tcenv p s =
 
         match p with
-        | Unwind(pn, exprOpt, line) ->
-            match exprOpt with
-            | Some expr ->
-                match exprInfer tcenv expr s with
-                | Ok(expr, s) -> Ok(Unwind(pn, Some expr, line), s)
-                | Error terr -> Error(atLine line terr)
-            | None -> Ok(Unwind(pn, None, line), s)
+        | Unwind(pn, exprs, line) ->
+            let exprsRes =
+                List.foldBack
+                    (fun expr ->
+                        Result.bind (fun (exprs, s) ->
+                            Result.map (fun (expr, s) -> (expr :: exprs, s)) (exprInfer tcenv expr s)))
+                    exprs
+                    (Ok([], s))
+
+            match exprsRes with
+            | Ok(exprs, s) -> Ok(Unwind(pn, exprs, line), s)
+            | Error terr -> Error(atLine line terr)
         | Stop(line) -> Ok(Stop(line), s)
         | Skip(line) -> Ok(Skip(line), s)
         | Prefix(expr, p, line) ->
@@ -78,10 +84,7 @@ let infer (cm: CtorMap) (tcenv: TypeCstrEnv) (p: Proc<unit>) (s: State) : Result
                 | TCUnion(_, cm) ->
                     let pmRes =
                         (Map.fold
-                            (fun
-                                (accRes: Result<Map<Ctor option, Var option list * Proc<TypeCstr>>, TypeError>)
-                                ctorOpt
-                                (varOpts, p) ->
+                            (fun accRes ctorOpt (varOpts, p) ->
                                 Result.bind
                                     (fun (pm, s) ->
                                         match ctorOpt with
@@ -123,12 +126,9 @@ let infer (cm: CtorMap) (tcenv: TypeCstrEnv) (p: Proc<unit>) (s: State) : Result
 
                                             Result.bind
                                                 (fun tcenv ->
-                                                    (Result.bind
-                                                        (fun (pm, s) ->
-                                                            Result.map
-                                                                (fun (p, s) -> (Map.add None (varOpts, p) pm, s))
-                                                                (procInfer tcenv p s))
-                                                        accRes))
+                                                    Result.map
+                                                        (fun (p, s) -> (Map.add None (varOpts, p) pm, s))
+                                                        (procInfer tcenv p s))
                                                 tcenvRes)
                                     accRes)
                             (Ok(Map.empty, s))
@@ -141,17 +141,49 @@ let infer (cm: CtorMap) (tcenv: TypeCstrEnv) (p: Proc<unit>) (s: State) : Result
             | Error terr -> Error(atLine line terr)
         | InterfaceParallel(p1, expr, p2, line) ->
             match exprInfer tcenv expr s with
-            | Ok(_, s) -> Result.mapError (atLine line) (Result.bind (procInfer tcenv p2) (procInfer tcenv p1 s))
+            | Ok(expr, s) ->
+                match procInfer tcenv p1 s with
+                | Ok(p1, s) ->
+                    match procInfer tcenv p2 s with
+                    | Ok(p2, s) -> Ok(InterfaceParallel(p1, expr, p2, line), s)
+                    | Error(terr) -> Error(atLine line terr)
+                | Error(terr) -> Error(atLine line terr)
             | Error terr -> Error(atLine line terr)
         | Interleave(p1, p2, line) ->
-            Result.mapError (atLine line) (Result.bind (procInfer tcenv p2) (procInfer tcenv p1 s))
+            match procInfer tcenv p1 s with
+            | Ok(p1, s) ->
+                match procInfer tcenv p2 s with
+                | Ok(p2, s) -> Ok(Interleave(p1, p2, line), s)
+                | Error(terr) -> Error(atLine line terr)
+            | Error(terr) -> Error(atLine line terr)
         | Hide(p, expr, line) ->
             match exprInfer tcenv expr s with
-            | Ok(_, s) -> Result.mapError (atLine line) (procInfer tcenv p s)
-            | Error terr -> Error(atLine line terr)
+            | Ok(expr, s) ->
+                match procInfer tcenv p s with
+                | Ok(p, s) -> Ok(Hide(p, expr, line), s)
+                | Error terr -> Error(atLine line terr)
+            | Error(terr) -> Error(atLine line terr)
         | Guard(expr, p, line) ->
             match exprInfer tcenv expr s with
-            | Ok(_, s) -> Result.mapError (atLine line) (procInfer tcenv p s)
-            | Error terr -> Error(atLine line terr)
+            | Ok(expr, s) ->
+                match procInfer tcenv p s with
+                | Ok(p, s) -> Ok(Guard(expr, p, line), s)
+                | Error terr -> Error(atLine line terr)
+            | Error(terr) -> Error(atLine line terr)
 
     procInfer tcenv p s
+
+let resolve (s: State) (p: Proc<TypeCstr>) : Result<Proc<TypeCstr>, TypeError> =
+    let p = map (resolve s >> Result.map Expr.get) p in
+
+    match error p with
+    | Some(terr) -> Error(terr)
+    | None -> Ok(map (Expr.get >> ResultEx.get format) p)
+
+let instantiate (p: Proc<TypeCstr>) : Proc<Type> =
+    map (Expr.get >> TypeCstrInstantiation.instantiate) p
+
+let postProcess (res: Result<Proc<TypeCstr> * State, TypeError>) : Result<Proc<Type> * State, TypeError> =
+    Result.map
+        (fun (p, s) -> (instantiate p, s))
+        (Result.bind (fun (p, s) -> Result.map (fun p -> (p, s)) (resolve s p)) res)

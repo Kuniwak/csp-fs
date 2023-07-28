@@ -1,7 +1,9 @@
 module CSP.Core.State
 
-open CSP.Core.Eval
+open CSP.Core.UnwindError
 open FSharpx.Collections
+open CSP.Core.Eval
+open CSP.Core.LineNum
 open CSP.Core.Env
 open CSP.Core.EnvError
 open CSP.Core.CtorMap
@@ -14,58 +16,58 @@ open CSP.Core.Proc
 open CSP.Core.Val
 
 type State =
-    | Unwind of Env * ProcId * Expr<unit> option
-    | Stop
-    | Skip
-    | Prefix of Env * Expr<unit> * State
-    | PrefixRecv of Env * Expr<unit> * Var * State
-    | IntCh of State * State
-    | ExtCh of State * State
-    | Seq of State * State
-    | If of Env * Expr<unit> * State * State
-    | Match of Env * Expr<unit> * Map<Ctor option, Var option list * State>
-    | InterfaceParallel of Env * State * Expr<unit> * State
-    | Hide of Env * State * Expr<unit>
+    | Unwind of Env * ProcId * Expr<unit> list * LineNum
+    | Stop of LineNum
+    | Skip of LineNum
+    | Prefix of Env * Expr<unit> * State * LineNum
+    | PrefixRecv of Env * Expr<unit> * Var * State * LineNum
+    | IntCh of State * State * LineNum
+    | ExtCh of State * State * LineNum
+    | Seq of State * State * LineNum
+    | If of Env * Expr<unit> * State * State * LineNum
+    | Match of Env * Expr<unit> * Map<Ctor option, Var option list * State> * LineNum
+    | InterfaceParallel of Env * State * Expr<unit> * State * LineNum
+    | Hide of Env * State * Expr<unit> * LineNum
     | Omega
-    | ErrorState of string * State
+    | ErrorState of string
 
 let rec bind1 (var: Var) (v: Val) (s: State) : Result<State, EnvError> =
     match s with
-    | Unwind(env, n, eOpt) -> Result.map (fun env -> Unwind(env, n, eOpt)) (Env.bind1 var v env)
-    | Stop -> Ok(Stop)
-    | Skip -> Ok(Skip)
-    | Prefix(env, expr, s') ->
+    | Unwind(env, n, eOpt, line) -> Result.map (fun env -> Unwind(env, n, eOpt, line)) (Env.bind1 var v env)
+    | Stop(line) -> Ok(Stop(line))
+    | Skip(line) -> Ok(Skip(line))
+    | Prefix(env, expr, s', line) ->
         match Env.bind1 var v env, bind1 var v s' with
-        | Ok(env), Ok(s') -> Ok(Prefix(env, expr, s'))
+        | Ok(env), Ok(s') -> Ok(Prefix(env, expr, s', line))
         | Error(err), _ -> Error(err)
         | _, Error(err) -> Error(err)
-    | PrefixRecv(env, expr, v', s') ->
+    | PrefixRecv(env, expr, v', s', line) ->
         match Env.bind1 var v env, bind1 var v s' with
-        | Ok(env), Ok(s') -> Ok(PrefixRecv(env, expr, v', s'))
+        | Ok(env), Ok(s') -> Ok(PrefixRecv(env, expr, v', s', line))
         | Error(err), _ -> Error(err)
         | _, Error(err) -> Error(err)
-    | IntCh(s1, s2) ->
+    | IntCh(s1, s2, line) ->
         match bind1 var v s1, bind1 var v s2 with
-        | Ok(p1), Ok(p2) -> Ok(IntCh(p1, p2))
+        | Ok(p1), Ok(p2) -> Ok(IntCh(p1, p2, line))
         | Error(err), _ -> Error(err)
         | _, Error(err) -> Error(err)
-    | ExtCh(s1, s2) ->
+    | ExtCh(s1, s2, line) ->
         match bind1 var v s1, bind1 var v s2 with
-        | Ok(p1), Ok(p2) -> Ok(ExtCh(p1, p2))
+        | Ok(p1), Ok(p2) -> Ok(ExtCh(p1, p2, line))
         | Error(err), _ -> Error(err)
         | _, Error(err) -> Error(err)
-    | Seq(s1, s2) ->
+    | Seq(s1, s2, line) ->
         match bind1 var v s1, bind1 var v s2 with
-        | Ok(p1), Ok(p2) -> Ok(Seq(p1, p2))
+        | Ok(p1), Ok(p2) -> Ok(Seq(p1, p2, line))
         | Error(err), _ -> Error(err)
         | _, Error(err) -> Error(err)
-    | If(env, e, s1, s2) ->
+    | If(env, e, s1, s2, line) ->
         match Env.bind1 var v env, bind1 var v s1, bind1 var v s2 with
-        | Ok(env), Ok(s1), Ok(s2) -> Ok(If(env, e, s1, s2))
+        | Ok(env), Ok(s1), Ok(s2) -> Ok(If(env, e, s1, s2, line))
         | Error err, _, _ -> Error(err)
         | _, Error err, _ -> Error(err)
         | _, _, Error err -> Error(err)
-    | Match(env, e, sm) ->
+    | Match(env, e, sm, line) ->
         let smRes =
             Map.fold
                 (fun smAccRes ctor (vars, s) ->
@@ -76,22 +78,22 @@ let rec bind1 (var: Var) (v: Val) (s: State) : Result<State, EnvError> =
                 sm in
 
         match Env.bind1 var v env, smRes with
-        | Ok(env), Ok(sm) -> Ok(Match(env, e, sm))
+        | Ok(env), Ok(sm) -> Ok(Match(env, e, sm, line))
         | Error(err), _ -> Error err
         | _, Error(err) -> Error err
-    | InterfaceParallel(env, s1, expr, s2) ->
+    | InterfaceParallel(env, s1, expr, s2, line) ->
         match Env.bind1 var v env, bind1 var v s1, bind1 var v s2 with
-        | Ok(env), Ok(s1), Ok(s2) -> Ok(InterfaceParallel(env, s1, expr, s2))
+        | Ok(env), Ok(s1), Ok(s2) -> Ok(InterfaceParallel(env, s1, expr, s2, line))
         | Error(err), _, _ -> Error err
         | _, Error(err), _ -> Error err
         | _, _, Error(err) -> Error err
-    | Hide(env, s, expr) ->
+    | Hide(env, s, expr, line) ->
         match Env.bind1 var v env, bind1 var v s with
-        | Ok(env), Ok(s) -> Ok(Hide(env, s, expr))
+        | Ok(env), Ok(s) -> Ok(Hide(env, s, expr, line))
         | Error(err), _ -> Error err
         | _, Error(err) -> Error err
     | Omega -> Ok(Omega)
-    | ErrorState(msg, s) -> Ok(ErrorState(msg, s))
+    | ErrorState(msg) -> Ok(ErrorState(msg))
 
 let bindAll (xs: (Var option * Val) seq) (s: State) =
     Seq.fold
@@ -105,93 +107,97 @@ let bindAll (xs: (Var option * Val) seq) (s: State) =
 let ofProc (genv: Env) (p: Proc<unit>) : State =
     let rec ofProc p =
         match p with
-        | Proc.Unwind(nm, e, _) -> Unwind(genv, nm, e)
-        | Proc.Stop _ -> Stop
-        | Proc.Skip _ -> Skip
-        | Proc.Prefix(e, p', _) -> Prefix(genv, e, ofProc p')
-        | Proc.PrefixRecv(e, var, p', _) -> PrefixRecv(genv, e, var, ofProc p')
-        | Proc.IntCh(p1, p2, _) ->
+        | Proc.Unwind(nm, e, line) -> Unwind(genv, nm, e, line)
+        | Proc.Stop(line) -> Stop(line)
+        | Proc.Skip(line) -> Skip(line)
+        | Proc.Prefix(e, p', line) -> Prefix(genv, e, ofProc p', line)
+        | Proc.PrefixRecv(e, var, p', line) -> PrefixRecv(genv, e, var, ofProc p', line)
+        | Proc.IntCh(p1, p2, line) ->
             let s1 = ofProc p1 in
             let s2 = ofProc p2 in
-            IntCh(s1, s2)
-        | Proc.ExtCh(p1, p2, _) ->
+            IntCh(s1, s2, line)
+        | Proc.ExtCh(p1, p2, line) ->
             let s1 = ofProc p1 in
             let s2 = ofProc p2 in
-            ExtCh(s1, s2)
-        | Proc.Seq(p1, p2, _) ->
+            ExtCh(s1, s2, line)
+        | Proc.Seq(p1, p2, line) ->
             let s1 = ofProc p1 in
             let s2 = ofProc p2 in
-            Seq(s1, s2)
-        | Proc.If(e, p1, p2, _) ->
+            Seq(s1, s2, line)
+        | Proc.If(e, p1, p2, line) ->
             let s1 = ofProc p1 in
             let s2 = ofProc p2 in
-            If(genv, e, s1, s2)
-        | Proc.Match(e, mp, _) -> Match(genv, e, Map.map (fun _ (varOpts, p) -> (varOpts, ofProc p)) mp)
-        | Proc.InterfaceParallel(p1, expr, p2, _) ->
+            If(genv, e, s1, s2, line)
+        | Proc.Match(e, mp, line) -> Match(genv, e, Map.map (fun _ (varOpts, p) -> (varOpts, ofProc p)) mp, line)
+        | Proc.InterfaceParallel(p1, expr, p2, line) ->
             let s1 = ofProc p1 in
             let s2 = ofProc p2 in
-            InterfaceParallel(genv, s1, expr, s2)
+            InterfaceParallel(genv, s1, expr, s2, line)
         | Proc.Interleave(p1, p2, line) ->
             let s1 = ofProc p1 in
             let s2 = ofProc p2 in
-            InterfaceParallel(genv, s1, LitEmpty(TSet(TTuple([])), (), line), s2)
-        | Proc.Hide(p, expr, _) -> let s = ofProc p in Hide(genv, s, expr)
-        | Proc.Guard(e, p, _) -> let s = ofProc p in If(genv, e, s, Stop)
+            InterfaceParallel(genv, s1, LitEmpty(TSet(TTuple([])), (), line), s2, line)
+        | Proc.Hide(p, expr, line) -> let s = ofProc p in Hide(genv, s, expr, line)
+        | Proc.Guard(e, p, line) -> let s = ofProc p in If(genv, e, s, Stop(line), line)
 
     ofProc p
 
 type UnwindConfig = { EvalConfig: EvalConfig }
 let unwindConfig cfg = { EvalConfig = cfg }
 
-let unwind (cfg: UnwindConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0: State) : State =
+let unwind (cfg: UnwindConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0: State) : Result<State, UnwindError> =
     let rec unwind s visited =
         match s with
-        | Unwind(env, pn, eOpt) ->
-            if Set.contains s visited then
-                failwith "circular definition"
+        | Unwind(env, pn, exprs, line) ->
+            if Set.contains pn visited then
+                Error(UnwindError.atLine line (Recursion(pn)))
             else
                 match tryFind pn pm with
-                | Some t ->
-                    match t, eOpt with
-                    | (Some var, p), Some e ->
-                        match eval cfg.EvalConfig cm env e with
-                        | Ok v ->
-                            match Env.bind1 var v genv with
-                            | Ok env -> unwind (ofProc env p) (Set.add (ofProc env p) visited)
-                            | Error err -> ErrorState(EnvError.format err, s)
-                        | Error err -> ErrorState(EvalError.format err, s)
-                    | (None, p), None -> unwind (ofProc env p) (Set.add (ofProc env p) visited)
-                    | (None, _), Some _ -> ErrorState("given a value to Unwind, but not needed at unwind", s)
-                    | (Some _, _), None -> ErrorState("needed a value by Unwind, but not given at unwind", s)
-                | None ->
-                    failwith $"no such process: {pn} in [{formatNames pm}]"
-        | _ -> s
+                | Some(varOpts, p) ->
+                    let vsRes =
+                        List.foldBack
+                            (fun expr vsRes ->
+                                Result.bind
+                                    (fun vs -> Result.map (fun v -> v :: vs) (eval cfg.EvalConfig cm env expr))
+                                    vsRes)
+                            exprs
+                            (Ok([]))
+
+                    match vsRes with
+                    | Ok vs ->
+                        if List.length varOpts = List.length vs then
+                            match Env.bindAll (List.zip varOpts vs) genv with
+                            | Ok env -> unwind (ofProc env p) (Set.add pn visited)
+                            | Error err -> Error(UnwindError.atLine line (EnvError err))
+                        else
+                            Error(ArgumentsLengthMismatch(List.length exprs, varOpts))
+                    | Error err -> Error(UnwindError.atLine line (EvalError err))
+                | None -> Error(UnwindError.atLine line (NoSuchProcess(pn, procIds pm)))
+        | _ -> Ok(s)
 
     unwind s0 Set.empty
 
-let format (cfg: UnwindConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0: State) : string =
+let format (genv: Env) (s0: State) : string =
     let formatExpr = Expr.format noAnnotation
 
-    let rec f s isTop =
+    let rec f s =
         match s with
-        | Unwind(env, n, eOpt) ->
-            if isTop then
-                // TODO: Do not use unwind
-                f (unwind cfg pm cm genv s) false
+        | Unwind(env, n, exprs, _) ->
+            if List.isEmpty exprs then
+                $"%s{n}"
             else
-                match eOpt with
-                | Some e -> $"%s{n} %s{formatExpr e} env=%s{Env.format genv env}"
-                | None -> $"%s{n}"
-        | Stop -> "STOP"
-        | Skip -> "SKIP"
-        | Prefix(env, expr, s') -> $"(%s{formatExpr expr} -> %s{f s' false} env=%s{Env.format genv env})"
-        | PrefixRecv(env, expr, var, s') -> $"({formatExpr expr}?{var} -> {f s' false} env={Env.format genv env})"
-        | IntCh(s1, s2) -> $"(%s{f s1 false} ⨅ %s{f s2 false})"
-        | ExtCh(s1, s2) -> $"(%s{f s1 false} □ %s{f s2 false})"
-        | Seq(s1, s2) -> $"(%s{f s1 false} ; %s{f s2 false})"
-        | If(env, expr, s1, s2) ->
-            $"(if %s{formatExpr expr} then %s{f s1 false} else %s{f s2 false}) env=%s{Env.format genv env})"
-        | Match(env, expr, sm) ->
+                let s = String.concat "" (List.map (fun expr -> $" %s{formatExpr expr}") exprs) in
+                $"%s{n}%s{s} env=%s{Env.format genv env}"
+        | Stop _ -> "STOP"
+        | Skip _ -> "SKIP"
+        | Prefix(env, expr, s', _) -> $"(%s{formatExpr expr} -> %s{f s'} env=%s{Env.format genv env})"
+        | PrefixRecv(env, expr, var, s', _) -> $"({formatExpr expr}?{var} -> {f s'} env={Env.format genv env})"
+        | IntCh(s1, s2, _) -> $"(%s{f s1} ⨅ %s{f s2})"
+        | ExtCh(s1, s2, _) -> $"(%s{f s1} □ %s{f s2})"
+        | Seq(s1, s2, _) -> $"(%s{f s1} ; %s{f s2})"
+        | If(env, expr, s1, s2, _) ->
+            $"(if %s{formatExpr expr} then %s{f s1} else %s{f s2}) env=%s{Env.format genv env})"
+        | Match(env, expr, sm, _) ->
             let sep = " | " in
 
             let cs' =
@@ -215,14 +221,14 @@ let format (cfg: UnwindConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0
                                             | None -> " _")
                                         varOpts) in
 
-                        $"%s{s1}%s{s2} -> %s{f p' false}")
+                        $"%s{s1}%s{s2} -> %s{f p'}")
                     (Map.toList sm) in
 
             $"(match %s{formatExpr expr} with %s{String.concat sep cs'} env=%s{Env.format genv env})"
-        | InterfaceParallel(env, s1, expr, s2) ->
-            $"(%s{f s1 false} ⟦%s{formatExpr expr}⟧ %s{f s2 false} env=%s{Env.format genv env})"
-        | Hide(env, s, expr) -> $"(%s{f s false} \\\\ %s{formatExpr expr} env=%s{Env.format genv env})"
+        | InterfaceParallel(env, s1, expr, s2, _) ->
+            $"(%s{f s1} ⟦%s{formatExpr expr}⟧ %s{f s2} env=%s{Env.format genv env})"
+        | Hide(env, s, expr, _) -> $"(%s{f s} \\\\ %s{formatExpr expr} env=%s{Env.format genv env})"
         | Omega -> "Ω"
-        | ErrorState(msg, s) -> $"(ERROR: %s{msg} at %s{f s false})"
+        | ErrorState(msg) -> $"(ERROR: %s{msg})"
 
-    f s0 true
+    f s0

@@ -34,8 +34,10 @@
         <Compile Include="Proc.fs" />
         <Compile Include="ProcShorthand.fs" />
         <Compile Include="ProcMap.fs" />
+        <Compile Include="UnwindError.fs" />
         <Compile Include="State.fs" />
         <Compile Include="Event.fs" />
+        <Compile Include="TransError.fs" />
         <Compile Include="Trans.fs" />
     </ItemGroup>
 

@@ -330,6 +330,18 @@ let bfs (visit: Expr<'a> -> Unit) (expr: Expr<'a>) : Unit =
 let rec fold (f: 'State -> Expr<'a> -> 'State) (s: 'State) (expr: Expr<'a>) =
     let exprs = children expr in f (List.fold (fold f) s exprs) expr
 
+let rec error (expr: Expr<Result<'a, 'b>>) : 'b option =
+    fold
+        (fun opt expr ->
+            match opt with
+            | Some err -> Some err
+            | None ->
+                match get expr with
+                | Ok _ -> None
+                | Error e -> Some e)
+        None
+        expr
+
 let map (f: Expr<'a> -> 'b) (expr: Expr<'a>) : Expr<'b> =
     let rec mapType expr =
         match expr with
@@ -350,8 +362,10 @@ let map (f: Expr<'a> -> 'b) (expr: Expr<'a>) : Expr<'b> =
         | Less(t, expr1, expr2, _, line) -> Less(t, mapType expr1, mapType expr2, f expr, line)
         | Eq(t, expr1, expr2, _, line) -> Eq(t, mapType expr1, mapType expr2, f expr, line)
         | Size(t, exprSize, _, line) -> Size(t, mapType exprSize, f expr, line)
-        | Filter(t, var, exprCond, exprEnum, _, line) -> Filter(t, var, mapType exprCond, mapType exprEnum, f expr, line)
-        | Exists(t, var, exprCond, exprEnum, _, line) -> Exists(t, var, mapType exprCond, mapType exprEnum, f expr, line)
+        | Filter(t, var, exprCond, exprEnum, _, line) ->
+            Filter(t, var, mapType exprCond, mapType exprEnum, f expr, line)
+        | Exists(t, var, exprCond, exprEnum, _, line) ->
+            Exists(t, var, mapType exprCond, mapType exprEnum, f expr, line)
         | Tuple(exprs, _, line) -> Tuple(List.map mapType exprs, f expr, line)
         | ListCons(exprElem, exprList, _, line) -> ListCons(mapType exprElem, mapType exprList, f expr, line)
         | TupleNth(exprList, idx, _, line) -> TupleNth(mapType exprList, idx, f expr, line)

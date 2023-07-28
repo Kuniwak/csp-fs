@@ -11,20 +11,7 @@ open CSP.Core.TypeError
 open CSP.Core.TypeInference
 open CSP.Core.TypeCstrResolution
 open CSP.Core.TypeCstrUnification
-
-
-let rec instantiate (tc: TypeCstr) : Type =
-    match tc with
-    | TCUncertain(UncertainVarId u) -> TVar u
-    | TCBool -> TBool
-    | TCNat -> TNat
-    | TCTuple(tcs) -> TTuple(List.map instantiate tcs)
-    | TCUnion(un, cm) -> TUnion(un, Map.map (fun _ -> List.map instantiate) cm)
-    | TCSet(tc) -> TSet(instantiate tc)
-    | TCList(tc) -> TList(instantiate tc)
-    | TCMap(tcK, tcV) -> TMap(instantiate tcK, instantiate tcV)
-
-let rec instantiateAll (expr: Expr<TypeCstr>) : Expr<Type> = map (get >> instantiate) expr
+open CSP.Core.TypeCstrInstantiation
 
 let infer
     (cm: CtorMap)
@@ -522,7 +509,13 @@ let infer
 
     infer s0 tcenv expr
 
-let postProcess
-    (res: Result<Expr<TypeCstr> * State, TypeError>)
-    : Result<Expr<Type> * State, TypeError> =
-    Result.bind (fun (expr, s) -> Result.map (fun expr -> (instantiateAll expr, s)) (resolveAll expr s)) res
+let resolve (s: State) (expr: Expr<TypeCstr>) : Result<Expr<TypeCstr>, TypeError> =
+    let expr = map (get >> resolve s) expr in
+    match error expr with
+    | Some(terr) -> Error(terr)
+    | None -> Ok(map (fun expr -> ResultEx.get format (get expr)) expr)
+
+let instantiate (expr: Expr<TypeCstr>) : Expr<Type> = map (get >> instantiate) expr
+
+let postProcess (res: Result<Expr<TypeCstr> * State, TypeError>) : Result<Expr<Type> * State, TypeError> =
+    Result.bind (fun (expr, s) -> Result.map (fun expr -> (instantiate expr, s)) (resolve s expr)) res

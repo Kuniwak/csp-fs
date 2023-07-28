@@ -18,8 +18,14 @@ let bind1 (var: Var) (v: Val) (env: Env) : Result<Env, EnvError> =
         else
             Ok(Env(Map.add var v env))
 
-let bindAll (xs: (Var * Val) seq) (env: Env) : Result<Env, EnvError> =
-    Seq.fold (fun envRes (var, v) -> Result.bind (bind1 var v) envRes) (Ok(env)) xs
+let bindAll (xs: (Var option * Val) seq) (env: Env) : Result<Env, EnvError> =
+    Seq.fold
+        (fun envRes (varOpt, v) ->
+            match varOpt with
+            | Some var -> Result.bind (bind1 var v) envRes
+            | None -> envRes)
+        (Ok(env))
+        xs
 
 let declared (env: Env) : Var list =
     match env with

@@ -17,6 +17,7 @@
         <Compile Include="TypeInference.fs" />
         <Compile Include="TypeCstrResolution.fs" />
         <Compile Include="TypeCstrUnification.fs" />
+        <Compile Include="TypeCstrInstantiation.fs" />
         <Compile Include="ExprTypeInference.fs" />
         <Compile Include="ProcTypeInference.fs" />
         <Compile Include="ProcMapTypeInference.fs" />

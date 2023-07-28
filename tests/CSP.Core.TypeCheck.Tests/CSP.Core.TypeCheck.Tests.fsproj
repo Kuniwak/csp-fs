@@ -10,7 +10,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="ExprTypeInferTest.fs" />
+        <Compile Include="ExprTypeInferenceTest.fs" />
+        <Compile Include="ProcTypeInferenceTest.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
 
