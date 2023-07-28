@@ -1,5 +1,6 @@
-module CSP.Core.TypeInference
+module CSP.Core.TypeInferenceState
 
+open CSP.Core.Ctor
 open CSP.Core.Type
 open CSP.Core.TypeCstr
 open CSP.Core.TypeEnv
@@ -67,8 +68,11 @@ let generalize (t: Type) (s: State) : TypeCstr * State =
     let tc, s, _ = generalize t s Map.empty
     (tc, s)
 
-let generalizeAll (ts: Type list) (s: State) : TypeCstr list * State =
+let generalizeList (ts: Type list) (s: State) : TypeCstr list * State =
     List.foldBack (fun t (tcs, s) -> let tc, s = generalize t s in (tc :: tcs, s)) ts ([], s)
+
+let generalizeMap (m: Map<Ctor, Type list>) (s: State) : Map<Ctor, TypeCstr list> * State =
+    Map.fold (fun (m, s) ctor ts -> let tcs, s = generalizeList ts s in (Map.add ctor tcs m, s)) (Map.empty, s) m
 
 let from (tenv: TypeEnv) : Result<TypeCstrEnv * State, TypeEnvError> =
     let tcenvRes, s =

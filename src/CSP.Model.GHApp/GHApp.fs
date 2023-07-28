@@ -2,12 +2,11 @@
 
 open CSP.Core
 open CSP.Core.Env
-open CSP.Core.Ctor
-open CSP.Core.Val
 open CSP.Core.Type
 open CSP.Core.ProcShorthand
 open CSP.Core.ExprShorthand
 open CSP.Core.TypeShorthand
+open CSP.Core.ValShorthand
 open CSP.Core.ProcMap
 
 let tEvent =
@@ -78,11 +77,13 @@ let tChUnstarBtn = tUnion "tChUnstarBtn" [ ("ChUnstarBtn", [ tRepo ]) ]
 let tChDispLogin = tUnion "tChDispLogin" [ ("ChDispLogin", [ tDispLogin ]) ]
 
 let tChDispSearch = tUnion "tChDispSearch" [ ("ChDispSearch", [ tDispSearch ]) ]
+let tPage = tList tRepo
+let tPages = tList tPage
 
-let cm =
+
+let ctorMap =
     CtorMap.from
-        [
-          tEvent
+        [ tEvent
           tPAT
           tQuery
           tUser
@@ -115,185 +116,134 @@ let cm =
           tChDispLogin
           tChDispSearch ]
 
-let model =
+let procMap =
     from
-        [ (("GHAuth", None), prefixRecv (univ tChAuthReq) "p" (unwind "GHAuthRecv" (Some(varRef "p"))))
-          (("GHAuthRecv", Some "p"), intCh (unwind "GHAuthWillFail" (Some(varRef "p"))) (unwind "GHAuthWillResp" (Some(varRef "p"))))
-          (("GHAuthWillFail", Some "p"), prefix (ctor "ChAuthRes" [(ctor "Left" [(ctor "GHAuthError" [litUnit])])]) (unwind "GHAuth" None))
-          (("GHAuthWillResp", Some "p"), (prefix (ctor "ChAuthRes" [(ctor "Right" [(mapFindOpt (varRef "p", varRef "PAT_REL"))])]) (unwind "GHAuth" None)))
+        [ (("GHAuth", []), prefixRecv (univ tChAuthReq) "p" (unwind "GHAuthRecv" [ varRef "p" ]))
+          (("GHAuthRecv", [ "p" ]),
+           intCh (unwind "GHAuthWillFail" [ varRef "p" ]) (unwind "GHAuthWillResp" [ varRef "p" ]))
+          (("GHAuthWillFail", [ "p" ]),
+           prefix (ctor "ChAuthRes" [ (ctor "Left" [ ctor "GHAuthError" [ litUnit ] ]) ]) (unwind "GHAuth" []))
+          (("GHAuthWillResp", [ "p" ]),
+           (prefix
+               (ctor "ChAuthRes" [ (ctor "Right" [ mapFindOpt (varRef "p") (varRef "PAT_REL") ]) ])
+               (unwind "GHAuth" [])))
 
-          (GHSearch, (None, PrefixRecv(Univ tChSearchReq, R, Unwind(GHSearchRecv, Some(VarRef R)))))
-          (GHSearchRecv, (Some R, IntCh(Unwind(GHSearchWillFail, None), Unwind(GHSearchWillResp, Some(VarRef R)))))
-          (GHSearchWillFail,
-           (None,
-            Prefix(
-                Union(Ctor ChSearchRes, Union(CtorLeft, Union(Ctor GHSearchError, Lit VUnit))),
-                Unwind(GHSearch, None)
-            )))
-          (GHSearchWillResp,
-           (Some R,
-            Prefix(
-                Union(
-                    Ctor ChSearchRes,
-                    Union(
-                        CtorRight,
-                        Expr.If(
-                            Eq(TupleFst(VarRef R), Union(Ctor Query1, Lit VUnit)),
-                            // Q1 Hit.
-                            Tuple(
-                                Expr.If(
-                                    // fst r < List.length p1
-                                    NatLess(TupleSnd(VarRef R), NatAdd(ListLen(VarRef Pages1), Lit(VNat 1u))),
-                                    // Requested page.
-                                    ListNth(VarRef Pages1, NatAdd(TupleSnd(VarRef R), Lit(VNat 1u))),
-                                    // Out of range.
-                                    ListEmpty
-                                ),
-                                NatLess(TupleSnd(VarRef R), NatSub(ListLen(VarRef Pages1), Lit(VNat 1u)))
-                            ),
-                            // Others.
-                            Tuple(ListEmpty, Lit(VBool false))
-                        )
-                    )
-                ),
-                Unwind(GHSearch, None)
-            )))
-          (GHStar,
-           (Some StarRel,
-            ExtCh(
-                PrefixRecv(Univ(tChChkStarReq), T, Unwind(GHChkStarRecv1, Some(VarRef T))),
-                ExtCh(
-                    PrefixRecv(Univ(tChStarReq), T, Unwind(GHStarRecv1, Some(VarRef T))),
-                    PrefixRecv(Univ(tChUnstarReq), T, Unwind(GHUnstarRecv1, Some(VarRef T)))
-                )
-            )))
-          (GHChkStarRecv1,
-           (Some T,
-            Match(
-                MapFindOpt(TupleSnd(VarRef T), VarRef PATRel),
-                Map
-                    [ (CtorSome, (U, Unwind(GHChkStarRecv2, Some(Tuple(TupleFst(VarRef T), VarRef U)))))
-                      (CtorNone, (Any, Unwind(GHChkStarWillFail, None))) ],
-                None
-            )))
-          (GHChkStarRecv2, (Some T, IntCh(Unwind(GHChkStarWillFail, None), Unwind(GHChkStarWillResp, Some(VarRef T)))))
-          (GHChkStarWillFail,
-           (None,
-            Prefix(
-                Union(Ctor ChChkStarRes, Union(CtorLeft, Union(Ctor GHChkStarError, Lit VUnit))),
-                Unwind(GHStar, Some(VarRef StarRel))
-            )))
-          (GHChkStarWillResp,
-           (Some T,
-            Prefix(Union(Ctor ChChkStarRes, Union(CtorRight, SetMem(VarRef T, VarRef StarRel))), Unwind(GHStar, None))))
+          (("GHSearch", []), prefixRecv (univ tChSearchReq) "r" (unwind "GHSearchRecv" [ varRef "r" ]))
+          (("GHSearchRecv", [ "r" ]), intCh (unwind "GHSearchWillFail" []) (unwind "GHSearchWillResp" [ varRef "r" ]))
+          (("GHSearchWillFail", []),
+           prefix (ctor "ChSearchRes" [ ctor "Left" [ ctor "GHSearchError" [] ] ]) (unwind "GHSearch" []))
+          (("GHSearchWillResp", [ "r" ]),
+           prefix
+               (ctor
+                   "ChSearchRes"
+                   [ ctor
+                         "Right"
+                         [ (ifExpr
+                               (eq tQuery (tupleFst (varRef "r")) (ctor "Query1" []))
+                               // Q1 Hit.
+                               (tuple2
+                                   (ifExpr
+                                       // fst r < List.length p1
+                                       (less
+                                           tNat
+                                           (tupleSnd (varRef "r"))
+                                           (plus tNat (size tPages (varRef "PAGES1")) (litNat 1u)))
+                                       // Requested page.
+                                       (listNth (varRef "PAGES1") (plus tNat (tupleSnd (varRef "r")) (litNat 1u)))
+                                       // Out of range.
+                                       (litEmpty tPage))
+                                   (less
+                                       tNat
+                                       (tupleSnd (varRef "r"))
+                                       (minus tNat (size tPages (varRef "PAGES1")) (litNat 1u))))
+                               // Others.
+                               (tuple2 (litEmpty (tList tRepo)) litFalse)) ] ])
+               (unwind "GHSearch" []))
 
-          (GHStarRecv1,
-           (Some T,
-            Match(
-                MapFindOpt(TupleSnd(VarRef T), VarRef PATRel),
-                Map
-                    [ (CtorSome, (U, Unwind(GHStarRecv2, Some(Tuple(TupleFst(VarRef T), VarRef U)))))
-                      (CtorNone, (Any, Unwind(GHStarWillFail, None))) ],
-                None
-            )))
-          (GHStarRecv2, (Some T, IntCh(Unwind(GHStarWillFail, None), Unwind(GHStarWillResp, Some(VarRef T)))))
-          (GHStarWillFail,
-           (None,
-            Prefix(
-                Union(Ctor ChStarRes, Union(CtorLeft, Union(Ctor GHStarError, Lit VUnit))),
-                Unwind(GHStar, Some(VarRef StarRel))
-            )))
-          (GHStarWillResp,
-           (Some T,
-            Prefix(
-                Union(Ctor ChStarRes, Union(CtorRight, BoolNot(SetMem(VarRef T, VarRef StarRel)))),
-                Unwind(GHStar, Some(SetInsert(VarRef T, VarRef StarRel)))
-            )))
+          (("GHStar", [ "starRel" ]),
+           extCh
+               (prefixRecv (univ tChChkStarReq) "t" (unwind "GHChkStarRecv1" [ varRef "t" ]))
+               (extCh
+                   (prefixRecv (univ tChStarReq) "t" (unwind "GHStarRecv1" [ varRef "t" ]))
+                   (prefixRecv (univ tChUnstarReq) "t" (unwind "GHUnstarRecv1" [ varRef "t" ]))))
+          (("GHChkStarRecv1", [ "t" ]),
+           ``match``
+               (mapFindOpt (tupleSnd (varRef "t")) (varRef "PAT_REL"))
+               [ ((Some "Some", [ "u" ]), unwind "GHChkStarRecv2" [ tuple2 (tupleFst (varRef "t")) (varRef "u") ])
+                 ((Some "None", []), unwind "GHChkStarWillFail" []) ])
+          (("GHChkStarRecv2", [ "t" ]),
+           intCh (unwind "GHChkStarWillFail" []) (unwind "GHChkStarWillResp" [ varRef "t" ]))
+          (("GHChkStarWillFail", []),
+           prefix
+               (ctor "ChChkStarRes" [ ctor "Left" [ ctor "GHChkStarError" [] ] ])
+               (unwind "GHStar" [ varRef "starRel" ]))
+          (("GHChkStarWillResp", [ "t" ]),
+           prefix (ctor "ChChkStarRes" [ ctor "Right" [ setMem (varRef "t") (varRef "starRel") ] ]) (unwind "GHStar" []))
 
-          (GHUnstarRecv1,
-           (Some T,
-            Match(
-                MapFindOpt(TupleSnd(VarRef T), VarRef PATRel),
-                Map
-                    [ (CtorSome, (U, Unwind(GHUnstarRecv2, Some(Tuple(TupleFst(VarRef T), VarRef U)))))
-                      (CtorNone, (Any, Unwind(GHUnstarWillFail, None))) ],
-                None
-            )))
-          (GHUnstarRecv2, (Some T, IntCh(Unwind(GHUnstarWillFail, None), Unwind(GHUnstarWillResp, Some(VarRef T)))))
-          (GHUnstarWillFail,
-           (None,
-            Prefix(
-                Union(Ctor ChStarRes, Union(CtorLeft, Union(Ctor GHUnstarError, Lit VUnit))),
-                Unwind(GHStar, Some(VarRef StarRel))
-            )))
-          (GHUnstarWillResp,
-           (Some T,
-            Prefix(
-                Union(Ctor ChStarRes, Union(CtorRight, SetMem(VarRef T, VarRef StarRel))),
-                Unwind(GHStar, Some(SetInsert(VarRef T, VarRef StarRel)))
-            )))
+          (("GHStarRecv1", [ "t" ]),
+           ``match``
+               (mapFindOpt (tupleSnd (varRef "t")) (varRef "PAT_REL"))
+               [ ((Some "Some", [ "u" ]), unwind "GHStarRecv2" [ tuple2 (tupleFst (varRef "t")) (varRef "u") ])
+                 ((Some "None", []), unwind "GHStarWillFail" []) ])
 
-          (AppLaunch,
-           (Some OptP,
-            Match(
-                VarRef P,
-                Map
-                    [ (CtorSome, (P, Unwind(AppDispSearch, Some(VarRef P))))
-                      (CtorNone, (Any, Unwind(AppDispLogin, Some(Union(Ctor PATEmpty, Lit VUnit))))) ],
-                None
-            )))
-          (AppDispLogin,
-           (Some P1,
-            ExtCh(
-                PrefixRecv(Univ(tChPATField), P2, Unwind(AppDispLogin, Some(VarRef P2))),
-                Guard(
-                    BoolNot(Eq(VarRef P1, Union(Ctor PATEmpty, Lit VUnit))),
-                    Prefix(Union(Ctor EvLoginBtn, Lit VUnit), Unwind(AppDidPressLoginBtn, Some(VarRef P1)))
-                )
-            )))
-          (AppDidPressLoginBtn, (Some P, Prefix(Union(Ctor ChAuthReq, VarRef P), Unwind(AppReqAuth, Some(VarRef P)))))
-          (AppReqAuth,
-           (Some P,
-            Match(
-                VarRef P,
-                Map
-                    [ (CtorLeft, (Any, Unwind(AppDialogAuthError, Some(VarRef P))))
-                      (CtorRight,
-                       (B, If(VarRef B, Unwind(AppRecvAuth, Some(VarRef P)), Unwind(AppDialogAuthFailed, None)))) ],
-                None
-            )))
-          (AppDialogAuthError,
-           (Some P,
-            Prefix(Union(Ctor ChDispLogin, Union(Ctor AppAuthError, Lit VUnit)), Unwind(AppDispLogin, Some(VarRef P)))))
-          (AppDialogAuthFailed,
-           (None,
-            Prefix(
-                Union(Ctor ChDispLogin, Union(Ctor AppAuthFailed, Lit VUnit)),
-                Unwind(AppDispLogin, Some(Union(Ctor PATEmpty, Lit VUnit)))
-            )))
-          (AppRecvAuth,
-           (Some P,
-            Prefix(
-                Union(Ctor ChDispLogin, Union(CtorRight, Union(CtorNone, Lit VUnit))),
-                Unwind(AppDispSearch, Some(Union(Ctor QueryEmpty, Lit VUnit)))
-            )))
-          (AppDispSearch,
-           (Some Q,
-            ExtCh(
-                Prefix(Union(Ctor EvLogoutBtn, Lit VUnit), Unwind(AppDispLogin, Some(Union(Ctor PATEmpty, Lit VUnit)))),
-                ExtCh(
-                    PrefixRecv(Univ(tChSearchField), Q, Unwind(AppDispSearch, Some(VarRef Q))),
-                    Guard(
-                        BoolNot(Eq(VarRef Q, Union(Ctor QueryEmpty, Lit VUnit))),
-                        Prefix(Union(Ctor EvSearchBtn, Lit VUnit), Unwind(AppDidPressSearchBtn, Some(VarRef Q)))
-                    )
-                )
-            ))) ]
+          (("GHStarRecv2", [ "t" ]), intCh (unwind "GHStarWillFail" []) (unwind "GHStarWillResp" [ varRef "t" ]))
+          (("GHStarWillFail", []),
+           prefix (ctor "ChStarRes" [ ctor "Left" [ ctor "GHStarError" [] ] ]) (unwind "GHStar" [ varRef "starRel" ]))
+          (("GHStarWillResp", [ "t" ]),
+           prefix
+               (ctor "ChStarRes" [ ctor "Right" [ boolNot (setMem (varRef "t") (varRef "starRel")) ] ])
+               (unwind "GHStar" [ setInsert (varRef "t") (varRef "starRel") ]))
 
-let env: Env<VarName, CtorName> =
-    Map
-        [ (PATRel, VMap(Map [ (VUnion(Ctor PAT1, VUnit), VUnion(Ctor User1, VUnit)) ]))
-          (Pages1,
-           VList
-               [ VList [ VUnion(Ctor Repo1, VUnit); VUnion(Ctor Repo2, VUnit) ]
-                 VList [ VUnion(Ctor Repo3, VUnit) ] ]) ]
+          (("GHUnstarRecv2", [ "t" ]),
+           ``match``
+               (mapFindOpt (tupleSnd (varRef "t")) (varRef "PAT_REL"))
+               [ ((Some "Some", [ "u" ]), unwind "GHUnstarRecv2" [ tuple2 (tupleFst (varRef "t")) (varRef "u") ])
+                 ((Some "None", []), unwind "GHUnstarWillFail" []) ])
+          (("GHUnstarRecv2", [ "t" ]), intCh (unwind "GHUnstarWillFail" []) (unwind "GHUnstarWillResp" [ varRef "t" ]))
+          (("GHUnstarWillFail", []),
+           prefix (ctor "ChStarRes" [ ctor "Left" [ ctor "GHUnstarError" [] ] ]) (unwind "GHStar" [ varRef "starRel" ]))
+          (("GHUnstarWillResp", [ "t" ]),
+           prefix
+               (ctor "ChStarRes" [ ctor "Right" [ setMem (varRef "t") (varRef "starRel") ] ])
+               (unwind "GHStar" [ setInsert (varRef "t") (varRef "starRel") ]))
+
+          (("AppLaunch", [ "pOpt" ]),
+           ``match``
+               (varRef "p")
+               [ ((Some "Some", [ "p" ]), unwind "AppDispSearch" [ varRef "p" ])
+                 ((Some "None", []), unwind "AppDispLogin" [ ctor "PATEmpty" [] ]) ])
+          (("AppDispLogin", [ "p1" ]),
+           extCh
+               (prefixRecv (univ tChPATField) "p2" (unwind "AppDispLogin" [ varRef "p2" ]))
+               (guard
+                   (boolNot (eq tPAT (varRef "p1") (ctor "PATEmpty" [])))
+                   (prefix (ctor "EvLoginBtn" []) (unwind "AppDidPressLoginBtn" [ varRef "p1" ]))))
+          (("AppDidPressLoginBtn", [ "p" ]),
+           prefix (ctor "ChAuthReq" [ varRef "p" ]) (unwind "AppReqAuth" [ varRef "p" ]))
+          (("AppReqAuth", [ "p" ]),
+           ``match``
+               (varRef "p")
+               [ ((Some "Left", [ "_" ]), unwind "AppDialogAuthError" [ varRef "p" ])
+                 ((Some "Right", [ "b" ]),
+                  ``if`` (varRef "b") (unwind "AppRecvAuth" [ varRef "p" ]) (unwind "AppDialogAuthFailed" [])) ])
+          (("AppDialogAuthError", [ "p" ]),
+           prefix (ctor "ChDispLogin" [ ctor "AppAuthError" [] ]) (unwind "AppDispLogin" [ varRef "p" ]))
+          (("AppDialogAuthFailed", []),
+           prefix (ctor "ChDispLogin" [ ctor "AppAuthFailed" [] ]) (unwind "appDispLogin" [ ctor "PATEmpty" [] ]))
+          (("AppRecvAuth", [ "p" ]),
+           prefix
+               (ctor "ChDispLogin" [ ctor "Right" [ ctor "None" [] ] ])
+               (unwind "AppDispSearch" [ ctor "QueryEmpty" [] ]))
+          (("AppDispSearch", [ "q" ]),
+           extCh
+               (prefix (ctor "EvLogoutBtn" []) (unwind "AppDispLogin" [ ctor "PATEmpty" [] ]))
+               (extCh
+                   (prefixRecv (univ tChSearchField) "q" (unwind "AppDispSearch" [ varRef "q" ]))
+                   (guard
+                       (boolNot (eq tQuery (varRef "q") (ctor "QueryEmpty" [])))
+                       (prefix (ctor "EvSearchBtn" []) (unwind "AppDidPressSearchBtn" [ varRef "q" ]))))) ]
+
+let genv: Env =
+    Env.from
+        [ ("PAT_REL", vMap [ (vUnion "PAT1" [], vUnion "User1" []) ])
+          ("PAGES1", vList [ vList [ vUnion "Repo1" []; vUnion "Repo2" [] ]; vList [ vUnion "Repo3" [] ] ]) ]

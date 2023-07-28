@@ -15,6 +15,7 @@
         <Compile Include="TypeShorthand.fs" />
         <Compile Include="CtorMap.fs" />
         <Compile Include="Val.fs" />
+        <Compile Include="ValShorthand.fs" />
         <Compile Include="ClassEq.fs" />
         <Compile Include="ClassOrd.fs" />
         <Compile Include="ClassPlus.fs" />

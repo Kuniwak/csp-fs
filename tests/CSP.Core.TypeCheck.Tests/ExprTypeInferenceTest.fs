@@ -11,7 +11,7 @@ open CSP.Core.TypeShorthand
 open CSP.Core.TypeCstrShorthand
 open CSP.Core.TypeEnvError
 open CSP.Core.TypeError
-open CSP.Core.TypeInference
+open CSP.Core.TypeInferenceState
 open CSP.Core.ExprTypeInference
 open CSP.Core.Util
 
@@ -203,7 +203,7 @@ let exprTestCasesError: obj[] list =
            Expected = NoSuchCtor(Ctor "UndefinedCtor")
            Line = __LINE__ } |]
       [| { Expr = ctor "Foo" [ litTrue ]
-           Expected = UnionValueLenMismatch(Ctor "Foo", 1, 0)
+           Expected = AssociatedValuesLenMismatch(Ctor "Foo", Set [1; 0])
            Line = __LINE__ } |]
       [| { Expr = ifExpr litUnit litUnit litFalse
            Expected = TypeMismatch(Set [tcUnit; tcBool])

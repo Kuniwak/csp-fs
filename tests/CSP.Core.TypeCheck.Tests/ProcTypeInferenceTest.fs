@@ -77,7 +77,7 @@ let inferProcOk (tc: ProcTestCaseOk) =
     let cm = CtorMap.from [ tOption; tFoo ] in
 
     let tenv, s =
-        ResultEx.get TypeEnvError.format (TypeInference.from (TypeEnv.from [ ("GLOBAL", tBool) ])) in
+        ResultEx.get TypeEnvError.format (TypeInferenceState.from (TypeEnv.from [ ("GLOBAL", tBool) ])) in
 
     match postProcess (infer cm tenv tc.Proc s) with
     | Ok(p, s) ->

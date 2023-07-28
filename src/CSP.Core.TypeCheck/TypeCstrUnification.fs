@@ -2,7 +2,7 @@ module CSP.Core.TypeCstrUnification
 
 open CSP.Core.TypeCstr
 open CSP.Core.TypeError
-open CSP.Core.TypeInference
+open CSP.Core.TypeInferenceState
 open CSP.Core.TypeCstrResolution
 
     

@@ -10,7 +10,6 @@ type Val =
     | VList of Val list
     | VMap of Map<Val, Val>
     | VUnion of Ctor * Val list
-    | VError of string
 
 
 let rec format (v: Val) : string =
@@ -30,4 +29,3 @@ let rec format (v: Val) : string =
         | 0 -> Ctor.format ctor
         | 1 -> $"(%s{Ctor.format ctor} %s{format vs[0]})"
         | _ -> let s = String.concat " " (List.map format vs) in $"(%s{Ctor.format ctor} %s{s})"
-    | VError err -> $"error: %s{err}"

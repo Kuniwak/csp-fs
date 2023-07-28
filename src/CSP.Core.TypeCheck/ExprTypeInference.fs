@@ -8,7 +8,7 @@ open CSP.Core.CtorMap
 open CSP.Core.Expr
 open CSP.Core.Type
 open CSP.Core.TypeError
-open CSP.Core.TypeInference
+open CSP.Core.TypeInferenceState
 open CSP.Core.TypeCstrResolution
 open CSP.Core.TypeCstrUnification
 open CSP.Core.TypeCstrInstantiation
@@ -39,7 +39,7 @@ let infer
                     if List.length ts = List.length exprs then
                         let cm, s =
                             Map.fold
-                                (fun (cm, s) ctor ts -> let tcs, s = generalizeAll ts s in (Map.add ctor tcs cm, s))
+                                (fun (cm, s) ctor ts -> let tcs, s = generalizeList ts s in (Map.add ctor tcs cm, s))
                                 (Map.empty, s)
                                 cm in
 
@@ -65,7 +65,7 @@ let infer
 
                         Result.map (fun (exprs, s) -> (Union(ctor, exprs, t, line), s)) exprsRes
                     else
-                        Error(UnionValueLenMismatch(ctor, List.length exprs, List.length ts))
+                        Error(AssociatedValuesLenMismatch(ctor, Set [List.length exprs; List.length ts]))
 
         | If(exprCond, exprThen, exprElse, _, line) ->
             match infer s tcenv exprCond with
@@ -111,7 +111,7 @@ let infer
                                         | Error terr -> Error(atLine line terr)
                                         | Ok(expr, s) -> Ok(expr, s)
                                 else
-                                    Error(UnionValueLenMismatch(ctor, List.length varOpts, List.length tcs))
+                                    Error(AssociatedValuesLenMismatch(ctor, Set [List.length varOpts; List.length tcs]))
                         | None ->
                             Result.bind
                                 (fun tenv ->

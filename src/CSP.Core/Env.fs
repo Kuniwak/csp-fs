@@ -6,8 +6,12 @@ open CSP.Core.Var
 
 type Env = Env of Map<Var, Val>
 
-let from: (Var * Val) seq -> Env = Map >> Env
+let from (xs: (string * Val) seq): Env = Env (Map [for var, v in xs -> (Var var, v)])
 let empty: Env = Env Map.empty
+
+let fold (f: 'State -> Var -> Val -> 'State) (s: 'State) (env: Env) =
+    match env with
+    | Env env -> Map.fold f s env
 
 
 let bind1 (var: Var) (v: Val) (env: Env) : Result<Env, EnvError> =

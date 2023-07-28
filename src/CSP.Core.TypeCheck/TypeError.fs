@@ -18,7 +18,7 @@ type TypeError =
     | TypeMismatch of Set<TypeCstr>
     | NoSuchCtor of Ctor
     | CtorsMismatch of Set<Ctor> * Set<Ctor>
-    | UnionValueLenMismatch of Ctor * int * int
+    | AssociatedValuesLenMismatch of Ctor * Set<int>
     | EmptyMatch
     | DefaultClauseArgumentsLenMustBe1 of Var option list
     | Recursion of UncertainVarId * TypeCstrUncertainVar.VarMap
@@ -47,8 +47,9 @@ let format (terr: TypeError) : string =
                 String.concat " vs " (List.map (fun tcs -> TypeCstr.format (TCTuple tcs)) (Set.toList s))
 
             $"tuple length mismatch: %s{s}"
-        | UnionValueLenMismatch(ctor, actual, expected) ->
-            $"length of associated values mismatch: %s{Ctor.format ctor} (got %d{actual}, want {expected})"
+        | AssociatedValuesLenMismatch(ctor, s) ->
+            let s = String.concat " vs " (Seq.map (fun n -> $"%d{n}") (Set.toSeq s)) in
+            $"length of associated values mismatch: %s{Ctor.format ctor} (%s{s})"
         | NoSuchCtor ctor -> $"no such data constructor: %s{Ctor.format ctor}"
         | CtorsMismatch(s1, s2) ->
             let s1 = String.concat ", " (Seq.map Ctor.format s1) in

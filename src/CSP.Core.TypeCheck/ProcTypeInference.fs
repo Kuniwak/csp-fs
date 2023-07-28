@@ -6,7 +6,7 @@ open CSP.Core.Type
 open CSP.Core.TypeCstrEnv
 open CSP.Core.TypeCstr
 open CSP.Core.TypeError
-open CSP.Core.TypeInference
+open CSP.Core.TypeInferenceState
 open CSP.Core.ExprTypeInference
 open CSP.Core.Util
 
@@ -110,10 +110,9 @@ let infer (cm: CtorMap) (tcenv: TypeCstrEnv) (p: Proc<unit>) (s: State) : Result
                                                         tcenvRes)
                                                 else
                                                     Error(
-                                                        UnionValueLenMismatch(
+                                                        AssociatedValuesLenMismatch(
                                                             ctor,
-                                                            List.length varOpts,
-                                                            List.length tcs
+                                                            Set [ List.length varOpts; List.length tcs ]
                                                         )
                                                     )
                                         | None ->

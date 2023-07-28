@@ -14,13 +14,14 @@
         <Compile Include="TypeEnv.fs" />
         <Compile Include="TypeCstrEnv.fs" />
         <Compile Include="TypeError.fs" />
-        <Compile Include="TypeInference.fs" />
+        <Compile Include="TypeInferenceState.fs" />
         <Compile Include="TypeCstrResolution.fs" />
         <Compile Include="TypeCstrUnification.fs" />
         <Compile Include="TypeCstrInstantiation.fs" />
+        <Compile Include="ValueTypeInference.fs" />
         <Compile Include="ExprTypeInference.fs" />
         <Compile Include="ProcTypeInference.fs" />
-        <Compile Include="ProcMapTypeInference.fs" />
+        <Compile Include="TypeCheck.fs" />
     </ItemGroup>
 
     <ItemGroup>

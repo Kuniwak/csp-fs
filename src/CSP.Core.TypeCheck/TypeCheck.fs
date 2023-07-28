@@ -1,19 +1,30 @@
 module CSP.Core.ProcMapTypeInference
 
 open CSP.Core.TypeCstr
-open CSP.Core.TypeEnv
+open CSP.Core.Env
 open CSP.Core.TypeError
 open CSP.Core.CtorMap
 open CSP.Core.TypeCstrEnv
 open CSP.Core.ProcMap
 open CSP.Core.ProcTypeInference
-open CSP.Core.TypeInference
+open CSP.Core.TypeInferenceState
 
-let typeCheck (cm: CtorMap) (tenv: TypeEnv) (pm: ProcMap<unit>) : TypeError option =
-    let tcenvRes = from tenv in
+let typeEnv (cm: CtorMap) (env: Env) (s: State) : Result<TypeCstrEnv * State, TypeError> =
+    let accRes =
+        Env.fold
+            (fun accRes var v ->
+                Result.bind
+                    (fun (m, s) -> Result.map (fun (tc, s) -> (Map.add var tc m, s)) (ValueTypeInference.infer cm s v))
+                    accRes)
+            (Ok(Map.empty, s))
+            env in
 
-    match tcenvRes with
-    | Error terr -> Some(TypeEnvError terr)
+    Result.map (fun (m, s) -> (TypeCstrEnv m, s)) accRes
+
+
+let typeCheck (cm: CtorMap) (genv: Env) (pm: ProcMap<unit>) : TypeError option =
+    match typeEnv cm genv init with
+    | Error(err) -> Some(err)
     | Ok(tcenv, s) ->
         let sRes =
             fold
