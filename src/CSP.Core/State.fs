@@ -102,7 +102,7 @@ let bindAll (xs: (Var option * Val) seq) (s: State) =
         (Ok(s))
         xs
 
-let ofProc (genv: Env) (p: Proc) : State =
+let ofProc (genv: Env) (p: Proc<unit>) : State =
     let rec ofProc p =
         match p with
         | Proc.Unwind(nm, e, _) -> Unwind(genv, nm, e)
@@ -143,45 +143,33 @@ let ofProc (genv: Env) (p: Proc) : State =
 type UnwindConfig = { EvalConfig: EvalConfig }
 let unwindConfig cfg = { EvalConfig = cfg }
 
-let unwind (cfg: UnwindConfig) (pm: ProcMap) (cm: CtorMap) (genv: Env) (s0: State) : State =
-    let rec loop s visited =
+let unwind (cfg: UnwindConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0: State) : State =
+    let rec unwind s visited =
         match s with
         | Unwind(env, pn, eOpt) ->
             if Set.contains s visited then
                 failwith "circular definition"
             else
-                match Map.tryFind pn pm with
+                match tryFind pn pm with
                 | Some t ->
                     match t, eOpt with
                     | (Some var, p), Some e ->
                         match eval cfg.EvalConfig cm env e with
                         | Ok v ->
                             match Env.bind1 var v genv with
-                            | Ok env -> loop (ofProc env p) (Set.add (ofProc env p) visited)
+                            | Ok env -> unwind (ofProc env p) (Set.add (ofProc env p) visited)
                             | Error err -> ErrorState(EnvError.format err, s)
                         | Error err -> ErrorState(EvalError.format err, s)
-                    | (None, p), None -> loop (ofProc env p) (Set.add (ofProc env p) visited)
+                    | (None, p), None -> unwind (ofProc env p) (Set.add (ofProc env p) visited)
                     | (None, _), Some _ -> ErrorState("given a value to Unwind, but not needed at unwind", s)
                     | (Some _, _), None -> ErrorState("needed a value by Unwind, but not given at unwind", s)
                 | None ->
-                    let sep = ", " in
-
-                    let ms =
-                        String.concat
-                            sep
-                            (Seq.map
-                                (fun (n, (varOpt, _)) ->
-                                    match varOpt with
-                                    | Some var -> $"{n} {var}"
-                                    | None -> $"{n}")
-                                (Map.toList pm)) in
-
-                    failwith $"no such process: {pn} in [{ms}]"
+                    failwith $"no such process: {pn} in [{formatNames pm}]"
         | _ -> s
 
-    loop s0 Set.empty
+    unwind s0 Set.empty
 
-let format (cfg: UnwindConfig) (pm: ProcMap) (cm: CtorMap) (genv: Env) (s0: State) : string =
+let format (cfg: UnwindConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0: State) : string =
     let formatExpr = Expr.format noAnnotation
 
     let rec f s isTop =

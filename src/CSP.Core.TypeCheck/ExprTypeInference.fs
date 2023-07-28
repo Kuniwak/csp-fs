@@ -30,8 +30,8 @@ let infer
     (cm: CtorMap)
     (tcenv: TypeCstrEnv)
     (expr: Expr<unit>)
-    (s0: TypeInferState)
-    : Result<Expr<TypeCstr> * TypeInferState, TypeError> =
+    (s0: State)
+    : Result<Expr<TypeCstr> * State, TypeError> =
     let rec infer s tcenv expr =
         match expr with
         | LitTrue(_, line) -> Ok(LitTrue(TCBool, line), s)
@@ -110,7 +110,7 @@ let infer
 
                 match tUnion with
                 | TCUnion(_, cm) ->
-                    let inferClause s ctorOpt varOpts expr : Result<Expr<TypeCstr> * TypeInferState, TypeError> =
+                    let inferClause s ctorOpt varOpts expr : Result<Expr<TypeCstr> * State, TypeError> =
                         match ctorOpt with
                         | Some ctor ->
                             match Map.tryFind ctor cm with
@@ -523,6 +523,6 @@ let infer
     infer s0 tcenv expr
 
 let postProcess
-    (res: Result<Expr<TypeCstr> * TypeInferState, TypeError>)
-    : Result<Expr<Type> * TypeInferState, TypeError> =
+    (res: Result<Expr<TypeCstr> * State, TypeError>)
+    : Result<Expr<Type> * State, TypeError> =
     Result.bind (fun (expr, s) -> Result.map (fun expr -> (instantiateAll expr, s)) (resolveAll expr s)) res

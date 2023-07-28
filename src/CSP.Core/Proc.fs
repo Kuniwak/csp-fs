@@ -9,27 +9,25 @@ open CSP.Core.Expr
 
 type ProcId = string
 
-type Proc =
-    | Unwind of ProcId * Expr<unit> option * LineNum
+type Proc<'a> =
+    | Unwind of ProcId * Expr<'a> option * LineNum
     | Stop of LineNum
     | Skip of LineNum
-    | Prefix of Expr<unit> * Proc * LineNum
-    | PrefixRecv of Expr<unit> * Var * Proc * LineNum
-    | IntCh of Proc * Proc * LineNum
-    | ExtCh of Proc * Proc * LineNum
-    | Seq of Proc * Proc * LineNum
-    | If of Expr<unit> * Proc * Proc * LineNum
-    | Match of
-        Expr<unit> *
-        Map<Ctor option, Var option list * Proc> *
-        LineNum
-    | InterfaceParallel of Proc * Expr<unit> * Proc * LineNum
-    | Interleave of Proc * Proc * LineNum
-    | Hide of Proc * Expr<unit> * LineNum
-    | Guard of Expr<unit> * Proc * LineNum
+    | Prefix of Expr<'a> * Proc<'a> * LineNum
+    | PrefixRecv of Expr<'a> * Var * Proc<'a> * LineNum
+    | IntCh of Proc<'a> * Proc<'a> * LineNum
+    | ExtCh of Proc<'a> * Proc<'a> * LineNum
+    | Seq of Proc<'a> * Proc<'a> * LineNum
+    | If of Expr<'a> * Proc<'a> * Proc<'a> * LineNum
+    | Match of Expr<'a> * Map<Ctor option, Var option list * Proc<'a>> * LineNum
+    | InterfaceParallel of Proc<'a> * Expr<'a> * Proc<'a> * LineNum
+    | Interleave of Proc<'a> * Proc<'a> * LineNum
+    | Hide of Proc<'a> * Expr<'a> * LineNum
+    | Guard of Expr<'a> * Proc<'a> * LineNum
 
-let format (m: Map<ProcId, 'Var option * Proc>) (p0: Proc) : string =
-    let format = format noAnnotation
+let format (fmt: string -> 'a -> string) (m: Map<ProcId, 'Var option * Proc<'a>>) (p0: Proc<'a>) : string =
+    let format = format fmt in
+
     let rec f p isTop =
         match p with
         | Unwind(n, eOpt, _) ->
@@ -53,7 +51,10 @@ let format (m: Map<ProcId, 'Var option * Proc>) (p0: Proc) : string =
         | If(expr, p1, p2, _) -> $"(if {format expr} then {f p1 false} else {f p2 false})"
         | Match(expr, cs, _) ->
             let sep = " | " in
-            let cs' = List.map (fun (ctorOpt, (varOpts, p')) -> $"{ctorOpt} {varOpts} -> {f p' false}") (Map.toList cs)
+
+            let cs' =
+                List.map (fun (ctorOpt, (varOpts, p')) -> $"{ctorOpt} {varOpts} -> {f p' false}") (Map.toList cs)
+
             $"(match {format expr} with {String.concat sep cs'})"
         | InterfaceParallel(p1, expr, p2, _) -> $"({f p1 false} ⟦{format expr}⟧ {f p2 false})"
         | Interleave(p1, p2, _) -> $"({f p1 false} ||| {f p2 false})"
@@ -61,14 +62,14 @@ let format (m: Map<ProcId, 'Var option * Proc>) (p0: Proc) : string =
         | Guard(e, p, _) -> $"({format e}&{f p false})"
 
     f p0 true
-    
-let line (p: Proc): LineNum =
+
+let line (p: Proc<'a>) : LineNum =
     match p with
-    | Unwind (_, _, line) -> line
+    | Unwind(_, _, line) -> line
     | Stop line -> line
     | Skip line -> line
-    | Prefix (_, _, line) -> line
-    | PrefixRecv (_, _, _, line) -> line
+    | Prefix(_, _, line) -> line
+    | PrefixRecv(_, _, _, line) -> line
     | IntCh(_, _, line) -> line
     | ExtCh(_, _, line) -> line
     | Seq(_, _, line) -> line
@@ -79,7 +80,7 @@ let line (p: Proc): LineNum =
     | Hide(_, _, line) -> line
     | Guard(_, _, line) -> line
 
-let children (p: Proc) : Proc list =
+let children (p: Proc<'a>) : Proc<'a> list =
     match p with
     | Unwind _ -> []
     | Stop _ -> []
@@ -96,8 +97,28 @@ let children (p: Proc) : Proc list =
     | Hide(p, _, _) -> [ p ]
     | Guard(_, p, _) -> [ p ]
 
-let dfs (visit: Proc -> Unit) (p: Proc) : Unit =
+let dfs (visit: Proc<'a> -> Unit) (p: Proc<'a>) : Unit =
     Search.dfs searchCfgUnlimited (fun p _ -> visit p) (fun p -> List.map (fun p -> ((), p)) (children p)) id p
 
-let bfs (visit: Proc -> Unit) (p: Proc) : Unit =
+let bfs (visit: Proc<'a> -> Unit) (p: Proc<'a>) : Unit =
     Search.bfs searchCfgUnlimited (fun p _ -> visit p) (fun p -> List.map (fun p -> ((), p)) (children p)) id p
+
+let map (f: Expr<'a> -> 'b) (p: Proc<'a>) : Proc<'b> =
+    let rec map p =
+        match p with
+        | Unwind(pn, expr, line) -> Unwind(pn, Option.map (Expr.map f) expr, line)
+        | Stop(line) -> Stop(line)
+        | Skip(line) -> Skip(line)
+        | Prefix(expr, p, line) -> Prefix(Expr.map f expr, map p, line)
+        | PrefixRecv(expr, var, p, line) -> PrefixRecv(Expr.map f expr, var, map p, line)
+        | IntCh(p1, p2, line) -> IntCh(map p1, map p2, line)
+        | ExtCh(p1, p2, line) -> ExtCh(map p1, map p2, line)
+        | Seq(p1, p2, line) -> Seq(map p1, map p2, line)
+        | If(expr, p1, p2, line) -> If(Expr.map f expr, map p1, map p2, line)
+        | Match(expr, pm, line) -> Match(Expr.map f expr, Map.map (fun _ (varOpt, p) -> (varOpt, map p)) pm, line)
+        | InterfaceParallel(p1, expr, p2, line) -> InterfaceParallel(map p1, Expr.map f expr, map p2, line)
+        | Interleave(p1, p2, line) -> Interleave(map p1, map p2, line)
+        | Hide(p, expr, line) -> Hide(map p, Expr.map f expr, line)
+        | Guard(expr, p, line) -> Guard(Expr.map f expr, map p, line)
+
+    map p

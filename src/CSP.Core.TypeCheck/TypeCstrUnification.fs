@@ -6,7 +6,7 @@ open CSP.Core.TypeInference
 open CSP.Core.TypeCstrResolution
 
     
-let unify (s: TypeInferState) (tc1: TypeCstr) (tc2: TypeCstr) : Result<TypeCstr * TypeInferState, TypeError> =
+let unify (s: State) (tc1: TypeCstr) (tc2: TypeCstr) : Result<TypeCstr * State, TypeError> =
     let rec unify s tc1 tc2 =
         match resolve s tc1, resolve s tc2 with
         | Error(terr), _ -> Error terr // NOTE: Occurence check failed.

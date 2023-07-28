@@ -2,24 +2,25 @@ module CSP.Core.TypeInference
 
 open CSP.Core.Type
 open CSP.Core.TypeCstr
+open CSP.Core.TypeEnv
 open CSP.Core.TypeCstrEnv
 open CSP.Core.TypeEnvError
 
-type TypeInferState =
+type State =
     { UncertainVarMap: TypeCstrUncertainVar.VarMap }
 
-let newUncertainVarId (s: TypeInferState) : UncertainVarId * TypeInferState =
+let newUncertainVarId (s: State) : UncertainVarId * State =
     let id, fam = TypeCstrUncertainVar.newId s.UncertainVarMap in (id, { s with UncertainVarMap = fam })
 
-let bindUncertainVar (id: UncertainVarId) (tc: TypeCstr) (s: TypeInferState) : TypeInferState =
+let bindUncertainVar (id: UncertainVarId) (tc: TypeCstr) (s: State) : State =
     let fum = TypeCstrUncertainVar.bind id tc s.UncertainVarMap in { s with UncertainVarMap = fum }
 
-let resolveUncertainVar (id: UncertainVarId) (s: TypeInferState) : TypeCstr option =
+let resolveUncertainVar (id: UncertainVarId) (s: State) : TypeCstr option =
     TypeCstrUncertainVar.resolve id s.UncertainVarMap
 
-let init: TypeInferState = { UncertainVarMap = TypeCstrUncertainVar.init }
+let init: State = { UncertainVarMap = TypeCstrUncertainVar.init }
 
-let generalize (t: Type) (s: TypeInferState) : TypeCstr * TypeInferState =
+let generalize (t: Type) (s: State) : TypeCstr * State =
     let rec generalize t s m =
         match t with
         | TVar n ->
@@ -66,16 +67,15 @@ let generalize (t: Type) (s: TypeInferState) : TypeCstr * TypeInferState =
     let tc, s, _ = generalize t s Map.empty
     (tc, s)
 
-let generalizeAll (ts: Type list) (s: TypeInferState) : TypeCstr list * TypeInferState =
+let generalizeAll (ts: Type list) (s: State) : TypeCstr list * State =
     List.foldBack (fun t (tcs, s) -> let tc, s = generalize t s in (tc :: tcs, s)) ts ([], s)
 
-let from (xs: (string * Type) seq) : Result<TypeCstrEnv * TypeInferState, TypeEnvError> =
+let from (tenv: TypeEnv) : Result<TypeCstrEnv * State, TypeEnvError> =
     let tcenvRes, s =
-        TypeEnv.fold
-            (fun (tcenvRes, s) var t ->
-                let tc, s = generalize t s in (Result.bind (bind1 var tc) tcenvRes, s))
+        fold
+            (fun (tcenvRes, s) var t -> let tc, s = generalize t s in (Result.bind (bind1 var tc) tcenvRes, s))
             (Ok(empty), init)
-            (TypeEnv.from xs) in
+            tenv in
 
     match tcenvRes with
     | Ok(tcenv) -> Ok(tcenv, s)

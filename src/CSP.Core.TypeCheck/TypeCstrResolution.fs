@@ -8,7 +8,7 @@ open CSP.Core.TypeInference
 
 
 
-let resolve (s: TypeInferState) (t: TypeCstr) : Result<TypeCstr, TypeError> =
+let resolve (s: State) (t: TypeCstr) : Result<TypeCstr, TypeError> =
     let rec resolve visited t =
         match t with
         | TCUncertain u ->
@@ -56,7 +56,7 @@ let resolve (s: TypeInferState) (t: TypeCstr) : Result<TypeCstr, TypeError> =
 
     resolve (Set []) t
 
-let resolveAll (expr: Expr<TypeCstr>) (s: TypeInferState) : Result<Expr<TypeCstr>, TypeError> =
+let resolveAll (expr: Expr<TypeCstr>) (s: State) : Result<Expr<TypeCstr>, TypeError> =
     let expr = map (get >> resolve s) expr in
 
     Result.map

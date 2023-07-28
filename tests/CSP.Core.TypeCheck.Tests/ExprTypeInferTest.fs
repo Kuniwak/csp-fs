@@ -1,4 +1,4 @@
-module CSP.Core.Tests.ExprTypeInferTest
+module CSP.Core.TypeCheck.Tests.ExprTypeInferTest
 
 open Xunit
 open CSP.Core.Util
@@ -163,7 +163,7 @@ let inferExprOk (tc: ExprTestCaseOk) =
     let tOption = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ] in
     let tFoo = tUnion "foo" [ ("Foo", []) ] in
     let cm = CtorMap.from [ tOption; tFoo ] in
-    let tenv, s = ResultEx.get TypeEnvError.format (from [ ("GLOBAL", tBool) ]) in
+    let tenv, s = ResultEx.get TypeEnvError.format (from (TypeEnv.from [ ("GLOBAL", tBool) ])) in
     
     match postProcess (infer cm tenv tc.Expr s) with
     | Ok(actual, s) ->
@@ -376,7 +376,7 @@ let inferExprError (tc: ExprTestCaseError) =
     let tOption = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ] in
     let tFoo = tUnion "foo" [ ("Foo", []) ] in
     let cm = CtorMap.from [ tOption; tFoo ] in
-    let tenv, s = ResultEx.get TypeEnvError.format (from [ ("GLOBAL", tBool) ]) in
+    let tenv, s = ResultEx.get TypeEnvError.format (from (TypeEnv.from [ ("GLOBAL", tBool) ])) in
 
     match postProcess (infer cm tenv tc.Expr s) with
     | Ok(actual, s) ->

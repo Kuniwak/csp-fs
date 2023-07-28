@@ -13,8 +13,8 @@ open CSP.Core.Expr
 open CSP.Core.State
 open CSP.Core.Eval
 
-let init (pm: ProcMap) (genv: Env) (pn: ProcId) (vOpt: Val option) : State =
-    match Map.tryFind pn pm with
+let init (pm: ProcMap<unit>) (genv: Env) (pn: ProcId) (vOpt: Val option) : State =
+    match tryFind pn pm with
     | None -> failwith $"no such process: {pn}"
     | Some(var, _) ->
         let genv, varOpt =
@@ -37,7 +37,7 @@ let transConfig cfg =
     { EvalConfig = cfg
       UnwindConfig = unwindConfig cfg }
 
-let trans (cfg: TransConfig) (pm: ProcMap) (cm: CtorMap) (genv: Env) (s0: State) : (Event * State) list =
+let trans (cfg: TransConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0: State) : (Event * State) list =
     let eval = eval cfg.EvalConfig cm in
 
     let rec trans s =

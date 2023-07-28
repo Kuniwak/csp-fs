@@ -27,9 +27,9 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "CSP.Core.UtilTests", "tests
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "CSP.Core.Visualization", "src\CSP.Core.Visualization\CSP.Core.Visualization.fsproj", "{710E8C92-37A5-4D19-9F8C-3D6E1808C31F}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "CSP.Core.TypeInference", "src\CSP.Core.TypeInference\CSP.Core.TypeInference.fsproj", "{51560BE2-FDAB-46DF-9A7A-BFB23E5D6795}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "CSP.Core.TypeCheck", "src\CSP.Core.TypeCheck\CSP.Core.TypeCheck.fsproj", "{51560BE2-FDAB-46DF-9A7A-BFB23E5D6795}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "CSP.Core.TypeInference.Tests", "tests\CSP.Core.TypeInference.Tests\CSP.Core.TypeInference.Tests.fsproj", "{E2FFB224-5578-4A16-8421-53C866371085}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "CSP.Core.TypeCheck.Tests", "tests\CSP.Core.TypeCheck.Tests\CSP.Core.TypeCheck.Tests.fsproj", "{E2FFB224-5578-4A16-8421-53C866371085}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "CSP.Core.Visualization.Tests", "tests\CSP.Core.Visualization.Tests\CSP.Core.Visualization.Tests.fsproj", "{9E45E708-5954-4889-BCF0-2BB8D63BCCD9}"
 EndProject

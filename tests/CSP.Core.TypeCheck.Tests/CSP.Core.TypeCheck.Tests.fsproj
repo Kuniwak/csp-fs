@@ -6,6 +6,7 @@
         <IsPackable>false</IsPackable>
         <GenerateProgramFile>false</GenerateProgramFile>
         <IsTestProject>true</IsTestProject>
+        <RootNamespace>CSP.Core.TypeInference.Tests</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
@@ -27,7 +28,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\src\CSP.Core.TypeInference\CSP.Core.TypeInference.fsproj" />
+      <ProjectReference Include="..\..\src\CSP.Core.TypeCheck\CSP.Core.TypeCheck.fsproj" />
       <ProjectReference Include="..\..\src\CSP.Core.Util\CSP.Core.Util.fsproj" />
       <ProjectReference Include="..\..\src\CSP.Core\CSP.Core.fsproj" />
     </ItemGroup>
