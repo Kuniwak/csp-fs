@@ -205,12 +205,8 @@ let procMap =
                                            __LINE__)
                                        (less
                                            tNat
-                                           (varRef "i" __LINE__)
-                                           (minus
-                                               tNat
-                                               (size tPages (varRef "PAGES1" __LINE__) __LINE__)
-                                               (litNat 1u __LINE__)
-                                               __LINE__)
+                                           (minus tNat (varRef "i" __LINE__) (litNat 1u __LINE__) __LINE__)
+                                           (size tPages (varRef "PAGES1" __LINE__) __LINE__)
                                            __LINE__)
                                        __LINE__)
                                    // Otherwise.
