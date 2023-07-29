@@ -13,6 +13,7 @@
         <Compile Include="Ctor.fs" />
         <Compile Include="Type.fs" />
         <Compile Include="TypeShorthand.fs" />
+        <Compile Include="CtorMapError.fs" />
         <Compile Include="CtorMap.fs" />
         <Compile Include="Val.fs" />
         <Compile Include="ValShorthand.fs" />

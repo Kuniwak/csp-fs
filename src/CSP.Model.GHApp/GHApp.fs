@@ -96,39 +96,41 @@ let tPages = tList tPage
 
 
 let ctorMap =
-    CtorMap.from
-        [ tOption (tVar 0u)
-          tEither (tVar 0u) (tVar 1u)
-          tEvent
-          tPat
-          tQuery
-          tUser
-          tRepo
-          tGHAuthError
-          tGHSearchError
-          tGHSearchMoreError
-          tGHChkStarError
-          tGHStarError
-          tGHUnstarError
-          tDispLogin
-          tDispSearchError
-          tChAuthReq
-          tChAuthRes
-          tChSearchReq
-          tChSearchRes
-          tChChkStarReq
-          tChChkStarRes
-          tChStarReq
-          tChStarRes
-          tChUnstarReq
-          tChUnstarRes
-          tChPatField
-          tChSearchField
-          tChChkStarBtn
-          tChStarBtn
-          tChUnstarBtn
-          tChDispLogin
-          tChDispSearch ]
+    ResultEx.get
+        CtorMapError.format
+        (CtorMap.from
+            [ tOption (tVar 0u)
+              tEither (tVar 0u) (tVar 1u)
+              tEvent
+              tPat
+              tQuery
+              tUser
+              tRepo
+              tGHAuthError
+              tGHSearchError
+              tGHSearchMoreError
+              tGHChkStarError
+              tGHStarError
+              tGHUnstarError
+              tDispLogin
+              tDispSearchError
+              tChAuthReq
+              tChAuthRes
+              tChSearchReq
+              tChSearchRes
+              tChChkStarReq
+              tChChkStarRes
+              tChStarReq
+              tChStarRes
+              tChUnstarReq
+              tChUnstarRes
+              tChPatField
+              tChSearchField
+              tChChkStarBtn
+              tChStarBtn
+              tChUnstarBtn
+              tChDispLogin
+              tChDispSearch ])
 
 let procMap =
     from
