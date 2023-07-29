@@ -12,7 +12,7 @@ open CSP.Core.ProcMap
 let tEvent =
     tUnion "event" [ ("EvLoginBtn", []); ("EvLogoutBtn", []); ("EvSearchBtn", []) ]
 
-let tPAT = tUnion "pat" [ ("Pat1", []); ("Pat2", []); ("PatEmpty", []) ]
+let tPat = tUnion "pat" [ ("Pat1", []); ("Pat2", []); ("PatEmpty", []) ]
 let tQuery = tUnion "query" [ ("Query1", []); ("Query2", []); ("QueryEmpty", []) ]
 let tUser = tUnion "user" [ ("User1", []) ]
 let tRepo = tUnion "repo" [ ("Repo1", []); ("Repo2", []); ("Repo3", []) ]
@@ -26,9 +26,8 @@ let tGHChkStarError = tUnion "ghChkStarError" [ ("GHChkStarError", []) ]
 let tGHStarError = tUnion "ghStarError" [ ("GHStarError", []) ]
 let tGHUnstarError = tUnion "ghUnstarError" [ ("GHUnstarError", []) ]
 
-let tDispLoginError = tUnion "dispLoginError" [ ("DispLoginError", []) ]
-
-let tDispLogin = tUnion "either" [ ("Left", [ TVar 0u ]); ("Right", [ TVar 1u ]) ]
+let tDispLogin =
+    tUnion "tDispLogin" [ ("AppAuthSuccess", []); ("AppAuthError", []); ("AppAuthFailed", []) ]
 
 let tDispSearchError =
     tUnion
@@ -42,7 +41,7 @@ let tDispSearchError =
 let tDispSearch =
     tEither tDispSearchError (tTuple [ tList tRepo; tMap tRepo (tOption tBool); TBool ])
 
-let tChAuthReq = tUnion "tChAuthReq" [ ("ChAuthReq", [ tPAT ]) ]
+let tChAuthReq = tUnion "tChAuthReq" [ ("ChAuthReq", [ tPat ]) ]
 
 let tChAuthRes =
     tUnion "tChAuthRes" [ ("ChAuthRes", [ tEither tGHAuthError (tOption tUser) ]) ]
@@ -54,22 +53,22 @@ let tChSearchRes =
     tUnion "tChSearchRes" [ ("ChSearchRes", [ tEither tGHSearchError (tTuple2 (TList tRepo) TBool) ]) ]
 
 let tChChkStarReq =
-    tUnion "tChChkStarReq" [ ("ChChkStarReq", [ tTuple2 tRepo tPAT ]) ]
+    tUnion "tChChkStarReq" [ ("ChChkStarReq", [ tTuple2 tRepo tPat ]) ]
 
 let tChChkStarRes =
     tUnion "tChChkStarRes" [ ("ChChkStarRes", [ tEither tGHChkStarError tBool ]) ]
 
-let tChStarReq = tUnion "tChStarReq" [ ("ChStarReq", [ tTuple2 tRepo tPAT ]) ]
+let tChStarReq = tUnion "tChStarReq" [ ("ChStarReq", [ tTuple2 tRepo tPat ]) ]
 
 let tChStarRes =
     tUnion "tChStarRes" [ ("ChStarRes", [ tEither tGHStarError TBool ]) ]
 
-let tChUnstarReq = tUnion "tChUnstarReq" [ ("ChUnstarReq", [ tTuple2 tRepo tPAT ]) ]
+let tChUnstarReq = tUnion "tChUnstarReq" [ ("ChUnstarReq", [ tTuple2 tRepo tPat ]) ]
 
 let tChUnstarRes =
     tUnion "tChUnstarRes" [ ("ChUnstarRes", [ tEither tGHUnstarError tBool ]) ]
 
-let tChPATField = tUnion "tChPATField" [ ("ChPATField", [ tPAT ]) ]
+let tChPatField = tUnion "tChPATField" [ ("ChPATField", [ tPat ]) ]
 let tChSearchField = tUnion "tChSearchField" [ ("ChSearchField", [ tQuery ]) ]
 let tChChkStarBtn = tUnion "tChChkStarBtn" [ ("ChChkStarBtn", [ tRepo ]) ]
 let tChStarBtn = tUnion "tChStarBtn" [ ("ChStarBtn", [ tRepo ]) ]
@@ -84,7 +83,7 @@ let tPages = tList tPage
 let ctorMap =
     CtorMap.from
         [ tEvent
-          tPAT
+          tPat
           tQuery
           tUser
           tRepo
@@ -94,7 +93,6 @@ let ctorMap =
           tGHChkStarError
           tGHStarError
           tGHUnstarError
-          tDispLoginError
           tDispLogin
           tDispSearchError
           tDispSearch
@@ -108,7 +106,7 @@ let ctorMap =
           tChStarRes
           tChUnstarReq
           tChUnstarRes
-          tChPATField
+          tChPatField
           tChSearchField
           tChChkStarBtn
           tChStarBtn
@@ -209,14 +207,14 @@ let procMap =
 
           (("AppLaunch", [ "pOpt" ]),
            ``match``
-               (varRef "p")
+               (varRef "pOpt")
                [ ((Some "Some", [ "p" ]), unwind "AppDispSearch" [ varRef "p" ])
-                 ((Some "None", []), unwind "AppDispLogin" [ ctor "PATEmpty" [] ]) ])
+                 ((Some "None", []), unwind "AppDispLogin" [ ctor "PatEmpty" [] ]) ])
           (("AppDispLogin", [ "p1" ]),
            extCh
-               (prefixRecv (univ tChPATField) "p2" (unwind "AppDispLogin" [ varRef "p2" ]))
+               (prefixRecv (univ tChPatField) "p2" (unwind "AppDispLogin" [ varRef "p2" ]))
                (guard
-                   (boolNot (eq tPAT (varRef "p1") (ctor "PATEmpty" [])))
+                   (boolNot (eq tPat (varRef "p1") (ctor "PatEmpty" [])))
                    (prefix (ctor "EvLoginBtn" []) (unwind "AppDidPressLoginBtn" [ varRef "p1" ]))))
           (("AppDidPressLoginBtn", [ "p" ]),
            prefix (ctor "ChAuthReq" [ varRef "p" ]) (unwind "AppReqAuth" [ varRef "p" ]))
@@ -229,14 +227,14 @@ let procMap =
           (("AppDialogAuthError", [ "p" ]),
            prefix (ctor "ChDispLogin" [ ctor "AppAuthError" [] ]) (unwind "AppDispLogin" [ varRef "p" ]))
           (("AppDialogAuthFailed", []),
-           prefix (ctor "ChDispLogin" [ ctor "AppAuthFailed" [] ]) (unwind "appDispLogin" [ ctor "PATEmpty" [] ]))
+           prefix (ctor "ChDispLogin" [ ctor "AppAuthFailed" [] ]) (unwind "appDispLogin" [ ctor "PatEmpty" [] ]))
           (("AppRecvAuth", [ "p" ]),
            prefix
-               (ctor "ChDispLogin" [ ctor "Right" [ ctor "None" [] ] ])
+               (ctor "ChDispLogin" [ ctor "AppAuthSuccess" [] ])
                (unwind "AppDispSearch" [ ctor "QueryEmpty" [] ]))
           (("AppDispSearch", [ "q" ]),
            extCh
-               (prefix (ctor "EvLogoutBtn" []) (unwind "AppDispLogin" [ ctor "PATEmpty" [] ]))
+               (prefix (ctor "EvLogoutBtn" []) (unwind "AppDispLogin" [ ctor "PatEmpty" [] ]))
                (extCh
                    (prefixRecv (univ tChSearchField) "q" (unwind "AppDispSearch" [ varRef "q" ]))
                    (guard
@@ -245,5 +243,5 @@ let procMap =
 
 let genv: Env =
     Env.from
-        [ ("PAT_REL", vMap [ (vUnion "PAT1" [], vUnion "User1" []) ])
+        [ ("PAT_REL", vMap [ (vUnion "Pat1" [], vUnion "User1" []) ])
           ("PAGES1", vList [ vList [ vUnion "Repo1" []; vUnion "Repo2" [] ]; vList [ vUnion "Repo3" [] ] ]) ]
