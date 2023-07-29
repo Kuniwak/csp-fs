@@ -4,7 +4,7 @@ let ofSet (s: Set<'a>) : Set<'a> list =
     List.map Set (ListEx.power (Set.toList s))
 
 
-let rec ofList (l: uint) (xs: 'a list) : 'a list list =
+let rec ofList (xs: 'a list) (l: uint) : 'a list list =
     if List.isEmpty xs then
         failwith $"must not be empty: %s{nameof ofList}"
     else
@@ -16,7 +16,7 @@ let rec ofMap (ks: 'k list) (vs: 'v list) : Map<'k, 'v> list =
         
     let kvs =
         List.collect
-            (fun ks -> List.map (List.zip ks) (ofList (Checked.uint32 (List.length ks)) vs))
+            (fun ks -> List.map (List.zip ks) (ofList vs (Checked.uint32 (List.length ks))))
             (ListEx.power ks) in
 
     List.map Map kvs

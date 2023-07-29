@@ -34,9 +34,7 @@ let interpreterConfig natMax listLenMax =
       TransConfig = transConfig evalConfig
       InitConfig = initConfig evalConfig }
 
-let cfg: InterpreterConfig = interpreterConfig natMax listLenMax
-
-let start (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (n: ProcId) (exprs: Expr<unit> list) =
+let start (cfg: InterpreterConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (n: ProcId) (exprs: Expr<unit> list) =
     let format = format genv in
     let trans = trans cfg.TransConfig pm cm genv in
 

@@ -32,7 +32,7 @@ let ofListTestCases: obj[] list =
 [<Theory>]
 [<MemberData(nameof ofListTestCases)>]
 let testOfList (testCase: OfListTestCase) =
-    let actual = Univ.ofList testCase.Len testCase.Input in
+    let actual = Univ.ofList testCase.Input testCase.Len in
     Assert.True(testCase.Expected = actual, cmp (fun x -> $"%A{x}") testCase.Expected actual)
 
 type OfMapTestCase =
