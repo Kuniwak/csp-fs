@@ -287,35 +287,35 @@ let exprTestCasesError: obj[] list =
       [| { Expr = less (tNat __LINE__) (litNat 0u __LINE__) (litFalse __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcNat; tcBool ]) } |]
       [| { Expr = less (tBool __LINE__) (litTrue __LINE__) (litFalse __LINE__) __LINE__
-           Expected = TypeNotDerived((tBool __LINE__), ClassOrd.name) } |]
+           Expected = TypeNotDerived(tcBool, ClassOrd.name) } |]
       [| { Expr = boolNot (litUnit __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
       [| { Expr = plus (tUnit __LINE__) (litUnit __LINE__) (litUnit __LINE__) __LINE__
-           Expected = TypeNotDerived((tUnit __LINE__), ClassPlus.name) } |]
+           Expected = TypeNotDerived(tcUnit, ClassPlus.name) } |]
       [| { Expr = plus (tBool __LINE__) (litUnit __LINE__) (litTrue __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
       [| { Expr = plus (tBool __LINE__) (litTrue __LINE__) (litUnit __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcBool; tcUnit ]) } |]
       [| { Expr = minus (tUnit __LINE__) (litUnit __LINE__) (litUnit __LINE__) __LINE__
-           Expected = TypeNotDerived((tUnit __LINE__), ClassMinus.name) } |]
+           Expected = TypeNotDerived(tcUnit, ClassMinus.name) } |]
       [| { Expr = minus (tNat __LINE__) (litUnit __LINE__) (litNat 0u __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcNat ]) } |]
       [| { Expr = minus (tNat __LINE__) (litNat 0u __LINE__) (litUnit __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcNat; tcUnit ]) } |]
       [| { Expr = times (tUnit __LINE__) (litUnit __LINE__) (litUnit __LINE__) __LINE__
-           Expected = TypeNotDerived((tUnit __LINE__), ClassTimes.name) } |]
+           Expected = TypeNotDerived(tcUnit, ClassTimes.name) } |]
       [| { Expr = times (tBool __LINE__) (litUnit __LINE__) (litTrue __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
       [| { Expr = times (tBool __LINE__) (litTrue __LINE__) (litUnit __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcBool; tcUnit ]) } |]
       [| { Expr = size (tUnit __LINE__) (litUnit __LINE__) __LINE__
-           Expected = TypeNotDerived((tUnit __LINE__), ClassSize.name) } |]
+           Expected = TypeNotDerived(tcUnit, ClassSize.name) } |]
       [| { Expr = size (tSet (tUnit __LINE__) __LINE__) (litUnit __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcSet tcUnit; tcUnit ]) } |]
       [| { Expr = size (tSet (tUnit __LINE__) __LINE__) (litEmpty (tSet (tBool __LINE__) __LINE__) __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
       [| { Expr = filter (tUnit __LINE__) "x" (litTrue __LINE__) (litUnit __LINE__) __LINE__
-           Expected = TypeNotDerived((tUnit __LINE__), ClassEnum.name) } |]
+           Expected = TypeNotDerived(tcUnit, ClassEnum.name) } |]
       [| { Expr =
              filter
                  (tSet (tUnit __LINE__) __LINE__)
@@ -333,7 +333,7 @@ let exprTestCasesError: obj[] list =
                  __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
       [| { Expr = exists (tUnit __LINE__) "x" (litTrue __LINE__) (litUnit __LINE__) __LINE__
-           Expected = TypeNotDerived((tUnit __LINE__), ClassEnum.name) } |]
+           Expected = TypeNotDerived(tcUnit, ClassEnum.name) } |]
       [| { Expr =
              exists
                  (tSet (tUnit __LINE__) __LINE__)

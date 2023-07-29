@@ -1,6 +1,7 @@
 module CSP.Core.Visualization.DotLang
 
 open FSharpPlus
+open CSP.Core
 open CSP.Core.Expr
 open CSP.Core.Indent
 open CSP.Core.CtorMap
@@ -10,7 +11,6 @@ open CSP.Core.ProcMap
 open CSP.Core.Event
 open CSP.Core.State
 open CSP.Core.Trans
-open CSP.Core.TransError
 open CSP.Core.Search
 
 type GraphConfig =

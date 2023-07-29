@@ -8,7 +8,7 @@ open CSP.Core.ExprShorthand
 open CSP.Core.ProcMap
 open CSP.Core.ProcShorthand
 open CSP.Core.Eval
-open CSP.Core.DotLang
+open CSP.Core.Visualization.DotLang
 
 let evalCfg: EvalConfig = { UnivConfig = { NatMax = 5u; ListLenMax = 3u } }
 let dotCfg = dotConfig (searchConfig 100) evalCfg
@@ -16,13 +16,13 @@ let dot = dot dotCfg
 
 [<Fact>]
 let abSkip () =
-    let tEvent = tUnion "event" [ ("a", []); ("b", []) ]
+    let tEvent = tUnion "event" [ ("a", []); ("b", []) ] __LINE__ in
 
     let pm =
         from
-            [ ("ABSkip", []), seq (unwind "ASkip" []) (unwind "BSkip" [])
-              ("ASkip", []), prefix (ctor "a" []) skip
-              ("BSkip", []), prefix (ctor "b" []) skip ] in
+            [ ("ABSkip", []), seq (unwind "ASkip" [] __LINE__) (unwind "BSkip" [] __LINE__) __LINE__
+              ("ASkip", []), prefix (ctor "a" [] __LINE__) (skip __LINE__) __LINE__
+              ("BSkip", []), prefix (ctor "b" [] __LINE__) (skip __LINE__) __LINE__ ] in
 
     let cm = CtorMap.from [ tEvent ] in
     let genv = Env.empty in
@@ -46,15 +46,20 @@ let abSkip () =
 
 [<Fact>]
 let parABC () =
-    let tEvent = tUnion "event" [ ("a", []); ("b", []); ("c", []); ("d", []) ]
+    let tEvent = tUnion "event" [ ("a", []); ("b", []); ("c", []); ("d", []) ] __LINE__ in
 
     let pm =
         from
             [ (("ParABC", []),
                interleave
-                   (prefix (ctor "a" []) skip)
-                   (interleave (prefix (ctor "b" []) skip) (prefix (ctor "c" []) skip)))
-              (("P", []), seq (unwind "ParABC" []) (prefix (ctor "d" []) skip)) ] in
+                   (prefix (ctor "a" [] __LINE__) (skip __LINE__) __LINE__)
+                   (interleave
+                       (prefix (ctor "b" [] __LINE__) (skip __LINE__) __LINE__)
+                       (prefix (ctor "c" [] __LINE__) (skip __LINE__) __LINE__)
+                       __LINE__)
+                   __LINE__)
+              (("P", []),
+               seq (unwind "ParABC" [] __LINE__) (prefix (ctor "d" [] __LINE__) (skip __LINE__) __LINE__) __LINE__) ] in
 
     let cm = CtorMap.from [ tEvent ] in
     let genv = Env.empty in
@@ -165,7 +170,12 @@ let parABC () =
 [<Fact>]
 let rand2 () =
     let pm =
-        from [ (("P", []), intCh (prefix (litNat 1u) (unwind "P" [])) (prefix (litNat 2u) (unwind "P" []))) ] in
+        from
+            [ (("P", []),
+               intCh
+                   (prefix (litNat 1u __LINE__) (unwind "P" [] __LINE__) __LINE__)
+                   (prefix (litNat 2u __LINE__) (unwind "P" [] __LINE__) __LINE__)
+                   __LINE__) ] in
 
     let cm = CtorMap.empty
     let genv = Env.empty in
@@ -187,14 +197,18 @@ let rand2 () =
 
 [<Fact>]
 let abs () =
-    let tEvent = tUnion "event" [ ("a", []); ("b", []); ("s", []) ]
+    let tEvent = tUnion "event" [ ("a", []); ("b", []); ("s", []) ] __LINE__ in
 
     let pm =
         from
             [ (("ABS", []),
                (extCh
-                   (intCh (prefix (ctor "a" []) (unwind "ABS" [])) (prefix (ctor "b" []) (unwind "ABS" [])))
-                   (prefix (ctor "s" []) stop))) ] in
+                   (intCh
+                       (prefix (ctor "a" [] __LINE__) (unwind "ABS" [] __LINE__) __LINE__)
+                       (prefix (ctor "b" [] __LINE__) (unwind "ABS" [] __LINE__) __LINE__)
+                       __LINE__)
+                   (prefix (ctor "s" [] __LINE__) (stop __LINE__) __LINE__)
+                   __LINE__)) ] in
 
     let cm = CtorMap.from [ tEvent ]
     let genv = Env.empty in
@@ -220,17 +234,26 @@ let abs () =
 
 [<Fact>]
 let lr () =
-    let tEvent = tUnion "event" [ ("blue", []); ("red", []); ("sync", []) ]
+    let tEvent = tUnion "event" [ ("blue", []); ("red", []); ("sync", []) ] __LINE__ in
 
     let pm =
         from
             [ (("LR", []),
                (interfaceParallel
-                   (unwind "Left" [])
-                   (setInsert (ctor "sync" []) (litEmpty (tSet tEvent)))
-                   (unwind "Right" [])))
-              (("Left", []), prefix (ctor "blue" []) (prefix (ctor "sync" []) (unwind "Left" [])))
-              (("Right", []), prefix (ctor "red" []) (prefix (ctor "sync" []) (unwind "Right" []))) ] in
+                   (unwind "Left" [] __LINE__)
+                   (setInsert (ctor "sync" [] __LINE__) (litEmpty (tSet tEvent __LINE__) __LINE__) __LINE__)
+                   (unwind "Right" [] __LINE__))
+                   __LINE__)
+              (("Left", []),
+               prefix
+                   (ctor "blue" [] __LINE__)
+                   (prefix (ctor "sync" [] __LINE__) (unwind "Left" [] __LINE__) __LINE__)
+                   __LINE__)
+              (("Right", []),
+               prefix
+                   (ctor "red" [] __LINE__)
+                   (prefix (ctor "sync" [] __LINE__) (unwind "Right" [] __LINE__) __LINE__)
+                   __LINE__) ] in
 
     let cm = CtorMap.from [ tEvent ] in
 
@@ -256,25 +279,40 @@ let lr () =
 [<Fact>]
 let coinToss () =
     let tEvent =
-        tUnion "event" [ ("toss", []); ("heads", []); ("tails", []); ("right", []); ("left", []) ]
+        tUnion "event" [ ("toss", []); ("heads", []); ("tails", []); ("right", []); ("left", []) ] __LINE__ in
 
     let pm =
         from
-            [ (("Coin", []), prefix (ctor "toss" []) (unwind "Coin'" []))
+            [ (("Coin", []), prefix (ctor "toss" [] __LINE__) (unwind "Coin'" [] __LINE__) __LINE__)
               (("Coin'", []),
-               intCh (prefix (ctor "heads" []) (unwind "Coin" [])) (prefix (ctor "tails" []) (unwind "Coin" [])))
-              (("Man", []), prefix (ctor "toss" []) (unwind "Man'" []))
+               intCh
+                   (prefix (ctor "heads" [] __LINE__) (unwind "Coin" [] __LINE__) __LINE__)
+                   (prefix (ctor "tails" [] __LINE__) (unwind "Coin" [] __LINE__) __LINE__)
+                   __LINE__)
+              (("Man", []), prefix (ctor "toss" [] __LINE__) (unwind "Man'" [] __LINE__) __LINE__)
               (("Man'", []),
                extCh
-                   (prefix (ctor "heads" []) (prefix (ctor "left" []) (unwind "Man" [])))
-                   (prefix (ctor "tails" []) (prefix (ctor "right" []) (unwind "Man" []))))
+                   (prefix
+                       (ctor "heads" [] __LINE__)
+                       (prefix (ctor "left" [] __LINE__) (unwind "Man" [] __LINE__) __LINE__)
+                       __LINE__)
+                   (prefix
+                       (ctor "tails" [] __LINE__)
+                       (prefix (ctor "right" [] __LINE__) (unwind "Man" [] __LINE__) __LINE__)
+                       __LINE__)
+                   __LINE__)
               (("CoinToss", []),
                interfaceParallel
-                   (unwind "Coin" [])
+                   (unwind "Coin" [] __LINE__)
                    (setInsert
-                       (ctor "toss" [])
-                       (setInsert (ctor "heads" []) (setInsert (ctor "tails" []) (litEmpty (tSet tEvent)))))
-                   (unwind "Man" [])) ]
+                       (ctor "toss" [] __LINE__)
+                       (setInsert
+                           (ctor "heads" [] __LINE__)
+                           (setInsert (ctor "tails" [] __LINE__) (litEmpty (tSet tEvent __LINE__) __LINE__) __LINE__)
+                           __LINE__)
+                       __LINE__)
+                   (unwind "Man" [] __LINE__)
+                   __LINE__) ]
 
     let cm = CtorMap.from [ tEvent ] in
     let genv = Env.empty in
@@ -302,19 +340,29 @@ let coinToss () =
 
 [<Fact>]
 let lrh () =
-    let tEvent = tUnion "event" [ ("blue", []); ("red", []); ("sync", []) ]
+    let tEvent = tUnion "event" [ ("blue", []); ("red", []); ("sync", []) ] __LINE__ in
 
     let pm =
         from
             [ (("LRH", []),
                hide
                    (interfaceParallel
-                       (unwind "Left" [])
-                       (setInsert (ctor "sync" []) (litEmpty (tSet tEvent)))
-                       (unwind "Right" []))
-                   (setInsert (ctor "sync" []) (litEmpty (tSet tEvent))))
-              (("Left", []), prefix (ctor "blue" []) (prefix (ctor "sync" []) (unwind "Left" [])))
-              (("Right", []), prefix (ctor "red" []) (prefix (ctor "sync" []) (unwind "Right" []))) ] in
+                       (unwind "Left" [] __LINE__)
+                       (setInsert (ctor "sync" [] __LINE__) (litEmpty (tSet tEvent __LINE__) __LINE__) __LINE__)
+                       (unwind "Right" [] __LINE__)
+                       __LINE__)
+                   (setInsert (ctor "sync" [] __LINE__) (litEmpty (tSet tEvent __LINE__) __LINE__) __LINE__)
+                   __LINE__)
+              (("Left", []),
+               prefix
+                   (ctor "blue" [] __LINE__)
+                   (prefix (ctor "sync" [] __LINE__) (unwind "Left" [] __LINE__) __LINE__)
+                   __LINE__)
+              (("Right", []),
+               prefix
+                   (ctor "red" [] __LINE__)
+                   (prefix (ctor "sync" [] __LINE__) (unwind "Right" [] __LINE__) __LINE__)
+                   __LINE__) ] in
 
     let cm = CtorMap.from [ tEvent ] in
     let genv = Env.empty in
@@ -338,10 +386,15 @@ let lrh () =
 
 [<Fact>]
 let hide3 () =
-    let tEvent = tUnion "event" [ ("a", []) ] in
+    let tEvent = tUnion "event" [ ("a", []) ] __LINE__ in
 
     let pm =
-        from [ ("P", []), hide (prefix (ctor "a" []) skip) (setInsert (ctor "a" []) (litEmpty (tSet tEvent))) ] in
+        from
+            [ ("P", []),
+              hide
+                  (prefix (ctor "a" [] __LINE__) (skip __LINE__) __LINE__)
+                  (setInsert (ctor "a" [] __LINE__) (litEmpty (tSet tEvent __LINE__) __LINE__) __LINE__)
+                  __LINE__ ] in
 
     let cm = CtorMap.from [ tEvent ] in
     let genv = Env.empty in
@@ -361,20 +414,31 @@ let hide3 () =
 
 [<Fact>]
 let count () =
-    let tEvent = tUnion "event" [ ("push", []); ("reset", []) ] in
+    let tEvent = tUnion "event" [ ("push", []); ("reset", []) ] __LINE__ in
 
     let pm =
         from
             [ (("COUNT", [ "n" ]),
                extCh
                    (guard
-                       (less tNat (varRef "n") (litNat 10u))
-                       (prefix (ctor "push" []) (unwind "COUNT" [ plus tNat (varRef "n") (litNat 1u) ])))
-                   (guard (eq tNat (varRef "n") (litNat 10u)) (prefix (ctor "reset" []) (unwind "COUNT" [ litNat 0u ])))) ] in
+                       (less (tNat __LINE__) (varRef "n" __LINE__) (litNat 10u __LINE__) __LINE__)
+                       (prefix
+                           (ctor "push" [] __LINE__)
+                           (unwind
+                               "COUNT"
+                               [ plus (tNat __LINE__) (varRef "n" __LINE__) (litNat 1u __LINE__) __LINE__ ]
+                               __LINE__)
+                           __LINE__)
+                       __LINE__)
+                   (guard
+                       (eq (tNat __LINE__) (varRef "n" __LINE__) (litNat 10u __LINE__) __LINE__)
+                       (prefix (ctor "reset" [] __LINE__) (unwind "COUNT" [ litNat 0u __LINE__ ] __LINE__) __LINE__)
+                       __LINE__)
+                   __LINE__) ] in
 
     let cm = CtorMap.from [ tEvent ] in
     let genv = Env.empty in
-    let actual = dot pm cm genv "COUNT" [ litNat 0u ] in
+    let actual = dot pm cm genv "COUNT" [ litNat 0u __LINE__ ] in
 
     Assert.True(
         """digraph G {
@@ -409,32 +473,49 @@ let count () =
 let roVarSys1 () =
     let evs =
         setInsert
-            (litNat 0u)
+            (litNat 0u __LINE__)
             (setInsert
-                (litNat 1u)
+                (litNat 1u __LINE__)
                 (setInsert
-                    (litNat 2u)
-                    (setInsert (litNat 3u) (setInsert (litNat 4u) (setInsert (litNat 5u) (litEmpty (tSet tNat)))))))
+                    (litNat 2u __LINE__)
+                    (setInsert
+                        (litNat 3u __LINE__)
+                        (setInsert
+                            (litNat 4u __LINE__)
+                            (setInsert (litNat 5u __LINE__) (litEmpty (tSet (tNat __LINE__) __LINE__) __LINE__) __LINE__)
+                            __LINE__)
+                        __LINE__)
+                    __LINE__)
+                __LINE__)
+            __LINE__
 
     let pm =
         from
             [ (("ROVarSys1", []),
                interfaceParallel
-                   (unwind "ROVar" [ litNat 0u ])
+                   (unwind "ROVar" [ litNat 0u __LINE__ ] __LINE__)
                    evs
                    (interfaceParallel
-                       (unwind "Reader1" [])
+                       (unwind "Reader1" [] __LINE__)
                        evs
-                       (interfaceParallel (unwind "Reader2" []) evs (unwind "Reader3" []))))
+                       (interfaceParallel (unwind "Reader2" [] __LINE__) evs (unwind "Reader3" [] __LINE__) __LINE__)
+                       __LINE__)
+                   __LINE__)
               (("ROVar", [ "n" ]),
                prefix
-                   (varRef "n")
+                   (varRef "n" __LINE__)
                    (unwind
                        "ROVar"
-                       [ ifExpr (less tNat (varRef "n") (litNat 4u)) (plus tNat (varRef "n") (litNat 1u)) (litNat 0u) ]))
-              (("Reader1", []), prefixRecv evs "n" stop)
-              (("Reader2", []), prefixRecv evs "n" stop)
-              (("Reader3", []), prefixRecv evs "n" stop) ] in
+                       [ ifExpr
+                             (less (tNat __LINE__) (varRef "n" __LINE__) (litNat 4u __LINE__) __LINE__)
+                             (plus (tNat __LINE__) (varRef "n" __LINE__) (litNat 1u __LINE__) __LINE__)
+                             (litNat 0u __LINE__)
+                             __LINE__ ]
+                       __LINE__)
+                   __LINE__)
+              (("Reader1", []), prefixRecv evs "n" (stop __LINE__) __LINE__)
+              (("Reader2", []), prefixRecv evs "n" (stop __LINE__) __LINE__)
+              (("Reader3", []), prefixRecv evs "n" (stop __LINE__) __LINE__) ] in
 
     let cm = CtorMap.empty
     let genv = Env.empty in
@@ -454,29 +535,48 @@ let roVarSys1 () =
 let roVarSys2 () =
     let evs =
         setInsert
-            (litNat 0u)
+            (litNat 0u __LINE__)
             (setInsert
-                (litNat 1u)
+                (litNat 1u __LINE__)
                 (setInsert
-                    (litNat 2u)
-                    (setInsert (litNat 3u) (setInsert (litNat 4u) (setInsert (litNat 5u) (litEmpty (tSet tNat)))))))
+                    (litNat 2u __LINE__)
+                    (setInsert
+                        (litNat 3u __LINE__)
+                        (setInsert
+                            (litNat 4u __LINE__)
+                            (setInsert (litNat 5u __LINE__) (litEmpty (tSet (tNat __LINE__) __LINE__) __LINE__) __LINE__)
+                            __LINE__)
+                        __LINE__)
+                    __LINE__)
+                __LINE__)
+            __LINE__
 
     let pm =
         from
             [ (("ROVarSys2", []),
                (interfaceParallel
-                   (unwind "ROVar" [ litNat 0u ])
+                   (unwind "ROVar" [ litNat 0u __LINE__ ] __LINE__)
                    evs
-                   (interleave (unwind "Reader1" []) (interleave (unwind "Reader2" []) (unwind "Reader3" [])))))
+                   (interleave
+                       (unwind "Reader1" [] __LINE__)
+                       (interleave (unwind "Reader2" [] __LINE__) (unwind "Reader3" [] __LINE__) __LINE__)
+                       __LINE__)
+                   __LINE__))
               (("ROVar", [ "x" ]),
                (prefix
-                   (varRef "x")
+                   (varRef "x" __LINE__)
                    (unwind
                        "ROVar"
-                       [ ifExpr (less tNat (varRef "x") (litNat 4u)) (plus tNat (varRef "x") (litNat 1u)) (litNat 0u) ])))
-              (("Reader1", []), prefixRecv evs "x" stop)
-              (("Reader2", []), prefixRecv evs "x" stop)
-              (("Reader3", []), prefixRecv evs "x" stop) ] in
+                       [ ifExpr
+                             (less (tNat __LINE__) (varRef "x" __LINE__) (litNat 4u __LINE__) __LINE__)
+                             (plus (tNat __LINE__) (varRef "x" __LINE__) (litNat 1u __LINE__) __LINE__)
+                             (litNat 0u __LINE__)
+                             __LINE__ ]
+                       __LINE__)
+                   __LINE__))
+              (("Reader1", []), prefixRecv evs "x" (stop __LINE__) __LINE__)
+              (("Reader2", []), prefixRecv evs "x" (stop __LINE__) __LINE__)
+              (("Reader3", []), prefixRecv evs "x" (stop __LINE__) __LINE__) ] in
 
     let cm = CtorMap.empty
     let genv = Env.empty in
