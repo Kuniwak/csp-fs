@@ -21,6 +21,7 @@ let infer
     : Result<Expr<TypeCstr> * State, TypeError> =
     let rec infer s tcenv expr =
         match expr with
+        | LitUnit(_, line) -> Ok(LitUnit(TCUnit, line), s)
         | LitTrue(_, line) -> Ok(LitTrue(TCBool, line), s)
         | LitFalse(_, line) -> Ok(LitFalse(TCBool, line), s)
         | LitNat(n, _, line) -> Ok(LitNat(n, TCNat, line), s)
@@ -95,65 +96,86 @@ let infer
             | Ok(exprUnion, s) ->
                 let tUnion = get exprUnion in
 
-                match tUnion with
-                | TCUnion(_, cm) ->
-                    let inferClause s ctorOpt varOpts expr : Result<Expr<TypeCstr> * State, TypeError> =
-                        match ctorOpt with
-                        | Some ctor ->
-                            match Map.tryFind ctor cm with
-                            | None -> Error(atLine line (NoSuchCtor ctor))
-                            | Some tcs ->
-                                if List.length tcs = List.length varOpts then
-                                    match bindAll (List.zip varOpts tcs) tcenv with
-                                    | Error(terr) -> Error(atLine line (TypeEnvError terr))
-                                    | Ok(tenv) ->
-                                        match infer s tenv expr with
-                                        | Error terr -> Error(atLine line terr)
-                                        | Ok(expr, s) -> Ok(expr, s)
-                                else
-                                    Error(
-                                        AssociatedValuesLenMismatch(ctor, Set [ List.length varOpts; List.length tcs ])
-                                    )
-                        | None ->
-                            Result.bind
-                                (fun tenv ->
-                                    match infer s tenv expr with
-                                    | Error terr -> Error(atLine line terr)
-                                    | Ok(expr, s) -> Ok(expr, s))
-                                (match List.length varOpts with
-                                 | 1 ->
-                                     match List.head varOpts with
-                                     | Some var ->
-                                         match bind1 var tUnion tcenv with
-                                         | Ok(tenv) -> Ok(tenv)
-                                         | Error(terr) -> Error(atLine line (TypeEnvError terr))
-                                     | None -> Ok(tcenv)
-                                 | _ -> Error(DefaultClauseArgumentsLenMustBe1(varOpts)))
+                let ctorOpt =
+                    Map.fold
+                        (fun acc ctorOpt _ ->
+                            match acc with
+                            | None -> ctorOpt
+                            | Some ctor -> Some ctor)
+                        None
+                        exprMap
 
+                match ctorOpt with
+                | None -> Error(atLine line NoCtors)
+                | Some ctor ->
+                    match Map.tryFind ctor cm with
+                    | None -> Error(atLine line (NoSuchCtor ctor))
+                    | Some(un, ctm) ->
+                        let ctm, s = generalizeMap ctm s in
+                        let tUnion' = TCUnion(un, ctm) in
 
-                    let accRes =
-                        MapEx.tryFold1
-                            (fun accRes ctorOpt (vars, expr) ->
-                                match accRes with
-                                | Error s -> Error s
-                                | Ok(tc, exprMap, s) ->
+                        match unify s tUnion tUnion' with
+                        | Error(terr) -> Error(atLine line terr)
+                        | Ok(tUnion, s) ->
+                            let inferClause s ctorOpt varOpts expr : Result<Expr<TypeCstr> * State, TypeError> =
+                                match ctorOpt with
+                                | Some ctor ->
+                                    match Map.tryFind ctor ctm with
+                                    | None -> Error(atLine line (NoSuchCtor ctor))
+                                    | Some tcs ->
+                                        if List.length tcs = List.length varOpts then
+                                            match bindAll (List.zip varOpts tcs) tcenv with
+                                            | Error(terr) -> Error(atLine line (TypeEnvError terr))
+                                            | Ok(tenv) ->
+                                                match infer s tenv expr with
+                                                | Error terr -> Error(atLine line terr)
+                                                | Ok(expr, s) -> Ok(expr, s)
+                                        else
+                                            Error(
+                                                AssociatedValuesLenMismatch(
+                                                    ctor,
+                                                    Set [ List.length varOpts; List.length tcs ]
+                                                )
+                                            )
+                                | None ->
                                     Result.bind
-                                        (fun (expr, s) ->
-                                            match unify s tc (get expr) with
+                                        (fun tenv ->
+                                            match infer s tenv expr with
                                             | Error terr -> Error(atLine line terr)
-                                            | Ok(tc, s) -> Ok(tc, Map.add ctorOpt (vars, expr) exprMap, s))
-                                        (inferClause s ctorOpt vars expr))
-                            (fun ctorOpt (vars, expr) ->
-                                Result.map
-                                    (fun (expr, s) -> (get expr, Map [ (ctorOpt, (vars, expr)) ], s))
-                                    (inferClause s ctorOpt vars expr))
-                            exprMap in
+                                            | Ok(expr, s) -> Ok(expr, s))
+                                        (match List.length varOpts with
+                                         | 1 ->
+                                             match List.head varOpts with
+                                             | Some var ->
+                                                 match bind1 var tUnion tcenv with
+                                                 | Ok(tenv) -> Ok(tenv)
+                                                 | Error(terr) -> Error(atLine line (TypeEnvError terr))
+                                             | None -> Ok(tcenv)
+                                         | _ -> Error(DefaultClauseArgumentsLenMustBe1(varOpts)))
 
-                    match accRes with
-                    | None -> Error(atLine line EmptyMatch)
-                    | Some(Error terr) -> Error(atLine line terr)
-                    | Some(Ok(tc, exprMap, s)) -> Ok(Match(exprUnion, exprMap, tc, line), s)
-                | _ -> Error(atLine line (NotUnion(tUnion)))
+
+                            let accRes =
+                                MapEx.tryFold1
+                                    (fun accRes ctorOpt (vars, expr) ->
+                                        match accRes with
+                                        | Error s -> Error s
+                                        | Ok(tc, exprMap, s) ->
+                                            Result.bind
+                                                (fun (expr, s) ->
+                                                    match unify s tc (get expr) with
+                                                    | Error terr -> Error(atLine line terr)
+                                                    | Ok(tc, s) -> Ok(tc, Map.add ctorOpt (vars, expr) exprMap, s))
+                                                (inferClause s ctorOpt vars expr))
+                                    (fun ctorOpt (vars, expr) ->
+                                        Result.map
+                                            (fun (expr, s) -> (get expr, Map [ (ctorOpt, (vars, expr)) ], s))
+                                            (inferClause s ctorOpt vars expr))
+                                    exprMap in
+
+                            match accRes with
+                            | None -> Error(atLine line NoCtors)
+                            | Some(Error terr) -> Error(atLine line terr)
+                            | Some(Ok(tc, exprMap, s)) -> Ok(Match(exprUnion, exprMap, tc, line), s)
         | VarRef(var, _, line) ->
             match tryFind var tcenv with
             | Ok(tc) -> Ok(VarRef(var, tc, line), s)
@@ -232,8 +254,7 @@ let infer
                             | Error terr -> Error(atLine line terr)
                             | Ok(tcPlus, s) -> Ok(Plus(t, expr1, expr2, tcPlus, line), s)
             else
-                let t, _ = generalize t s in
-                Error(atLine line (TypeNotDerived(t, ClassPlus.name)))
+                let t, _ = generalize t s in Error(atLine line (TypeNotDerived(t, ClassPlus.name)))
         | Minus(t, expr1, expr2, _, line) ->
             if ClassMinus.derivedBy t then
                 match infer s tcenv expr1 with
@@ -255,8 +276,7 @@ let infer
                             | Error terr -> Error(atLine line terr)
                             | Ok(tcMinus, s) -> Ok(Minus(t, expr1, expr2, tcMinus, line), s)
             else
-                let t, _ = generalize t s in
-                Error(atLine line (TypeNotDerived(t, ClassMinus.name)))
+                let t, _ = generalize t s in Error(atLine line (TypeNotDerived(t, ClassMinus.name)))
         | Times(t, expr1, expr2, _, line) ->
             if ClassTimes.derivedBy t then
                 match infer s tcenv expr1 with
@@ -278,8 +298,7 @@ let infer
                             | Error terr -> Error(atLine line terr)
                             | Ok(tcTimes, s) -> Ok(Times(t, expr1, expr2, tcTimes, line), s)
             else
-                let t, _ = generalize t s in
-                Error(atLine line (TypeNotDerived(t, ClassTimes.name)))
+                let t, _ = generalize t s in Error(atLine line (TypeNotDerived(t, ClassTimes.name)))
         | Size(t, expr, _, line) ->
             if ClassSize.derivedBy t then
                 match infer s tcenv expr with
@@ -292,15 +311,14 @@ let infer
                     | Error terr -> Error(atLine line terr)
                     | Ok(_, s) -> Ok(Size(t, expr, TCNat, line), s)
             else
-                let t, _ = generalize t s in
-                Error(atLine line (TypeNotDerived(t, ClassSize.name)))
+                let t, _ = generalize t s in Error(atLine line (TypeNotDerived(t, ClassSize.name)))
         | Filter(t, var, expr1, expr2, _, line) ->
             if ClassEnum.derivedBy t then
                 let tcElem, s =
                     match t with
-                    | TSet(tElem, _) -> generalize tElem s
-                    | TList(tElem, _) -> generalize tElem s
-                    | TMap(tK, _, _) -> generalize tK s
+                    | TSet(tElem) -> generalize tElem s
+                    | TList(tElem) -> generalize tElem s
+                    | TMap(tK, _) -> generalize tK s
                     | _ -> failwith $"cannot get element type: %s{Type.format t}" in
 
                 match bind1 var tcElem tcenv with
@@ -324,15 +342,14 @@ let infer
                                 | Error terr -> Error(atLine line terr)
                                 | Ok(tcFilter, s) -> Ok(Filter(t, var, expr1, expr2, tcFilter, line), s)
             else
-                let t, _ = generalize t s in
-                Error(atLine line (TypeNotDerived(t, ClassEnum.name)))
+                let t, _ = generalize t s in Error(atLine line (TypeNotDerived(t, ClassEnum.name)))
         | Exists(t, var, expr1, expr2, _, line) ->
             if ClassEnum.derivedBy t then
                 let tcElem, s =
                     match t with
-                    | TSet(tElem, _) -> generalize tElem s
-                    | TList(tElem, _) -> generalize tElem s
-                    | TMap(tK, _, _) -> generalize tK s
+                    | TSet(tElem) -> generalize tElem s
+                    | TList(tElem) -> generalize tElem s
+                    | TMap(tK, _) -> generalize tK s
                     | _ -> failwith $"cannot get element type: %s{Type.format t}" in
 
                 match bind1 var tcElem tcenv with
@@ -356,37 +373,40 @@ let infer
                                 | Error terr -> Error(atLine line terr)
                                 | Ok(_, s) -> Ok(Exists(t, var, expr1, expr2, TCBool, line), s)
             else
-                let t, _ = generalize t s in
-                Error(atLine line (TypeNotDerived(t, ClassEnum.name)))
-        | Tuple(exprs, _, line) ->
-            let accRes =
-                List.foldBack
-                    (fun expr accRes ->
-                        match accRes with
-                        | Error terr -> Error terr
-                        | Ok(exprs, s) ->
-                            match infer s tcenv expr with
-                            | Error terr -> Error terr
-                            | Ok(expr, s) -> Ok(expr :: exprs, s))
-                    exprs
-                    (Ok([], s)) in
-
-            match accRes with
-            | Ok(exprs, s) -> Ok(Tuple(exprs, TCTuple(List.map get exprs), line), s)
-            | Error terr -> Error(atLine line terr)
-        | TupleNth(exprTuple, idx, _, line) ->
+                let t, _ = generalize t s in Error(atLine line (TypeNotDerived(t, ClassEnum.name)))
+        | Tuple(expr1, expr2, _, line) ->
+            Result.bind
+                (fun (expr1, s) ->
+                    Result.map
+                        (fun (expr2, s) -> (Tuple(expr1, expr2, TCTuple(get expr1, get expr2), line), s))
+                        (infer s tcenv expr2))
+                (infer s tcenv expr1)
+        | TupleFst(exprTuple, _, line) ->
             match infer s tcenv exprTuple with
             | Error terr -> Error(atLine line terr)
             | Ok(exprTuple, s) ->
                 let tcTuple = get exprTuple in
+                let uL, s = newUncertainVarId s in
+                let uR, s = newUncertainVarId s in
 
-                match tcTuple with
-                | TCTuple(ts) ->
-                    match List.tryItem (Checked.int idx) ts with
-                    | Some t -> Ok(TupleNth(exprTuple, idx, t, line), s)
-                    | None -> Error(At(TupleIndexOutOfBounds(tcTuple, idx), $"line %s{line}"))
-                | _ -> Error(At(NotTuple(tcTuple), $"line %s{line}"))
+                match unify s tcTuple (TCTuple (TCUncertain uL, TCUncertain uR)) with
+                | Ok(TCTuple(tcL, _), s) ->
+                    Ok(TupleFst(exprTuple, tcL, line), s)
+                | Ok(v) -> failwith $"unification between TTuple and any must return TTuple, but come: %A{v}"
+                | Error(err) -> Error(atLine line err)
+        | TupleSnd(exprTuple, _, line) ->
+            match infer s tcenv exprTuple with
+            | Error terr -> Error(atLine line terr)
+            | Ok(exprTuple, s) ->
+                let tcTuple = get exprTuple in
+                let uL, s = newUncertainVarId s in
+                let uR, s = newUncertainVarId s in
 
+                match unify s tcTuple (TCTuple (TCUncertain uL, TCUncertain uR)) with
+                | Ok(TCTuple(_, tcR), s) ->
+                    Ok(TupleSnd(exprTuple, tcR, line), s)
+                | Ok(v) -> failwith $"unification between TTuple and any must return TTuple, but come: %A{v}"
+                | Error(err) -> Error(atLine line err)
         | ListCons(exprElem, exprList, _, line) ->
             match infer s tcenv exprElem with
             | Error terr -> Error(atLine line terr)

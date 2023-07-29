@@ -38,16 +38,14 @@ let filter t var expr1 expr2 line =
 let exists t var expr1 expr2 line =
     Exists(t, Var var, expr1, expr2, (), line)
 
-let litUnit line = Tuple([], (), line)
-let tuple exprs line = Tuple(exprs, (), line)
-let tuple2 expr1 expr2 line = Tuple([ expr1; expr2 ], (), line)
+let litUnit line = LitUnit((), line)
+let tuple2 expr1 expr2 line = Tuple(expr1, expr2, (), line)
 
 let tuple3 expr1 expr2 expr3 line =
-    Tuple([ expr1; expr2; expr3 ], (), line)
+    Tuple(expr1, Tuple(expr2, expr3, (), line), (), line)
 
-let tupleNth expr idx line = TupleNth(expr, idx, (), line)
-let tupleFst expr line = TupleNth(expr, 0u, (), line)
-let tupleSnd expr line = TupleNth(expr, 1u, (), line)
+let tupleFst expr line = TupleFst(expr, (), line)
+let tupleSnd expr line = TupleSnd(expr, (), line)
 
 let listCons exprElem exprList line = ListCons(exprElem, exprList, (), line)
 

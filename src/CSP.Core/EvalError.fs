@@ -15,8 +15,8 @@ type EvalError =
     | TypeNotDerived of Type * TypeClassName
     | ValNotBool of Val
     | ValNotUnion of Val
+    | ValNotTuple of Val
     | TypeMismatch of Val * Type
-    | NotTuple of Val
     | TupleIndexOutOfRange of Val * uint
     | ListIndexOutOfRange of Val * uint
     | RangeLowerGreaterThanUpper of uint * uint
@@ -37,7 +37,7 @@ let rec format (err: EvalError) : string =
     | ValNotBool v -> $"value is not a bool: %s{Val.format v}"
     | ValNotUnion v -> $"value is not an union: %s{Val.format v}"
     | TypeMismatch(v, t) -> $"value {Val.format v} is not a {Type.format t}"
-    | NotTuple v -> $"not tuple: %s{Val.format v}"
+    | ValNotTuple v -> $"not tuple: %s{Val.format v}"
     | TupleIndexOutOfRange(v, n) -> $"tuple index out of range: %s{Val.format v} at %d{n}"
     | ListIndexOutOfRange(v, n) -> $"list index out of range: %s{Val.format v} at %d{n}"
     | RangeLowerGreaterThanUpper(n1, n2) -> $"lower of range is greater than upper: %d{n1} > %d{n2}"

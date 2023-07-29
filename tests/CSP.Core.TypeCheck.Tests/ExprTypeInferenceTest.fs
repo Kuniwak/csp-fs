@@ -18,190 +18,128 @@ type ExprTestCaseOk = { Expr: Expr<unit>; Expected: Type }
 
 let exprTestCasesOk: obj[] list =
     [ [| { Expr = litUnit __LINE__
-           Expected = tUnit __LINE__ } |]
+           Expected = tUnit } |]
       [| { Expr = litTrue __LINE__
-           Expected = tBool __LINE__ } |]
+           Expected = tBool } |]
       [| { Expr = litFalse __LINE__
-           Expected = tBool __LINE__ } |]
+           Expected = tBool } |]
       [| { Expr = litNat 0u __LINE__
-           Expected = tNat __LINE__ } |]
-      [| { Expr = litEmpty (tSet (tUnit __LINE__) __LINE__) __LINE__
-           Expected = tSet (tUnit __LINE__) __LINE__ } |]
-      [| { Expr = litEmpty (tList (tUnit __LINE__) __LINE__) __LINE__
-           Expected = tList (tUnit __LINE__) __LINE__ } |]
-      [| { Expr = litEmpty (tMap (tBool __LINE__) (tUnit __LINE__) __LINE__) __LINE__
-           Expected = tMap (tBool __LINE__) (tUnit __LINE__) __LINE__ } |]
+           Expected = tNat } |]
+      [| { Expr = litEmpty (tSet tUnit) __LINE__
+           Expected = tSet tUnit } |]
+      [| { Expr = litEmpty (tList tUnit) __LINE__
+           Expected = tList tUnit } |]
+      [| { Expr = litEmpty (tMap tBool tUnit) __LINE__
+           Expected = tMap tBool tUnit } |]
       [| { Expr = ctor "Foo" [] __LINE__
-           Expected = tUnion "foo" [ ("Foo", []) ] __LINE__ } |]
+           Expected = tUnion "foo" [ ("Foo", []) ] } |]
       [| { Expr = ifExpr (litTrue __LINE__) (litUnit __LINE__) (litUnit __LINE__) __LINE__
-           Expected = (tUnit __LINE__) } |]
+           Expected = tUnit } |]
       [| { Expr = ifExpr (litTrue __LINE__) (litTrue __LINE__) (litFalse __LINE__) __LINE__
-           Expected = tBool __LINE__ } |]
+           Expected = tBool } |]
       [| { Expr =
              matchExpr
                  (ctor "Some" [ litUnit __LINE__ ] __LINE__)
                  [ (Some("Some"), [ "x" ], litTrue __LINE__)
                    (Some("None"), [], (litFalse __LINE__)) ]
                  __LINE__
-           Expected = tBool __LINE__ } |]
+           Expected = tBool } |]
       [| { Expr =
              matchExpr
                  (ctor "Some" [ litUnit __LINE__ ] __LINE__)
                  [ (Some("Some"), [ "x" ], ctor "Some" [ varRef "x" __LINE__ ] __LINE__)
                    (None, [ "x" ], varRef "x" __LINE__) ]
                  __LINE__
-           Expected = tUnion "option" [ ("Some", [ tUnit __LINE__ ]); ("None", []) ] __LINE__ } |]
+           Expected = tUnion "option" [ ("Some", [ tUnit ]); ("None", []) ] } |]
       [| { Expr =
-             matchExpr (ctor "Some" [ litUnit __LINE__ ] __LINE__) [ (None, [ "x" ], varRef "x" __LINE__) ] __LINE__
-           Expected = tUnion "option" [ ("Some", [ tUnit __LINE__ ]); ("None", []) ] __LINE__ } |]
-      [| { Expr = matchExpr (ctor "Some" [ litUnit __LINE__ ] __LINE__) [ (None, [ "_" ], litTrue __LINE__) ] __LINE__
-           Expected = tBool __LINE__ } |]
+             matchExpr
+                 (ctor "Some" [ litUnit __LINE__ ] __LINE__)
+                 [ (Some "Some", [ "x" ], ctor "Some" [varRef "x" __LINE__] __LINE__)
+                   (None, [ "x" ], varRef "x" __LINE__) ]
+                 __LINE__
+           Expected = tUnion "option" [ ("Some", [ tUnit ]); ("None", []) ] } |]
+      [| { Expr =
+             matchExpr
+                 (ctor "Some" [ litUnit __LINE__ ] __LINE__)
+                 [ (Some "Some", [ "_" ], litFalse __LINE__); (None, [ "_" ], litTrue __LINE__) ]
+                 __LINE__
+           Expected = tBool } |]
       [| { Expr = varRef "GLOBAL" __LINE__
-           Expected = tBool __LINE__ } |]
-      [| { Expr =
-             eq
-                 (tSet (tNat __LINE__) __LINE__)
-                 (litEmpty (tSet (tNat __LINE__) __LINE__) __LINE__)
-                 (litEmpty (tSet (tNat __LINE__) __LINE__) __LINE__)
-                 __LINE__
-           Expected = tBool __LINE__ } |]
+           Expected = tBool } |]
+      [| { Expr = eq (tSet tNat) (litEmpty (tSet tNat) __LINE__) (litEmpty (tSet tNat) __LINE__) __LINE__
+           Expected = tBool } |]
       [| { Expr = boolNot (litTrue __LINE__) __LINE__
-           Expected = tBool __LINE__ } |]
-      [| { Expr =
-             less
-                 (tSet (tNat __LINE__) __LINE__)
-                 (litEmpty (tSet (tNat __LINE__) __LINE__) __LINE__)
-                 (litEmpty (tSet (tNat __LINE__) __LINE__) __LINE__)
-                 __LINE__
-           Expected = tBool __LINE__ } |]
-      [| { Expr =
-             plus
-                 (tSet (tNat __LINE__) __LINE__)
-                 (litEmpty (tSet (tNat __LINE__) __LINE__) __LINE__)
-                 (litEmpty (tSet (tNat __LINE__) __LINE__) __LINE__)
-                 __LINE__
-           Expected = tSet (tNat __LINE__) __LINE__ } |]
-      [| { Expr =
-             minus
-                 (tSet (tNat __LINE__) __LINE__)
-                 (litEmpty (tSet (tNat __LINE__) __LINE__) __LINE__)
-                 (litEmpty (tSet (tNat __LINE__) __LINE__) __LINE__)
-                 __LINE__
-           Expected = tSet (tNat __LINE__) __LINE__ } |]
-      [| { Expr =
-             times
-                 (tSet (tNat __LINE__) __LINE__)
-                 (litEmpty (tSet (tNat __LINE__) __LINE__) __LINE__)
-                 (litEmpty (tSet (tNat __LINE__) __LINE__) __LINE__)
-                 __LINE__
-           Expected = tSet (tNat __LINE__) __LINE__ } |]
-      [| { Expr =
-             size
-                 (tList (tBool __LINE__) __LINE__)
-                 (listCons (litTrue __LINE__) (litEmpty (tList (tBool __LINE__) __LINE__) __LINE__) __LINE__)
-                 __LINE__
-           Expected = tNat __LINE__ } |]
-      [| { Expr = size (tSet (tNat __LINE__) __LINE__) (litEmpty (tSet (tNat __LINE__) __LINE__) __LINE__) __LINE__
-           Expected = tNat __LINE__ } |]
-      [| { Expr =
-             size
-                 (tMap (tNat __LINE__) (tNat __LINE__) __LINE__)
-                 (litEmpty (tMap (tNat __LINE__) (tNat __LINE__) __LINE__) __LINE__)
-                 __LINE__
-           Expected = tNat __LINE__ } |]
-      [| { Expr =
-             filter
-                 (tList (tUnit __LINE__) __LINE__)
-                 "x"
-                 (litTrue __LINE__)
-                 (litEmpty (tList (tUnit __LINE__) __LINE__) __LINE__)
-                 __LINE__
-           Expected = tList (tUnit __LINE__) __LINE__ } |]
-      [| { Expr =
-             filter
-                 (tSet (tUnit __LINE__) __LINE__)
-                 "x"
-                 (litTrue __LINE__)
-                 (litEmpty (tSet (tUnit __LINE__) __LINE__) __LINE__)
-                 __LINE__
-           Expected = tSet (tUnit __LINE__) __LINE__ } |]
-      [| { Expr =
-             filter
-                 (tList (tBool __LINE__) __LINE__)
-                 "x"
-                 (varRef "x" __LINE__)
-                 (litEmpty (tList (tBool __LINE__) __LINE__) __LINE__)
-                 __LINE__
-           Expected = tList (tBool __LINE__) __LINE__ } |]
-      [| { Expr =
-             exists
-                 (tList (tUnit __LINE__) __LINE__)
-                 "x"
-                 (litTrue __LINE__)
-                 (litEmpty (tList (tUnit __LINE__) __LINE__) __LINE__)
-                 __LINE__
-           Expected = tBool __LINE__ } |]
-      [| { Expr =
-             exists
-                 (tList (tBool __LINE__) __LINE__)
-                 "x"
-                 (varRef "x" __LINE__)
-                 (litEmpty (tList (tBool __LINE__) __LINE__) __LINE__)
-                 __LINE__
-           Expected = tBool __LINE__ } |]
+           Expected = tBool } |]
+      [| { Expr = less (tSet tNat) (litEmpty (tSet tNat) __LINE__) (litEmpty (tSet tNat) __LINE__) __LINE__
+           Expected = tBool } |]
+      [| { Expr = plus tUnit (litUnit __LINE__) (litUnit __LINE__) __LINE__
+           Expected = tUnit } |]
+      [| { Expr = plus (tSet tNat) (litEmpty (tSet tNat) __LINE__) (litEmpty (tSet tNat) __LINE__) __LINE__
+           Expected = tSet tNat } |]
+      [| { Expr = minus (tSet tNat) (litEmpty (tSet tNat) __LINE__) (litEmpty (tSet tNat) __LINE__) __LINE__
+           Expected = tSet tNat } |]
+      [| { Expr = minus tUnit (litUnit __LINE__) (litUnit __LINE__) __LINE__
+           Expected = tUnit } |]
+      [| { Expr = times (tSet tNat) (litEmpty (tSet tNat) __LINE__) (litEmpty (tSet tNat) __LINE__) __LINE__
+           Expected = tSet tNat } |]
+      [| { Expr = size (tList tBool) (listCons (litTrue __LINE__) (litEmpty (tList tBool) __LINE__) __LINE__) __LINE__
+           Expected = tNat } |]
+      [| { Expr = size (tSet tNat) (litEmpty (tSet tNat) __LINE__) __LINE__
+           Expected = tNat } |]
+      [| { Expr = size (tMap tNat tNat) (litEmpty (tMap tNat tNat) __LINE__) __LINE__
+           Expected = tNat } |]
+      [| { Expr = filter (tList tUnit) "x" (litTrue __LINE__) (litEmpty (tList tUnit) __LINE__) __LINE__
+           Expected = tList tUnit } |]
+      [| { Expr = filter (tSet tUnit) "x" (litTrue __LINE__) (litEmpty (tSet tUnit) __LINE__) __LINE__
+           Expected = tSet tUnit } |]
+      [| { Expr = filter (tList tBool) "x" (varRef "x" __LINE__) (litEmpty (tList tBool) __LINE__) __LINE__
+           Expected = tList tBool } |]
+      [| { Expr = exists (tList tUnit) "x" (litTrue __LINE__) (litEmpty (tList tUnit) __LINE__) __LINE__
+           Expected = tBool } |]
+      [| { Expr = exists (tList tBool) "x" (varRef "x" __LINE__) (litEmpty (tList tBool) __LINE__) __LINE__
+           Expected = tBool } |]
       [| { Expr = tuple2 (litNat 0u __LINE__) (litTrue __LINE__) __LINE__
-           Expected = tTuple2 (tNat __LINE__) (tBool __LINE__) __LINE__ } |]
+           Expected = tTuple2 tNat tBool } |]
       [| { Expr = tupleFst (tuple2 (litTrue __LINE__) (litNat 0u __LINE__) __LINE__) __LINE__
-           Expected = tBool __LINE__ } |]
+           Expected = tBool } |]
       [| { Expr = tupleSnd (tuple2 (litTrue __LINE__) (litNat 0u __LINE__) __LINE__) __LINE__
-           Expected = tNat __LINE__ } |]
-      [| { Expr = listCons (litTrue __LINE__) (litEmpty (tList (tBool __LINE__) __LINE__) __LINE__) __LINE__
-           Expected = tList (tBool __LINE__) __LINE__ } |]
-      [| { Expr = listNth (litEmpty (tList (tBool __LINE__) __LINE__) __LINE__) (litNat 0u __LINE__) __LINE__
-           Expected = tBool __LINE__ } |]
+           Expected = tNat } |]
+      [| { Expr = listCons (litTrue __LINE__) (litEmpty (tList tBool) __LINE__) __LINE__
+           Expected = tList tBool } |]
+      [| { Expr = listNth (litEmpty (tList tBool) __LINE__) (litNat 0u __LINE__) __LINE__
+           Expected = tBool } |]
       [| { Expr = setRange (litNat 0u __LINE__) (litNat 0u __LINE__) __LINE__
-           Expected = tSet (tNat __LINE__) __LINE__ } |]
-      [| { Expr = setInsert (litNat 0u __LINE__) (litEmpty (tSet (tNat __LINE__) __LINE__) __LINE__) __LINE__
-           Expected = tSet (tNat __LINE__) __LINE__ } |]
-      [| { Expr = setMem (litNat 0u __LINE__) (litEmpty (tSet (tNat __LINE__) __LINE__) __LINE__) __LINE__
-           Expected = tBool __LINE__ } |]
-      [| { Expr =
-             mapAdd
-                 (litNat 0u __LINE__)
-                 (litUnit __LINE__)
-                 (litEmpty (tMap (tNat __LINE__) (tUnit __LINE__) __LINE__) __LINE__)
-                 __LINE__
-           Expected = tMap (tNat __LINE__) (tUnit __LINE__) __LINE__ } |]
-      [| { Expr =
-             mapFindOpt
-                 (litNat 0u __LINE__)
-                 (litEmpty (tMap (tNat __LINE__) (tUnit __LINE__) __LINE__) __LINE__)
-                 __LINE__
-           Expected = tUnion "option" [ ("Some", [ tUnit __LINE__ ]); ("None", []) ] __LINE__ } |]
-      [| { Expr = univ (tMap (tNat __LINE__) (tUnit __LINE__) __LINE__) __LINE__
-           Expected = tSet (tMap (tNat __LINE__) (tUnit __LINE__) __LINE__) __LINE__ } |]
+           Expected = tSet tNat } |]
+      [| { Expr = setInsert (litNat 0u __LINE__) (litEmpty (tSet tNat) __LINE__) __LINE__
+           Expected = tSet tNat } |]
+      [| { Expr = setMem (litNat 0u __LINE__) (litEmpty (tSet tNat) __LINE__) __LINE__
+           Expected = tBool } |]
+      [| { Expr = mapAdd (litNat 0u __LINE__) (litUnit __LINE__) (litEmpty (tMap tNat tUnit) __LINE__) __LINE__
+           Expected = tMap tNat tUnit } |]
+      [| { Expr = mapFindOpt (litNat 0u __LINE__) (litEmpty (tMap tNat tUnit) __LINE__) __LINE__
+           Expected = tUnion "option" [ ("Some", [ tUnit ]); ("None", []) ] } |]
+      [| { Expr = univ (tMap tNat tUnit) __LINE__
+           Expected = tSet (tMap tNat tUnit) } |]
       [| { Expr =
              tuple2 (ctor "Some" [ litUnit __LINE__ ] __LINE__) (ctor "Some" [ litTrue __LINE__ ] __LINE__) __LINE__
            Expected =
              tTuple2
-                 (tUnion "option" [ ("Some", [ tUnit __LINE__ ]); ("None", []) ] __LINE__)
-                 (tUnion "option" [ ("Some", [ tBool __LINE__ ]); ("None", []) ] __LINE__)
-                 __LINE__ } |]
+                 (tUnion "option" [ ("Some", [ tUnit ]); ("None", []) ])
+                 (tUnion "option" [ ("Some", [ tBool ]); ("None", []) ]) } |]
       [| { Expr =
              matchExpr
                  (ctor "Some" [ litTrue __LINE__ ] __LINE__)
                  [ (Some("Some"), [ "x" ], boolNot (varRef "x" __LINE__) __LINE__)
                    (Some("None"), [], litTrue __LINE__) ]
                  __LINE__
-           Expected = tBool __LINE__ } |] ]
+           Expected = tBool } |] ]
 
 [<Theory>]
 [<MemberData(nameof exprTestCasesOk)>]
 let inferExprOk (tc: ExprTestCaseOk) =
-    let tOption =
-        tUnion "option" [ ("Some", [ tVar 0u __LINE__ ]); ("None", []) ] __LINE__ in
+    let tOption = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ] in
 
-    let tFoo = tUnion "foo" [ ("Foo", []) ] __LINE__ in
+    let tFoo = tUnion "foo" [ ("Foo", []) ] in
     let cm = CtorMap.from [ tOption; tFoo ] in
     let tenv = TypeCstrEnv.from [ ("GLOBAL", tcBool) ] in
 
@@ -209,7 +147,8 @@ let inferExprOk (tc: ExprTestCaseOk) =
     | Ok(actual, s) ->
         Assert.True(
             tc.Expected = get actual,
-            $"""
+            $"""line %s{line actual}
+
 Expected: %s{Type.format tc.Expected}
 Actual:   %s{Type.format (get actual)}
 Inferred as:
@@ -244,7 +183,7 @@ let exprTestCasesError: obj[] list =
       [| { Expr = ifExpr (litTrue __LINE__) (litUnit __LINE__) (litFalse __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
       [| { Expr = matchExpr (litUnit __LINE__) [ (None, [], (litTrue __LINE__)) ] __LINE__
-           Expected = NotUnion(tcUnit) } |]
+           Expected = NoCtors } |]
       [| { Expr =
              matchExpr
                  (ctor "Some" [ (litUnit __LINE__) ] __LINE__)
@@ -267,104 +206,72 @@ let exprTestCasesError: obj[] list =
                  __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
       [| { Expr = matchExpr (ctor "Foo" [] __LINE__) [] __LINE__
-           Expected = EmptyMatch } |]
+           Expected = NoCtors } |]
       [| { Expr =
              matchExpr
                  (ctor "Some" [ (litUnit __LINE__) ] __LINE__)
-                 [ (None, [ "x"; "y" ], (litUnit __LINE__)) ]
+                 [ (Some "None", [], litUnit __LINE__); (None, [ "x"; "y" ], litUnit __LINE__) ]
                  __LINE__
            Expected = DefaultClauseArgumentsLenMustBe1([ Some(Var "x"); Some(Var "y") ]) } |]
       [| { Expr = varRef "undefined" __LINE__
            Expected = TypeEnvError(UnboundVariable(Var "undefined")) } |]
-      [| { Expr = eq (tBool __LINE__) (litFalse __LINE__) (litUnit __LINE__) __LINE__
+      [| { Expr = eq tBool (litFalse __LINE__) (litUnit __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcBool; tcUnit ]) } |]
-      [| { Expr = eq (tBool __LINE__) (litUnit __LINE__) (litFalse __LINE__) __LINE__
+      [| { Expr = eq tBool (litUnit __LINE__) (litFalse __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
-      [| { Expr = eq (tBool __LINE__) (litUnit __LINE__) (litUnit __LINE__) __LINE__
+      [| { Expr = eq tBool (litUnit __LINE__) (litUnit __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
-      [| { Expr = less (tNat __LINE__) (litFalse __LINE__) (litNat 0u __LINE__) __LINE__
+      [| { Expr = less tNat (litFalse __LINE__) (litNat 0u __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcBool; tcNat ]) } |]
-      [| { Expr = less (tNat __LINE__) (litNat 0u __LINE__) (litFalse __LINE__) __LINE__
+      [| { Expr = less tNat (litNat 0u __LINE__) (litFalse __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcNat; tcBool ]) } |]
-      [| { Expr = less (tBool __LINE__) (litTrue __LINE__) (litFalse __LINE__) __LINE__
+      [| { Expr = less tBool (litTrue __LINE__) (litFalse __LINE__) __LINE__
            Expected = TypeNotDerived(tcBool, ClassOrd.name) } |]
       [| { Expr = boolNot (litUnit __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
-      [| { Expr = plus (tUnit __LINE__) (litUnit __LINE__) (litUnit __LINE__) __LINE__
-           Expected = TypeNotDerived(tcUnit, ClassPlus.name) } |]
-      [| { Expr = plus (tBool __LINE__) (litUnit __LINE__) (litTrue __LINE__) __LINE__
+      [| { Expr = plus tBool (litUnit __LINE__) (litTrue __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
-      [| { Expr = plus (tBool __LINE__) (litTrue __LINE__) (litUnit __LINE__) __LINE__
+      [| { Expr = plus tBool (litTrue __LINE__) (litUnit __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcBool; tcUnit ]) } |]
-      [| { Expr = minus (tUnit __LINE__) (litUnit __LINE__) (litUnit __LINE__) __LINE__
-           Expected = TypeNotDerived(tcUnit, ClassMinus.name) } |]
-      [| { Expr = minus (tNat __LINE__) (litUnit __LINE__) (litNat 0u __LINE__) __LINE__
+      [| { Expr = minus tNat (litUnit __LINE__) (litNat 0u __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcNat ]) } |]
-      [| { Expr = minus (tNat __LINE__) (litNat 0u __LINE__) (litUnit __LINE__) __LINE__
+      [| { Expr = minus tNat (litNat 0u __LINE__) (litUnit __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcNat; tcUnit ]) } |]
-      [| { Expr = times (tUnit __LINE__) (litUnit __LINE__) (litUnit __LINE__) __LINE__
+      [| { Expr = times tUnit (litUnit __LINE__) (litUnit __LINE__) __LINE__
            Expected = TypeNotDerived(tcUnit, ClassTimes.name) } |]
-      [| { Expr = times (tBool __LINE__) (litUnit __LINE__) (litTrue __LINE__) __LINE__
+      [| { Expr = times tBool (litUnit __LINE__) (litTrue __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
-      [| { Expr = times (tBool __LINE__) (litTrue __LINE__) (litUnit __LINE__) __LINE__
+      [| { Expr = times tBool (litTrue __LINE__) (litUnit __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcBool; tcUnit ]) } |]
-      [| { Expr = size (tUnit __LINE__) (litUnit __LINE__) __LINE__
+      [| { Expr = size tUnit (litUnit __LINE__) __LINE__
            Expected = TypeNotDerived(tcUnit, ClassSize.name) } |]
-      [| { Expr = size (tSet (tUnit __LINE__) __LINE__) (litUnit __LINE__) __LINE__
+      [| { Expr = size (tSet tUnit) (litUnit __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcSet tcUnit; tcUnit ]) } |]
-      [| { Expr = size (tSet (tUnit __LINE__) __LINE__) (litEmpty (tSet (tBool __LINE__) __LINE__) __LINE__) __LINE__
+      [| { Expr = size (tSet tUnit) (litEmpty (tSet tBool) __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
-      [| { Expr = filter (tUnit __LINE__) "x" (litTrue __LINE__) (litUnit __LINE__) __LINE__
+      [| { Expr = filter tUnit "x" (litTrue __LINE__) (litUnit __LINE__) __LINE__
            Expected = TypeNotDerived(tcUnit, ClassEnum.name) } |]
-      [| { Expr =
-             filter
-                 (tSet (tUnit __LINE__) __LINE__)
-                 "x"
-                 (litTrue __LINE__)
-                 (litEmpty (tSet (tBool __LINE__) __LINE__) __LINE__)
-                 __LINE__
+      [| { Expr = filter (tSet tUnit) "x" (litTrue __LINE__) (litEmpty (tSet tBool) __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcBool; tcUnit ]) } |]
-      [| { Expr =
-             filter
-                 (tSet (tUnit __LINE__) __LINE__)
-                 "x"
-                 (litUnit __LINE__)
-                 (litEmpty (tSet (tBool __LINE__) __LINE__) __LINE__)
-                 __LINE__
+      [| { Expr = filter (tSet tUnit) "x" (litUnit __LINE__) (litEmpty (tSet tBool) __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
-      [| { Expr = exists (tUnit __LINE__) "x" (litTrue __LINE__) (litUnit __LINE__) __LINE__
+      [| { Expr = exists tUnit "x" (litTrue __LINE__) (litUnit __LINE__) __LINE__
            Expected = TypeNotDerived(tcUnit, ClassEnum.name) } |]
-      [| { Expr =
-             exists
-                 (tSet (tUnit __LINE__) __LINE__)
-                 "x"
-                 (litTrue __LINE__)
-                 (litEmpty (tSet (tBool __LINE__) __LINE__) __LINE__)
-                 __LINE__
+      [| { Expr = exists (tSet tUnit) "x" (litTrue __LINE__) (litEmpty (tSet tBool) __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcBool; tcUnit ]) } |]
-      [| { Expr =
-             exists
-                 (tSet (tUnit __LINE__) __LINE__)
-                 "x"
-                 (litUnit __LINE__)
-                 (litEmpty (tSet (tBool __LINE__) __LINE__) __LINE__)
-                 __LINE__
+      [| { Expr = exists (tSet tUnit) "x" (litUnit __LINE__) (litEmpty (tSet tBool) __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
       [| { Expr = tupleFst (litUnit __LINE__) __LINE__
-           Expected = TupleIndexOutOfBounds(tcUnit, 0u) } |]
-      [| { Expr = tupleFst (litTrue __LINE__) __LINE__
-           Expected = NotTuple(tcBool) } |]
+           Expected = TypeMismatch(Set [ tcUnit; tcTuple2 (tcUncertain 0u) (tcUncertain 1u) ]) } |]
       [| { Expr = tupleSnd (litUnit __LINE__) __LINE__
-           Expected = TupleIndexOutOfBounds(tcUnit, 1u) } |]
-      [| { Expr = tupleSnd (litTrue __LINE__) __LINE__
-           Expected = NotTuple(tcBool) } |]
+           Expected = TypeMismatch(Set [ tcUnit; tcTuple2 (tcUncertain 0u) (tcUncertain 1u) ]) } |]
       [| { Expr = listCons (litUnit __LINE__) (litUnit __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcList tcUnit ]) } |]
-      [| { Expr = listCons (litUnit __LINE__) (litEmpty (tList (tBool __LINE__) __LINE__) __LINE__) __LINE__
+      [| { Expr = listCons (litUnit __LINE__) (litEmpty (tList tBool) __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcBool; tcUnit ]) } |]
       [| { Expr = listNth (litUnit __LINE__) (litNat 0u __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcList (tcUncertain 0u) ]) } |]
-      [| { Expr = listNth (litEmpty (tList (tBool __LINE__) __LINE__) __LINE__) (litUnit __LINE__) __LINE__
+      [| { Expr = listNth (litEmpty (tList tBool) __LINE__) (litUnit __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcNat ]) } |]
       [| { Expr = setRange (litUnit __LINE__) (litNat 0u __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcNat ]) } |]
@@ -372,35 +279,21 @@ let exprTestCasesError: obj[] list =
            Expected = TypeMismatch(Set [ tcUnit; tcNat ]) } |]
       [| { Expr = setInsert (litUnit __LINE__) (litUnit __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcSet tcUnit ]) } |]
-      [| { Expr = setInsert (litTrue __LINE__) (litEmpty (tSet (tUnit __LINE__) __LINE__) __LINE__) __LINE__
+      [| { Expr = setInsert (litTrue __LINE__) (litEmpty (tSet tUnit) __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
       [| { Expr = setMem (litUnit __LINE__) (litUnit __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcSet tcUnit ]) } |]
-      [| { Expr = setMem (litTrue __LINE__) (litEmpty (tSet (tUnit __LINE__) __LINE__) __LINE__) __LINE__
+      [| { Expr = setMem (litTrue __LINE__) (litEmpty (tSet tUnit) __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
       [| { Expr = mapAdd (litUnit __LINE__) (litUnit __LINE__) (litUnit __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcMap tcUnit tcUnit ]) } |]
-      [| { Expr =
-             mapAdd
-                 (litUnit __LINE__)
-                 (litTrue __LINE__)
-                 (litEmpty (tMap (tBool __LINE__) (tBool __LINE__) __LINE__) __LINE__)
-                 __LINE__
+      [| { Expr = mapAdd (litUnit __LINE__) (litTrue __LINE__) (litEmpty (tMap tBool tBool) __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcBool; tcUnit ]) } |]
-      [| { Expr =
-             mapAdd
-                 (litTrue __LINE__)
-                 (litUnit __LINE__)
-                 (litEmpty (tMap (tBool __LINE__) (tBool __LINE__) __LINE__) __LINE__)
-                 __LINE__
+      [| { Expr = mapAdd (litTrue __LINE__) (litUnit __LINE__) (litEmpty (tMap tBool tBool) __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcBool; tcUnit ]) } |]
       [| { Expr = mapFindOpt (litUnit __LINE__) (litUnit __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcMap tcUnit (tcUncertain 0u) ]) } |]
-      [| { Expr =
-             mapFindOpt
-                 (litUnit __LINE__)
-                 (litEmpty (tMap (tBool __LINE__) (tBool __LINE__) __LINE__) __LINE__)
-                 __LINE__
+      [| { Expr = mapFindOpt (litUnit __LINE__) (litEmpty (tMap tBool tBool) __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcBool; tcUnit ]) } |]
       [| { Expr =
              matchExpr
@@ -413,17 +306,17 @@ let exprTestCasesError: obj[] list =
 [<Theory>]
 [<MemberData(nameof exprTestCasesError)>]
 let inferExprError (tc: ExprTestCaseError) =
-    let tOption =
-        tUnion "option" [ ("Some", [ tVar 0u __LINE__ ]); ("None", []) ] __LINE__ in
+    let tOption = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ] in
 
-    let tFoo = tUnion "foo" [ ("Foo", []) ] __LINE__ in
+    let tFoo = tUnion "foo" [ ("Foo", []) ] in
     let cm = CtorMap.from [ tOption; tFoo ] in
     let tenv = TypeCstrEnv.from [ ("GLOBAL", tcBool) ] in
 
     match postProcess (infer cm tenv tc.Expr init) with
     | Ok(actual, s) ->
         Assert.Fail
-            $"""
+            $"""line %s{line actual}
+
 Inferred as:
 %s{Expr.format typeAnnotation actual}
 

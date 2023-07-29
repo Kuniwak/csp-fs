@@ -10,16 +10,11 @@ open CSP.Core.TypeError
 let infer (cm: CtorMap) (s: State) (v: Val) : Result<TypeCstr * State, TypeError> =
     let rec infer s v =
         match v with
+        | VUnit -> Ok(TCUnit, s)
         | VNat _ -> Ok(TCNat, s)
         | VBool _ -> Ok(TCBool, s)
-        | VTuple vs ->
-            let tsRes =
-                List.foldBack
-                    (fun v -> Result.bind (fun (ts, s) -> Result.map (fun (t, s) -> (t :: ts, s)) (infer s v)))
-                    vs
-                    (Ok([], s))
-
-            Result.map (fun (ts, s) -> (TCTuple ts, s)) tsRes
+        | VTuple(vL, vR) ->
+            Result.bind (fun (tcL, s) -> Result.map (fun (tcR, s) -> (TCTuple(tcL, tcR), s)) (infer s vR)) (infer s vL)
         | VSet vs ->
             let u, s = newUncertainVarId s in
 
@@ -76,9 +71,7 @@ let infer (cm: CtorMap) (s: State) (v: Val) : Result<TypeCstr * State, TypeError
                             (fun accRes (tc, v) ->
                                 Result.bind
                                     (fun s ->
-                                        Result.bind
-                                            (fun (tc', s) -> Result.map snd (unify s tc tc'))
-                                            (infer s v))
+                                        Result.bind (fun (tc', s) -> Result.map snd (unify s tc tc')) (infer s v))
                                     accRes)
                             (Ok(s))
                             (List.zip tcs vs)

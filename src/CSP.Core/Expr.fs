@@ -11,13 +11,14 @@ open CSP.Core.Var
 type UserDefinedErrorMessage = string
 
 type Expr<'a> =
+    | LitUnit of 'a * LineNum
     | LitTrue of 'a * LineNum
     | LitFalse of 'a * LineNum
     | LitNat of uint * 'a * LineNum
     | LitEmpty of Type * 'a * LineNum
     | VarRef of Var * 'a * LineNum
     | Union of Ctor * Expr<'a> list * 'a * LineNum
-    | Tuple of Expr<'a> list * 'a * LineNum
+    | Tuple of Expr<'a> * Expr<'a> * 'a * LineNum
     | If of Expr<'a> * Expr<'a> * Expr<'a> * 'a * LineNum
     | Match of Expr<'a> * Map<Ctor option, Var option list * Expr<'a>> * 'a * LineNum
     | Eq of Type * Expr<'a> * Expr<'a> * 'a * LineNum
@@ -28,7 +29,8 @@ type Expr<'a> =
     | Size of Type * Expr<'a> * 'a * LineNum
     | Filter of Type * Var * Expr<'a> * Expr<'a> * 'a * LineNum
     | Exists of Type * Var * Expr<'a> * Expr<'a> * 'a * LineNum
-    | TupleNth of Expr<'a> * uint * 'a * LineNum
+    | TupleFst of Expr<'a> * 'a * LineNum
+    | TupleSnd of Expr<'a> * 'a * LineNum
     | ListNth of Expr<'a> * Expr<'a> * 'a * LineNum
     | BoolNot of Expr<'a> * 'a * LineNum
     | ListCons of Expr<'a> * Expr<'a> * 'a * LineNum
@@ -49,6 +51,7 @@ let format (fmt: string -> 'a -> string) (expr: Expr<'a>) : string =
         let indent3 = indent + 3u in
 
         match expr with
+        | LitUnit(x, _) -> fmt "()" x
         | LitTrue(x, _) -> fmt "true" x
         | LitFalse(x, _) -> fmt "false" x
         | LitNat(n, x, _) -> fmt $"%d{n}" x
@@ -163,21 +166,27 @@ let format (fmt: string -> 'a -> string) (expr: Expr<'a>) : string =
 {render indent2}%s{format indent3 expr1})
 {render indent1}%s{format indent2 expr2})"
                 x
-        | Tuple(exprs, x, _) ->
-            let s = String.concat $",\n%s{render indent1}" (List.map (format indent2) exprs)
-
-            fmt $"(%s{s})" x
+        | Tuple(expr1, expr2, x, _) ->
+            fmt
+                $"""(
+{render indent1}%s{format indent2 expr1}
+{render indent1}%s{format indent2 expr2})"""
+                x
         | ListCons(e1, e2, x, _) ->
             fmt
                 $"""(List.cons
 {render indent1}%s{format indent2 e1}
 {render indent1}%s{format indent2 e2})"""
                 x
-        | TupleNth(e1, idx, x, _) ->
+        | TupleFst(e, x, _) ->
             fmt
-                $"""(Tuple.nth
-{render indent1}%s{format indent2 e1}
-{render indent1}%d{idx})"""
+                $"""(fst
+{render indent1}%s{format indent2 e})"""
+                x
+        | TupleSnd(e, x, _) ->
+            fmt
+                $"""(snd
+{render indent1}%s{format indent2 e})"""
                 x
         | ListNth(e1, e2, x, _) ->
             fmt
@@ -222,6 +231,7 @@ let format (fmt: string -> 'a -> string) (expr: Expr<'a>) : string =
 
 let line (expr: Expr<'a>) : LineNum =
     match expr with
+    | LitUnit(_, line) -> line
     | LitTrue(_, line) -> line
     | LitFalse(_, line) -> line
     | LitNat(_, _, line) -> line
@@ -239,9 +249,10 @@ let line (expr: Expr<'a>) : LineNum =
     | Size(_, _, _, line) -> line
     | Filter(_, _, _, _, _, line) -> line
     | Exists(_, _, _, _, _, line) -> line
-    | Tuple(_, _, line) -> line
+    | Tuple(_, _, _, line) -> line
     | ListCons(_, _, _, line) -> line
-    | TupleNth(_, _, _, line) -> line
+    | TupleFst(_, _, line) -> line
+    | TupleSnd(_, _, line) -> line
     | ListNth(_, _, _, line) -> line
     | SetRange(_, _, _, line) -> line
     | SetInsert(_, _, _, line) -> line
@@ -252,6 +263,7 @@ let line (expr: Expr<'a>) : LineNum =
 
 let get (expr: Expr<'a>) : 'a =
     match expr with
+    | LitUnit(x, _) -> x
     | LitTrue(x, _) -> x
     | LitFalse(x, _) -> x
     | LitNat(_, x, _) -> x
@@ -269,8 +281,9 @@ let get (expr: Expr<'a>) : 'a =
     | Size(_, _, x, _) -> x
     | Filter(_, _, _, _, x, _) -> x
     | Exists(_, _, _, _, x, _) -> x
-    | Tuple(_, x, _) -> x
-    | TupleNth(_, _, x, _) -> x
+    | Tuple(_, _, x, _) -> x
+    | TupleFst(_, x, _) -> x
+    | TupleSnd(_, x, _) -> x
     | ListCons(_, _, x, _) -> x
     | ListNth(_, _, x, _) -> x
     | SetRange(_, _, x, _) -> x
@@ -282,6 +295,7 @@ let get (expr: Expr<'a>) : 'a =
 
 let children (expr: Expr<'a>) : Expr<'a> list =
     match expr with
+    | LitUnit _ -> []
     | LitTrue _ -> []
     | LitFalse _ -> []
     | LitNat _ -> []
@@ -296,12 +310,13 @@ let children (expr: Expr<'a>) : Expr<'a> list =
     | Plus(_, expr1, expr2, _, _) -> [ expr1; expr2 ]
     | Minus(_, expr1, expr2, _, _) -> [ expr1; expr2 ]
     | Times(_, expr1, expr2, _, _) -> [ expr1; expr2 ]
-    | Tuple(exprs, _, _) -> exprs
+    | Tuple(expr1, expr2, _, _) -> [ expr1; expr2 ]
     | Size(_, expr, _, _) -> [ expr ]
     | Filter(_, _, _, expr, _, _) -> [ expr ]
     | Exists(_, _, _, expr, _, _) -> [ expr ]
     | ListCons(expr1, expr2, _, _) -> [ expr1; expr2 ]
-    | TupleNth(expr, _, _, _) -> [ expr ]
+    | TupleFst(expr, _, _) -> [ expr ]
+    | TupleSnd(expr, _, _) -> [ expr ]
     | ListNth(expr1, expr2, _, _) -> [ expr1; expr2 ]
     | SetRange(expr1, expr2, _, _) -> [ expr1; expr2 ]
     | SetInsert(expr1, expr2, _, _) -> [ expr1; expr2 ]
@@ -345,6 +360,7 @@ let rec error (expr: Expr<Result<'a, 'b>>) : 'b option =
 let map (f: Expr<'a> -> 'b) (expr: Expr<'a>) : Expr<'b> =
     let rec mapType expr =
         match expr with
+        | LitUnit(_, line) -> LitUnit(f expr, line)
         | LitTrue(_, line) -> LitTrue(f expr, line)
         | LitFalse(_, line) -> LitFalse(f expr, line)
         | LitNat(n, _, line) -> LitNat(n, f expr, line)
@@ -366,9 +382,10 @@ let map (f: Expr<'a> -> 'b) (expr: Expr<'a>) : Expr<'b> =
             Filter(t, var, mapType exprCond, mapType exprEnum, f expr, line)
         | Exists(t, var, exprCond, exprEnum, _, line) ->
             Exists(t, var, mapType exprCond, mapType exprEnum, f expr, line)
-        | Tuple(exprs, _, line) -> Tuple(List.map mapType exprs, f expr, line)
+        | Tuple(expr1, expr2, _, line) -> Tuple(mapType expr1, mapType expr2, f expr, line)
         | ListCons(exprElem, exprList, _, line) -> ListCons(mapType exprElem, mapType exprList, f expr, line)
-        | TupleNth(exprList, idx, _, line) -> TupleNth(mapType exprList, idx, f expr, line)
+        | TupleFst(exprList, _, line) -> TupleFst(mapType exprList, f expr, line)
+        | TupleSnd(exprList, _, line) -> TupleFst(mapType exprList, f expr, line)
         | ListNth(exprList, exprIdx, _, line) -> ListNth(mapType exprList, mapType exprIdx, f expr, line)
         | SetRange(exprLower, exprUpper, _, line) -> SetRange(mapType exprLower, mapType exprUpper, f expr, line)
         | SetInsert(exprElem, exprSet, _, line) -> SetInsert(mapType exprElem, mapType exprSet, f expr, line)

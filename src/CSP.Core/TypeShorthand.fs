@@ -3,22 +3,23 @@ module CSP.Core.TypeShorthand
 open CSP.Core.Ctor
 open CSP.Core.Type
 
-let tVar n line = TVar(n, line)
-let tNat line = TNat(line)
-let tBool line = TBool(line)
-let tUnit line = TTuple([], line)
-let tTuple ts line = TTuple(ts, line)
-let tTuple2 t1 t2 line = TTuple([ t1; t2 ], line)
-let tTuple3 t1 t2 t3 line = TTuple([ t1; t2; t3 ], line)
-let tSet t line = TSet(t, line)
-let tList t line = TList(t, line)
-let tMap tK tV line = TMap(tK, tV, line)
+let tVar n = TVar(n)
+let tNat = TNat
+let tBool = TBool
+let tUnit = TUnit
+let tTuple2 t1 t2 = TTuple(t1, t2)
+let tTuple3 t1 t2 t3 = TTuple(t1, TTuple(t2, t3))
+let tSet t = TSet(t)
+let tList t = TList(t)
+let tMap tK tV = TMap(tK, tV)
 
-let tUnion un cm line =
-    TUnion(un, Map(Seq.map (fun (ctor, ts) -> (Ctor ctor, ts)) cm), line)
+let tUnionM un cm = TUnion(un, cm)
 
-let tOption t line =
-    tUnion "option" [ ("Some", [ t ]); ("None", []) ] line
+let tUnion un cm =
+    tUnionM un (Map(Seq.map (fun (ctor, ts) -> (Ctor ctor, ts)) cm))
 
-let tEither tL tR line =
-    tUnion "either" [ ("Left", [ tL ]); ("Right", [ tR ]) ] line
+let tOption t =
+    tUnion "option" [ ("Some", [ t ]); ("None", []) ]
+
+let tEither tL tR =
+    tUnion "either" [ ("Left", [ tL ]); ("Right", [ tR ]) ]

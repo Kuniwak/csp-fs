@@ -9,28 +9,28 @@ open CSP.Core.ValShorthand
 open CSP.Core.ProcMap
 
 let tEvent =
-    tUnion "event" [ ("EvLoginBtn", []); ("EvLogoutBtn", []); ("EvSearchBtn", []) ] __LINE__
+    tUnion "event" [ ("EvLoginBtn", []); ("EvLogoutBtn", []); ("EvSearchBtn", []) ]
 
-let tPat = tUnion "pat" [ ("Pat1", []); ("Pat2", []); ("PatEmpty", []) ] __LINE__
+let tPat = tUnion "pat" [ ("Pat1", []); ("Pat2", []); ("PatEmpty", []) ]
 
 let tQuery =
-    tUnion "query" [ ("Query1", []); ("Query2", []); ("QueryEmpty", []) ] __LINE__
+    tUnion "query" [ ("Query1", []); ("Query2", []); ("QueryEmpty", []) ]
 
-let tUser = tUnion "user" [ ("User1", []) ] __LINE__
-let tRepo = tUnion "repo" [ ("Repo1", []); ("Repo2", []); ("Repo3", []) ] __LINE__
+let tUser = tUnion "user" [ ("User1", []) ]
+let tRepo = tUnion "repo" [ ("Repo1", []); ("Repo2", []); ("Repo3", []) ]
 
-let tGHAuthError = tUnion "ghAuthError" [ ("GHAuthError", []) ] __LINE__
-let tGHSearchError = tUnion "ghSearchError" [ ("GHSearchError", []) ] __LINE__
+let tGHAuthError = tUnion "ghAuthError" [ ("GHAuthError", []) ]
+let tGHSearchError = tUnion "ghSearchError" [ ("GHSearchError", []) ]
 
 let tGHSearchMoreError =
-    tUnion "ghSearchMoreError" [ ("GHSearchMoreError", []) ] __LINE__
+    tUnion "ghSearchMoreError" [ ("GHSearchMoreError", []) ]
 
-let tGHChkStarError = tUnion "ghChkStarError" [ ("GHChkStarError", []) ] __LINE__
-let tGHStarError = tUnion "ghStarError" [ ("GHStarError", []) ] __LINE__
-let tGHUnstarError = tUnion "ghUnstarError" [ ("GHUnstarError", []) ] __LINE__
+let tGHChkStarError = tUnion "ghChkStarError" [ ("GHChkStarError", []) ]
+let tGHStarError = tUnion "ghStarError" [ ("GHStarError", []) ]
+let tGHUnstarError = tUnion "ghUnstarError" [ ("GHUnstarError", []) ]
 
 let tDispLogin =
-    tUnion "tDispLogin" [ ("AppAuthSuccess", []); ("AppAuthError", []); ("AppAuthFailed", []) ] __LINE__
+    tUnion "tDispLogin" [ ("AppAuthSuccess", []); ("AppAuthError", []); ("AppAuthFailed", []) ]
 
 let tDispSearchError =
     tUnion
@@ -40,72 +40,66 @@ let tDispSearchError =
           ("AppChkStarError", [])
           ("AppStarError", [])
           ("AppUnstarError", []) ]
-        __LINE__
+       
 
-let tDispSearch =
-    tEither
-        tDispSearchError
-        (tTuple
-            [ tList tRepo __LINE__
-              tMap tRepo (tOption (tBool __LINE__) __LINE__) __LINE__
-              tBool __LINE__ ]
-            __LINE__)
-        __LINE__
 
-let tChAuthReq = tUnion "tChAuthReq" [ ("ChAuthReq", [ tPat ]) ] __LINE__
+let tChAuthReq = tUnion "tChAuthReq" [ ("ChAuthReq", [ tPat ]) ]
 
 let tChAuthRes =
-    tUnion "tChAuthRes" [ ("ChAuthRes", [ tEither tGHAuthError (tOption tUser __LINE__) __LINE__ ]) ] __LINE__
+    tUnion "tChAuthRes" [ ("ChAuthRes", [ tEither tGHAuthError (tOption tUser) ]) ]
 
 let tChSearchReq =
-    tUnion "tChSearchReq" [ ("ChSearchReq", [ tTuple2 tQuery (tNat __LINE__) __LINE__ ]) ] __LINE__
+    tUnion "tChSearchReq" [ ("ChSearchReq", [ tTuple2 tQuery tNat ]) ]
 
 let tChSearchRes =
     tUnion
         "tChSearchRes"
-        [ ("ChSearchRes", [ tEither tGHSearchError (tTuple2 (tList tRepo __LINE__) (tBool __LINE__) __LINE__) __LINE__ ]) ]
-        __LINE__
+        [ ("ChSearchRes", [ tEither tGHSearchError (tTuple2 (tList tRepo) tBool) ]) ]
+       
 
 let tChChkStarReq =
-    tUnion "tChChkStarReq" [ ("ChChkStarReq", [ tTuple2 tRepo tPat __LINE__ ]) ] __LINE__
+    tUnion "tChChkStarReq" [ ("ChChkStarReq", [ tTuple2 tRepo tPat ]) ]
 
 let tChChkStarRes =
-    tUnion "tChChkStarRes" [ ("ChChkStarRes", [ tEither tGHChkStarError (tBool __LINE__) __LINE__ ]) ] __LINE__
+    tUnion "tChChkStarRes" [ ("ChChkStarRes", [ tEither tGHChkStarError tBool ]) ]
 
 let tChStarReq =
-    tUnion "tChStarReq" [ ("ChStarReq", [ tTuple2 tRepo tPat __LINE__ ]) ] __LINE__
+    tUnion "tChStarReq" [ ("ChStarReq", [ tTuple2 tRepo tPat ]) ]
 
 let tChStarRes =
-    tUnion "tChStarRes" [ ("ChStarRes", [ tEither tGHStarError (tBool __LINE__) __LINE__ ]) ] __LINE__
+    tUnion "tChStarRes" [ ("ChStarRes", [ tEither tGHStarError tBool ]) ]
 
 let tChUnstarReq =
-    tUnion "tChUnstarReq" [ ("ChUnstarReq", [ tTuple2 tRepo tPat __LINE__ ]) ] __LINE__
+    tUnion "tChUnstarReq" [ ("ChUnstarReq", [ tTuple2 tRepo tPat ]) ]
 
 let tChUnstarRes =
-    tUnion "tChUnstarRes" [ ("ChUnstarRes", [ tEither tGHUnstarError (tBool __LINE__) __LINE__ ]) ] __LINE__
+    tUnion "tChUnstarRes" [ ("ChUnstarRes", [ tEither tGHUnstarError tBool ]) ]
 
-let tChPatField = tUnion "tChPATField" [ ("ChPATField", [ tPat ]) ] __LINE__
+let tChPatField = tUnion "tChPATField" [ ("ChPATField", [ tPat ]) ]
 
 let tChSearchField =
-    tUnion "tChSearchField" [ ("ChSearchField", [ tQuery ]) ] __LINE__
+    tUnion "tChSearchField" [ ("ChSearchField", [ tQuery ]) ]
 
-let tChChkStarBtn = tUnion "tChChkStarBtn" [ ("ChChkStarBtn", [ tRepo ]) ] __LINE__
-let tChStarBtn = tUnion "tChStarBtn" [ ("ChStarBtn", [ tRepo ]) ] __LINE__
-let tChUnstarBtn = tUnion "tChUnstarBtn" [ ("ChUnstarBtn", [ tRepo ]) ] __LINE__
+let tChChkStarBtn = tUnion "tChChkStarBtn" [ ("ChChkStarBtn", [ tRepo ]) ]
+let tChStarBtn = tUnion "tChStarBtn" [ ("ChStarBtn", [ tRepo ]) ]
+let tChUnstarBtn = tUnion "tChUnstarBtn" [ ("ChUnstarBtn", [ tRepo ]) ]
 
-let tChDispLogin =
-    tUnion "tChDispLogin" [ ("ChDispLogin", [ tDispLogin ]) ] __LINE__
+let tChDispLogin = tUnion "tChDispLogin" [ ("ChDispLogin", [ tDispLogin ]) ]
 
 let tChDispSearch =
-    tUnion "tChDispSearch" [ ("ChDispSearch", [ tDispSearch ]) ] __LINE__
+    tUnion
+        "tChDispSearch"
+        [ ("ChDispSearch", [ (tEither tDispSearchError (tTuple3 (tList tRepo) (tMap tRepo (tOption tBool)) tBool)) ]) ]
 
-let tPage = tList tRepo __LINE__
-let tPages = tList tPage __LINE__
+let tPage = tList tRepo
+let tPages = tList tPage
 
 
 let ctorMap =
     CtorMap.from
-        [ tEvent
+        [ tOption (tVar 0u)
+          tEither (tVar 0u) (tVar 1u)
+          tEvent
           tPat
           tQuery
           tUser
@@ -118,7 +112,6 @@ let ctorMap =
           tGHUnstarError
           tDispLogin
           tDispSearchError
-          tDispSearch
           tChAuthReq
           tChAuthRes
           tChSearchReq
@@ -148,10 +141,7 @@ let procMap =
                __LINE__)
           (("GHAuthWillFail", [ "p" ]),
            prefix
-               (ctor
-                   "ChAuthRes"
-                   [ (ctor "Left" [ ctor "GHAuthError" [ litUnit __LINE__ ] __LINE__ ] __LINE__) ]
-                   __LINE__)
+               (ctor "ChAuthRes" [ (ctor "Left" [ ctor "GHAuthError" [] __LINE__ ] __LINE__) ] __LINE__)
                (unwind "GHAuth" [] __LINE__)
                __LINE__)
           (("GHAuthWillResp", [ "p" ]),
@@ -188,10 +178,10 @@ let procMap =
                                    (ifExpr
                                        // fst r < List.length p1
                                        (less
-                                           (tNat __LINE__)
+                                           tNat
                                            (tupleSnd (varRef "r" __LINE__) __LINE__)
                                            (plus
-                                               (tNat __LINE__)
+                                               tNat
                                                (size tPages (varRef "PAGES1" __LINE__) __LINE__)
                                                (litNat 1u __LINE__)
                                                __LINE__)
@@ -200,7 +190,7 @@ let procMap =
                                        (listNth
                                            (varRef "PAGES1" __LINE__)
                                            (plus
-                                               (tNat __LINE__)
+                                               tNat
                                                (tupleSnd (varRef "r" __LINE__) __LINE__)
                                                (litNat 1u __LINE__)
                                                __LINE__)
@@ -209,17 +199,17 @@ let procMap =
                                        (litEmpty tPage __LINE__)
                                        __LINE__)
                                    (less
-                                       (tNat __LINE__)
+                                       tNat
                                        (tupleSnd (varRef "r" __LINE__) __LINE__)
                                        (minus
-                                           (tNat __LINE__)
+                                           tNat
                                            (size tPages (varRef "PAGES1" __LINE__) __LINE__)
                                            (litNat 1u __LINE__)
                                            __LINE__)
                                        __LINE__)
                                    __LINE__)
                                // Others.
-                               (tuple2 (litEmpty (tList tRepo __LINE__) __LINE__) (litFalse __LINE__) __LINE__)
+                               (tuple2 (litEmpty (tList tRepo) __LINE__) (litFalse __LINE__) __LINE__)
                                __LINE__) ]
                          __LINE__ ]
                    __LINE__)
@@ -231,37 +221,39 @@ let procMap =
                (prefixRecv
                    (univ tChChkStarReq __LINE__)
                    "t"
-                   (unwind "GHChkStarRecv1" [ varRef "t" __LINE__ ] __LINE__)
+                   (unwind "GHChkStarRecv1" [ varRef "t" __LINE__; varRef "starRel" __LINE__ ] __LINE__)
                    __LINE__)
                (extCh
                    (prefixRecv
                        (univ tChStarReq __LINE__)
                        "t"
-                       (unwind "GHStarRecv1" [ varRef "t" __LINE__ ] __LINE__)
+                       (unwind "GHStarRecv1" [ varRef "t" __LINE__; varRef "starRel" __LINE__ ] __LINE__)
                        __LINE__)
                    (prefixRecv
                        (univ tChUnstarReq __LINE__)
                        "t"
-                       (unwind "GHUnstarRecv1" [ varRef "t" __LINE__ ] __LINE__)
+                       (unwind "GHUnstarRecv1" [ varRef "t" __LINE__; varRef "starRel" __LINE__ ] __LINE__)
                        __LINE__)
                    __LINE__)
                __LINE__)
-          (("GHChkStarRecv1", [ "t" ]),
+          (("GHChkStarRecv1", [ "t"; "starRel" ]),
            ``match``
                (mapFindOpt (tupleSnd (varRef "t" __LINE__) __LINE__) (varRef "PAT_REL" __LINE__) __LINE__)
                [ ((Some "Some", [ "u" ]),
                   unwind
                       "GHChkStarRecv2"
-                      [ tuple2 (tupleFst (varRef "t" __LINE__) __LINE__) (varRef "u" __LINE__) __LINE__ ]
+                      [ (tupleFst (varRef "t" __LINE__) __LINE__)
+                        (varRef "u" __LINE__)
+                        (varRef "starRel" __LINE__) ]
                       __LINE__)
                  ((Some "None", []), unwind "GHChkStarWillFail" [] __LINE__) ]
                __LINE__)
-          (("GHChkStarRecv2", [ "t" ]),
+          (("GHChkStarRecv2", [ "t"; "starRel" ]),
            intCh
-               (unwind "GHChkStarWillFail" [] __LINE__)
+               (unwind "GHChkStarWillFail" [ varRef "starRel" __LINE__ ] __LINE__)
                (unwind "GHChkStarWillResp" [ varRef "t" __LINE__ ] __LINE__)
                __LINE__)
-          (("GHChkStarWillFail", []),
+          (("GHChkStarWillFail", [ "starRel" ]),
            prefix
                (ctor "ChChkStarRes" [ ctor "Left" [ ctor "GHChkStarError" [] __LINE__ ] __LINE__ ] __LINE__)
                (unwind "GHStar" [ varRef "starRel" __LINE__ ] __LINE__)

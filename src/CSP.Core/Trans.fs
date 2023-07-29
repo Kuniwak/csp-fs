@@ -1,7 +1,7 @@
 module CSP.Core.Trans
 
 open CSP.Core.Env
-open CSP.Core.Type
+open CSP.Core.TypeShorthand
 open CSP.Core.Val
 open CSP.Core.Expr
 open CSP.Core.CtorMap
@@ -109,7 +109,7 @@ let trans (cfg: TransConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0: 
                 match eval env expr with
                 | Ok(VBool true) -> trans s1
                 | Ok(VBool false) -> trans s2
-                | Ok(v) -> [ (ErrorEvent, ErrorState(EvalError.format (EvalError.TypeMismatch(v, TBool __LINE__)))) ]
+                | Ok(v) -> [ (ErrorEvent, ErrorState(EvalError.format (EvalError.TypeMismatch(v, tBool)))) ]
                 | Error(err) -> [ (ErrorEvent, ErrorState(EvalError.format err)) ]
             | Match(env, expr, sm) ->
                 match eval env expr with
@@ -196,9 +196,7 @@ let trans (cfg: TransConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0: 
                             | _ -> acc)
                         []
                         (List.allPairs t1 t2))
-                | Ok(v) ->
-                    [ ErrorEvent,
-                      ErrorState(EvalError.format (EvalError.TypeMismatch(v, TSet(TVar(0u, __LINE__), __LINE__)))) ]
+                | Ok(v) -> [ ErrorEvent, ErrorState(EvalError.format (EvalError.TypeMismatch(v, tSet (tVar 0u)))) ]
                 | Error(err) -> [ ErrorEvent, ErrorState(EvalError.format err) ]
             | Hide(env, s, expr) ->
                 match eval env expr with
@@ -214,9 +212,7 @@ let trans (cfg: TransConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0: 
                             | ErrorEvent -> (ErrorEvent, s')
                             | _ -> (ev, Hide(env, s', expr)))
                         (trans s)
-                | Ok(v) ->
-                    [ (ErrorEvent,
-                       ErrorState(EvalError.format (EvalError.TypeMismatch(v, TSet(TVar(0u, __LINE__), __LINE__))))) ]
+                | Ok(v) -> [ (ErrorEvent, ErrorState(EvalError.format (EvalError.TypeMismatch(v, tSet (tVar 0u))))) ]
                 | Error(err) -> [ (ErrorEvent, ErrorState(EvalError.format err)) ]
             | Omega _ -> []
             | ErrorState _ -> []

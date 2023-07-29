@@ -16,36 +16,26 @@ let univConfig natMax listLenMax : UnivConfig =
 let univ (cfg: UnivConfig) (t: Type) : Result<Val list, UnivError> =
     let rec univ t =
         match t with
+        | TUnit _ -> Ok([ VUnit ])
         | TVar _ -> Error(UnivTVarIsNotAllowed)
         | TNat _ -> Ok(List.map VNat (Range.ofList 0u cfg.NatMax))
         | TBool _ -> Ok([ VBool false; VBool true ])
-        | TTuple(ts, _) ->
-            let vssRes =
-                List.foldBack
-                    (fun t vssRes ->
-                        match vssRes, univ t with
-                        | Ok(vss), Ok(vs) -> Ok(vs :: vss)
-                        | Error err, _ -> Error err
-                        | _, Error err -> Error err)
-                    ts
-                    (Ok([]))
-
-            Result.map (ListEx.cartesian >> List.map VTuple) vssRes
-        | TSet(t, _) -> Result.map (Set.ofList >> Univ.ofSet >> List.map VSet) (univ t)
-        | TList(t, _) ->
+        | TTuple(tL, tR) ->
+            Result.bind
+                (fun vsL -> Result.map (fun vsR -> List.map VTuple (ListEx.cartesian2 vsL vsR)) (univ tR))
+                (univ tL)
+        | TSet(t) -> Result.map (Set.ofList >> Univ.ofSet >> List.map VSet) (univ t)
+        | TList(t) ->
             Result.map
                 (fun vs ->
                     List.map
                         VList
                         (List.collect (fun listLen -> Univ.ofList listLen vs) (Range.ofList 0u cfg.ListLenMax)))
                 (univ t)
-        | TMap(tk, tv, _) ->
-            match univ tk, univ tv with
-            | Ok(ks), Ok(vs) -> Ok(List.map VMap (Univ.ofMap ks vs))
-            | Error(err), _ -> Error(err)
-            | _, Error(err) -> Error(err)
+        | TMap(tk, tv) ->
+            Result.bind (fun ks -> Result.map (fun vs -> List.map VMap (Univ.ofMap ks vs)) (univ tv)) (univ tk)
 
-        | TUnion(_, cm, _) ->
+        | TUnion(_, cm) ->
             let cvsListRes: Result<(Ctor * Val list) list, UnivError> =
                 List.fold
                     (fun cvsListRes (ctor, ts) ->

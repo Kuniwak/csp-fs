@@ -7,18 +7,15 @@ let name: TypeClassName = "Ord"
 
 let rec derivedBy (t: Type) : bool =
     match t with
-    | TVar _ -> false
+    | TUnit _ -> true
     | TNat _ -> true
-    | TBool _ -> false
-    | TTuple(ts, _) -> List.forall derivedBy ts
+    | TTuple(tL, tR) -> derivedBy tL && derivedBy tR
     | TSet _ -> true
-    | TList _ -> false
-    | TMap _ -> false
-    | TUnion _ -> false
+    | _ -> false
 
 let rec less (v1: Val) (v2: Val) : bool =
     match v1, v2 with
     | VNat n1, VNat n2 -> n1 < n2
-    | VTuple(vs1), VTuple(vs2) -> List.length vs1 = List.length vs2 && List.forall2 less vs1 vs2
+    | VTuple(tL1, tR1), VTuple(tL2, tR2) -> less tL1 tL2 && less tR1 tR2
     | VSet s1, VSet s2 -> Set.isSubset s1 s2
     | _, _ -> failwith $"cannot compare %s{format v1} vs %s{format v2}"

@@ -18,17 +18,11 @@ let resolve (s: State) (t: TypeCstr) : Result<TypeCstr, TypeError> =
                 | None -> Ok(TCUncertain u)
         | TCBool -> Ok TCBool
         | TCNat -> Ok TCNat
-        | TCTuple(ts) ->
-            Result.map
-                TCTuple
-                (List.foldBack
-                    (fun t tsOpt ->
-                        match tsOpt, resolve visited t with
-                        | Ok ts, Ok t -> Ok(t :: ts)
-                        | Error err, _ -> Error err
-                        | _, Error err -> Error err)
-                    ts
-                    (Ok []))
+        | TCUnit -> Ok TCUnit
+        | TCTuple(tcL, tcR) ->
+            Result.bind
+                (fun tcL -> Result.map (fun tcR -> TCTuple(tcL, tcR)) (resolve visited tcR))
+                (resolve visited tcL)
         | TCUnion(un, cm) ->
             let cmRes =
                 Map.fold

@@ -16,7 +16,7 @@ let dot = dot dotCfg
 
 [<Fact>]
 let abSkip () =
-    let tEvent = tUnion "event" [ ("a", []); ("b", []) ] __LINE__ in
+    let tEvent = tUnion "event" [ ("a", []); ("b", []) ] in
 
     let pm =
         from
@@ -46,7 +46,7 @@ let abSkip () =
 
 [<Fact>]
 let parABC () =
-    let tEvent = tUnion "event" [ ("a", []); ("b", []); ("c", []); ("d", []) ] __LINE__ in
+    let tEvent = tUnion "event" [ ("a", []); ("b", []); ("c", []); ("d", []) ] in
 
     let pm =
         from
@@ -197,7 +197,7 @@ let rand2 () =
 
 [<Fact>]
 let abs () =
-    let tEvent = tUnion "event" [ ("a", []); ("b", []); ("s", []) ] __LINE__ in
+    let tEvent = tUnion "event" [ ("a", []); ("b", []); ("s", []) ] in
 
     let pm =
         from
@@ -234,14 +234,14 @@ let abs () =
 
 [<Fact>]
 let lr () =
-    let tEvent = tUnion "event" [ ("blue", []); ("red", []); ("sync", []) ] __LINE__ in
+    let tEvent = tUnion "event" [ ("blue", []); ("red", []); ("sync", []) ] in
 
     let pm =
         from
             [ (("LR", []),
                (interfaceParallel
                    (unwind "Left" [] __LINE__)
-                   (setInsert (ctor "sync" [] __LINE__) (litEmpty (tSet tEvent __LINE__) __LINE__) __LINE__)
+                   (setInsert (ctor "sync" [] __LINE__) (litEmpty (tSet tEvent) __LINE__) __LINE__)
                    (unwind "Right" [] __LINE__))
                    __LINE__)
               (("Left", []),
@@ -279,7 +279,7 @@ let lr () =
 [<Fact>]
 let coinToss () =
     let tEvent =
-        tUnion "event" [ ("toss", []); ("heads", []); ("tails", []); ("right", []); ("left", []) ] __LINE__ in
+        tUnion "event" [ ("toss", []); ("heads", []); ("tails", []); ("right", []); ("left", []) ] in
 
     let pm =
         from
@@ -308,7 +308,7 @@ let coinToss () =
                        (ctor "toss" [] __LINE__)
                        (setInsert
                            (ctor "heads" [] __LINE__)
-                           (setInsert (ctor "tails" [] __LINE__) (litEmpty (tSet tEvent __LINE__) __LINE__) __LINE__)
+                           (setInsert (ctor "tails" [] __LINE__) (litEmpty (tSet tEvent) __LINE__) __LINE__)
                            __LINE__)
                        __LINE__)
                    (unwind "Man" [] __LINE__)
@@ -340,7 +340,7 @@ let coinToss () =
 
 [<Fact>]
 let lrh () =
-    let tEvent = tUnion "event" [ ("blue", []); ("red", []); ("sync", []) ] __LINE__ in
+    let tEvent = tUnion "event" [ ("blue", []); ("red", []); ("sync", []) ] in
 
     let pm =
         from
@@ -348,10 +348,10 @@ let lrh () =
                hide
                    (interfaceParallel
                        (unwind "Left" [] __LINE__)
-                       (setInsert (ctor "sync" [] __LINE__) (litEmpty (tSet tEvent __LINE__) __LINE__) __LINE__)
+                       (setInsert (ctor "sync" [] __LINE__) (litEmpty (tSet tEvent) __LINE__) __LINE__)
                        (unwind "Right" [] __LINE__)
                        __LINE__)
-                   (setInsert (ctor "sync" [] __LINE__) (litEmpty (tSet tEvent __LINE__) __LINE__) __LINE__)
+                   (setInsert (ctor "sync" [] __LINE__) (litEmpty (tSet tEvent) __LINE__) __LINE__)
                    __LINE__)
               (("Left", []),
                prefix
@@ -386,14 +386,14 @@ let lrh () =
 
 [<Fact>]
 let hide3 () =
-    let tEvent = tUnion "event" [ ("a", []) ] __LINE__ in
+    let tEvent = tUnion "event" [ ("a", []) ] in
 
     let pm =
         from
             [ ("P", []),
               hide
                   (prefix (ctor "a" [] __LINE__) (skip __LINE__) __LINE__)
-                  (setInsert (ctor "a" [] __LINE__) (litEmpty (tSet tEvent __LINE__) __LINE__) __LINE__)
+                  (setInsert (ctor "a" [] __LINE__) (litEmpty (tSet tEvent) __LINE__) __LINE__)
                   __LINE__ ] in
 
     let cm = CtorMap.from [ tEvent ] in
@@ -414,24 +414,21 @@ let hide3 () =
 
 [<Fact>]
 let count () =
-    let tEvent = tUnion "event" [ ("push", []); ("reset", []) ] __LINE__ in
+    let tEvent = tUnion "event" [ ("push", []); ("reset", []) ] in
 
     let pm =
         from
             [ (("COUNT", [ "n" ]),
                extCh
                    (guard
-                       (less (tNat __LINE__) (varRef "n" __LINE__) (litNat 10u __LINE__) __LINE__)
+                       (less tNat (varRef "n" __LINE__) (litNat 10u __LINE__) __LINE__)
                        (prefix
                            (ctor "push" [] __LINE__)
-                           (unwind
-                               "COUNT"
-                               [ plus (tNat __LINE__) (varRef "n" __LINE__) (litNat 1u __LINE__) __LINE__ ]
-                               __LINE__)
+                           (unwind "COUNT" [ plus tNat (varRef "n" __LINE__) (litNat 1u __LINE__) __LINE__ ] __LINE__)
                            __LINE__)
                        __LINE__)
                    (guard
-                       (eq (tNat __LINE__) (varRef "n" __LINE__) (litNat 10u __LINE__) __LINE__)
+                       (eq tNat (varRef "n" __LINE__) (litNat 10u __LINE__) __LINE__)
                        (prefix (ctor "reset" [] __LINE__) (unwind "COUNT" [ litNat 0u __LINE__ ] __LINE__) __LINE__)
                        __LINE__)
                    __LINE__) ] in
@@ -482,7 +479,7 @@ let roVarSys1 () =
                         (litNat 3u __LINE__)
                         (setInsert
                             (litNat 4u __LINE__)
-                            (setInsert (litNat 5u __LINE__) (litEmpty (tSet (tNat __LINE__) __LINE__) __LINE__) __LINE__)
+                            (setInsert (litNat 5u __LINE__) (litEmpty (tSet tNat) __LINE__) __LINE__)
                             __LINE__)
                         __LINE__)
                     __LINE__)
@@ -507,8 +504,8 @@ let roVarSys1 () =
                    (unwind
                        "ROVar"
                        [ ifExpr
-                             (less (tNat __LINE__) (varRef "n" __LINE__) (litNat 4u __LINE__) __LINE__)
-                             (plus (tNat __LINE__) (varRef "n" __LINE__) (litNat 1u __LINE__) __LINE__)
+                             (less tNat (varRef "n" __LINE__) (litNat 4u __LINE__) __LINE__)
+                             (plus tNat (varRef "n" __LINE__) (litNat 1u __LINE__) __LINE__)
                              (litNat 0u __LINE__)
                              __LINE__ ]
                        __LINE__)
@@ -544,7 +541,7 @@ let roVarSys2 () =
                         (litNat 3u __LINE__)
                         (setInsert
                             (litNat 4u __LINE__)
-                            (setInsert (litNat 5u __LINE__) (litEmpty (tSet (tNat __LINE__) __LINE__) __LINE__) __LINE__)
+                            (setInsert (litNat 5u __LINE__) (litEmpty (tSet tNat) __LINE__) __LINE__)
                             __LINE__)
                         __LINE__)
                     __LINE__)
@@ -568,8 +565,8 @@ let roVarSys2 () =
                    (unwind
                        "ROVar"
                        [ ifExpr
-                             (less (tNat __LINE__) (varRef "x" __LINE__) (litNat 4u __LINE__) __LINE__)
-                             (plus (tNat __LINE__) (varRef "x" __LINE__) (litNat 1u __LINE__) __LINE__)
+                             (less tNat (varRef "x" __LINE__) (litNat 4u __LINE__) __LINE__)
+                             (plus tNat (varRef "x" __LINE__) (litNat 1u __LINE__) __LINE__)
                              (litNat 0u __LINE__)
                              __LINE__ ]
                        __LINE__)

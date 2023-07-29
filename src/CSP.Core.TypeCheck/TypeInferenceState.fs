@@ -21,7 +21,8 @@ let init: State = { UncertainVarMap = TypeCstrUncertainVar.init }
 let generalize (t: Type) (s: State) : TypeCstr * State =
     let rec generalize t s m =
         match t with
-        | TVar(n, _) ->
+        | TUnit _ -> (TCUnit, s, m)
+        | TVar(n) ->
             match Map.tryFind n m with
             | Some n' -> (TCUncertain n', s, m)
             | None ->
@@ -29,12 +30,11 @@ let generalize (t: Type) (s: State) : TypeCstr * State =
                 (TCUncertain n', s, Map.add n n' m)
         | TBool _ -> (TCBool, s, m)
         | TNat _ -> (TCNat, s, m)
-        | TTuple(ts, _) ->
-            let tcs, s, m =
-                List.foldBack (fun t (tcs, s, m) -> let tc, s, m = generalize t s m in (tc :: tcs, s, m)) ts ([], s, m)
-
-            (TCTuple tcs, s, m)
-        | TUnion(un, cm, _) ->
+        | TTuple(tL, tR) ->
+            let tcL, s, m = generalize tL s m in
+            let tcR, s, m = generalize tR s m in
+            (TCTuple(tcL, tcR), s, m)
+        | TUnion(un, cm) ->
             let cm, s, m =
                 Map.fold
                     (fun (cm, s, m) ctor ts ->
@@ -51,13 +51,13 @@ let generalize (t: Type) (s: State) : TypeCstr * State =
                     cm in
 
             (TCUnion(un, cm), s, m)
-        | TSet(tElem, _) ->
+        | TSet(tElem) ->
             let tc, s, m = generalize tElem s m
             (TCSet tc, s, m)
-        | TList(tElem, _) ->
+        | TList(tElem) ->
             let tc, s, m = generalize tElem s m
             (TCList tc, s, m)
-        | TMap(tK, tV, _) ->
+        | TMap(tK, tV) ->
             let tcK, s, m = generalize tK s m
             let tcV, s, m = generalize tV s m
             (TCMap(tcK, tcV), s, m)

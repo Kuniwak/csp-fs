@@ -3,9 +3,10 @@ module CSP.Core.Val
 open CSP.Core.Ctor
 
 type Val =
+    | VUnit
     | VNat of uint
     | VBool of bool
-    | VTuple of Val list
+    | VTuple of Val * Val
     | VSet of Set<Val>
     | VList of Val list
     | VMap of Map<Val, Val>
@@ -14,9 +15,10 @@ type Val =
 
 let rec format (v: Val) : string =
     match v with
+    | VUnit -> "()"
     | VNat n -> $"%d{n}"
     | VBool b -> $"%b{b}"
-    | VTuple vs -> let s = String.concat ", " (List.map format vs) in $"(%s{s})"
+    | VTuple(vL, vR) -> $"(%s{format vL}, %s{format vR})"
     | VSet s -> let s' = String.concat ", " (List.map format (Set.toList s)) in $"{{%s{s'}}}"
     | VList vs -> let s' = String.concat ", " (List.map format vs) in $"[%s{s'}]"
     | VMap m ->

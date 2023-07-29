@@ -1,16 +1,16 @@
 module CSP.Core.TypeCstrInstantiation
 
 open CSP.Core.TypeCstr
-open CSP.Core.Type
+open CSP.Core.TypeShorthand
 
-let rec instantiate (tc: TypeCstr) : Type =
+let rec instantiate (tc: TypeCstr) : Type.Type =
     match tc with
-    | TCUncertain(UncertainVarId u) -> TVar(u, __LINE__)
-    | TCBool -> TBool(__LINE__)
-    | TCNat -> TNat(__LINE__)
-    | TCTuple(tcs) -> TTuple(List.map instantiate tcs, __LINE__)
-    | TCUnion(un, cm) -> TUnion(un, Map.map (fun _ -> List.map instantiate) cm, __LINE__)
-    | TCSet(tc) -> TSet(instantiate tc, __LINE__)
-    | TCList(tc) -> TList(instantiate tc, __LINE__)
-    | TCMap(tcK, tcV) -> TMap(instantiate tcK, instantiate tcV, __LINE__)
-
+    | TCUnit -> tUnit
+    | TCUncertain(UncertainVarId u) -> tVar u
+    | TCBool -> tBool
+    | TCNat -> tNat
+    | TCTuple(tcL, tcR) -> tTuple2(instantiate tcL)(instantiate tcR)
+    | TCUnion(un, cm) -> tUnionM un (Map.map (fun _ -> List.map instantiate) cm)
+    | TCSet(tc) -> tSet (instantiate tc)
+    | TCList(tc) -> tList (instantiate tc)
+    | TCMap(tcK, tcV) -> tMap (instantiate tcK) (instantiate tcV)

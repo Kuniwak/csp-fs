@@ -8,9 +8,10 @@ type ForAllVarId = ForAllVarId of uint
 
 type TypeCstr =
     | TCUncertain of UncertainVarId
+    | TCUnit
     | TCNat
     | TCBool
-    | TCTuple of TypeCstr list
+    | TCTuple of TypeCstr * TypeCstr
     | TCSet of TypeCstr
     | TCList of TypeCstr
     | TCMap of TypeCstr * TypeCstr
@@ -19,9 +20,10 @@ type TypeCstr =
 let rec format (tc: TypeCstr) : string =
     match tc with
     | TCUncertain(UncertainVarId id) -> $"?t%d{id}"
+    | TCUnit -> "()"
     | TCNat -> "nat"
     | TCBool -> "bool"
-    | TCTuple(tcs) -> let s = String.concat " * " (List.map format tcs) in $"(%s{s})"
+    | TCTuple(tcL, tcR) -> $"(%s{format tcL}, %s{format tcR})"
     | TCSet tc -> $"(%s{format tc} set)"
     | TCList tc -> $"(%s{format tc} list)"
     | TCMap(tcK, tcV) -> $"((%s{format tcK}, %s{format tcV}) map)"

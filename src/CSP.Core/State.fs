@@ -1,12 +1,13 @@
 module CSP.Core.State
 
-open CSP.Core.UnwindError
 open FSharpx.Collections
+open CSP.Core.UnwindError
 open CSP.Core.Eval
 open CSP.Core.Env
 open CSP.Core.EnvError
 open CSP.Core.CtorMap
-open CSP.Core.Type
+open CSP.Core.TypeShorthand
+open CSP.Core.ExprShorthand
 open CSP.Core.Var
 open CSP.Core.Ctor
 open CSP.Core.Expr
@@ -135,7 +136,7 @@ let ofProc (genv: Env) (p: Proc<unit>) : State =
         | Proc.Interleave(p1, p2, _) ->
             let s1 = ofProc p1 in
             let s2 = ofProc p2 in
-            InterfaceParallel(genv, s1, LitEmpty(TSet(TTuple([], __LINE__), __LINE__), (), __LINE__), s2)
+            InterfaceParallel(genv, s1, litEmpty (tSet tUnit) __LINE__, s2)
         | Proc.Hide(p, expr, _) -> let s = ofProc p in Hide(genv, s, expr)
         | Proc.Guard(e, p, _) -> let s = ofProc p in If(genv, e, s, Stop)
 
@@ -194,8 +195,7 @@ let format (genv: Env) (s0: State) : string =
         | IntCh(s1, s2) -> $"(%s{f s1} ⨅ %s{f s2})"
         | ExtCh(s1, s2) -> $"(%s{f s1} □ %s{f s2})"
         | Seq(s1, s2) -> $"(%s{f s1} ; %s{f s2})"
-        | If(env, expr, s1, s2) ->
-            $"(if %s{formatExpr expr} then %s{f s1} else %s{f s2}) env=%s{Env.format genv env})"
+        | If(env, expr, s1, s2) -> $"(if %s{formatExpr expr} then %s{f s1} else %s{f s2}) env=%s{Env.format genv env})"
         | Match(env, expr, sm) ->
             let sep = " | " in
 

@@ -1,7 +1,6 @@
 module CSP.Core.Type
 
 open CSP.Core.Ctor
-open CSP.Core.LineNum
 
 type UnionName = string
 
@@ -9,25 +8,29 @@ type TypeClassName = string
 type TVarId = uint
 
 type Type =
-    | TVar of TVarId * LineNum
-    | TNat of LineNum
-    | TBool of LineNum
-    | TTuple of Type list * LineNum
-    | TSet of Type * LineNum
-    | TList of Type * LineNum
-    | TMap of Type * Type * LineNum
-    | TUnion of UnionName * Map<Ctor, Type list> * LineNum
+    | TUnit
+    | TVar of TVarId
+    | TNat
+    | TBool
+    // NOTE: `TTuple of Type * Type` is familiar to type inference instead of `TTuple of Type list.`
+    //       `TupleNth()` is needed if `TTuple` take `Type list`. Then, inferring a type of `TupleNth(VarRef "x")` is hard if "x" typed as ?x.
+    | TTuple of Type * Type
+    | TSet of Type
+    | TList of Type
+    | TMap of Type * Type
+    | TUnion of UnionName * Map<Ctor, Type list>
 
 let rec format (t: Type) : string =
     match t with
-    | TVar(n, _) -> $"'t%d{n}"
+    | TUnit -> "()"
+    | TVar n -> $"'t%d{n}"
     | TNat _ -> "nat"
     | TBool _ -> "bool"
-    | TTuple(ts, _) -> let s = String.concat " * " (List.map format ts) in $"(%s{s})"
-    | TSet(t, _) -> $"(%s{format t} set)"
-    | TList(t, _) -> $"(%s{format t} list)"
-    | TMap(tk, tv, _) -> $"((%s{format tk}, %s{format tv}) map)"
-    | TUnion(n, cm, _) ->
+    | TTuple(tL, tR) -> $"(%s{format tL}, %s{format tR})"
+    | TSet(t) -> $"(%s{format t} set)"
+    | TList(t) -> $"(%s{format t} list)"
+    | TMap(tk, tv) -> $"((%s{format tk}, %s{format tv}) map)"
+    | TUnion(n, cm) ->
         let s =
             String.concat
                 "/"
