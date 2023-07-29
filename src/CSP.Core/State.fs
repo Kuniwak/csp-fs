@@ -191,7 +191,7 @@ let format (genv: Env) (s0: State) : string =
         | Stop -> "STOP"
         | Skip -> "SKIP"
         | Prefix(env, expr, s') -> $"(%s{formatExpr expr} -> %s{f s'} env=%s{Env.format genv env})"
-        | PrefixRecv(env, expr, var, s') -> $"({formatExpr expr}?{var} -> {f s'} env={Env.format genv env})"
+        | PrefixRecv(env, expr, var, s') -> $"(%s{formatExpr expr}?%s{Var.format var} -> %s{f s'} env={Env.format genv env})"
         | IntCh(s1, s2) -> $"(%s{f s1} ⨅ %s{f s2})"
         | ExtCh(s1, s2) -> $"(%s{f s1} □ %s{f s2})"
         | Seq(s1, s2) -> $"(%s{f s1} ; %s{f s2})"

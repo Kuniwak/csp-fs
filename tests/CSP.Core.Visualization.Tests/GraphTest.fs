@@ -273,15 +273,15 @@ let lr () =
 
     Assert.True(
         """digraph G {
-  "((sync -> Left env={}) ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ (sync -> Right env={}) env={})"
-  "(Left ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ (sync -> Right env={}) env={})"
-  "((sync -> Left env={}) ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ Right env={})"
-  "(Left ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ Right env={})"
-  "((sync -> Left env={}) ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ (sync -> Right env={}) env={})" -> "(Left ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ Right env={})" [label="sync"]
-  "(Left ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ (sync -> Right env={}) env={})" -> "((sync -> Left env={}) ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ (sync -> Right env={}) env={})" [label="blue"]
-  "((sync -> Left env={}) ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ Right env={})" -> "((sync -> Left env={}) ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ (sync -> Right env={}) env={})" [label="red"]
-  "(Left ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ Right env={})" -> "((sync -> Left env={}) ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ Right env={})" [label="blue"]
-  "(Left ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ Right env={})" -> "(Left ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ (sync -> Right env={}) env={})" [label="red"]
+  "((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={})"
+  "(Left ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={})"
+  "((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ Right env={})"
+  "(Left ⟦(Set.insert sync (event set).empty)⟧ Right env={})"
+  "((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={})" -> "(Left ⟦(Set.insert sync (event set).empty)⟧ Right env={})" [label="sync"]
+  "(Left ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={})" -> "((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={})" [label="blue"]
+  "((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ Right env={})" -> "((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={})" [label="red"]
+  "(Left ⟦(Set.insert sync (event set).empty)⟧ Right env={})" -> "((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ Right env={})" [label="blue"]
+  "(Left ⟦(Set.insert sync (event set).empty)⟧ Right env={})" -> "(Left ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={})" [label="red"]
 }""" =
             actual,
         actual
@@ -333,19 +333,19 @@ let coinToss () =
 
     Assert.True(
         """digraph G {
-  "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails ((event heads []/left []/right []/tails []/toss []) set).empty)))⟧ (left -> Man env={}) env={})"
-  "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails ((event heads []/left []/right []/tails []/toss []) set).empty)))⟧ (right -> Man env={}) env={})"
-  "((heads -> Coin env={}) ⟦(Set.insert toss (Set.insert heads (Set.insert tails ((event heads []/left []/right []/tails []/toss []) set).empty)))⟧ Man' env={})"
-  "((tails -> Coin env={}) ⟦(Set.insert toss (Set.insert heads (Set.insert tails ((event heads []/left []/right []/tails []/toss []) set).empty)))⟧ Man' env={})"
-  "(Coin' ⟦(Set.insert toss (Set.insert heads (Set.insert tails ((event heads []/left []/right []/tails []/toss []) set).empty)))⟧ Man' env={})"
-  "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails ((event heads []/left []/right []/tails []/toss []) set).empty)))⟧ Man env={})"
-  "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails ((event heads []/left []/right []/tails []/toss []) set).empty)))⟧ (left -> Man env={}) env={})" -> "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails ((event heads []/left []/right []/tails []/toss []) set).empty)))⟧ Man env={})" [label="left"]
-  "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails ((event heads []/left []/right []/tails []/toss []) set).empty)))⟧ (right -> Man env={}) env={})" -> "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails ((event heads []/left []/right []/tails []/toss []) set).empty)))⟧ Man env={})" [label="right"]
-  "((heads -> Coin env={}) ⟦(Set.insert toss (Set.insert heads (Set.insert tails ((event heads []/left []/right []/tails []/toss []) set).empty)))⟧ Man' env={})" -> "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails ((event heads []/left []/right []/tails []/toss []) set).empty)))⟧ (left -> Man env={}) env={})" [label="heads"]
-  "((tails -> Coin env={}) ⟦(Set.insert toss (Set.insert heads (Set.insert tails ((event heads []/left []/right []/tails []/toss []) set).empty)))⟧ Man' env={})" -> "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails ((event heads []/left []/right []/tails []/toss []) set).empty)))⟧ (right -> Man env={}) env={})" [label="tails"]
-  "(Coin' ⟦(Set.insert toss (Set.insert heads (Set.insert tails ((event heads []/left []/right []/tails []/toss []) set).empty)))⟧ Man' env={})" -> "((tails -> Coin env={}) ⟦(Set.insert toss (Set.insert heads (Set.insert tails ((event heads []/left []/right []/tails []/toss []) set).empty)))⟧ Man' env={})" [label="τ"]
-  "(Coin' ⟦(Set.insert toss (Set.insert heads (Set.insert tails ((event heads []/left []/right []/tails []/toss []) set).empty)))⟧ Man' env={})" -> "((heads -> Coin env={}) ⟦(Set.insert toss (Set.insert heads (Set.insert tails ((event heads []/left []/right []/tails []/toss []) set).empty)))⟧ Man' env={})" [label="τ"]
-  "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails ((event heads []/left []/right []/tails []/toss []) set).empty)))⟧ Man env={})" -> "(Coin' ⟦(Set.insert toss (Set.insert heads (Set.insert tails ((event heads []/left []/right []/tails []/toss []) set).empty)))⟧ Man' env={})" [label="toss"]
+  "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ (left -> Man env={}) env={})"
+  "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ (right -> Man env={}) env={})"
+  "((heads -> Coin env={}) ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})"
+  "((tails -> Coin env={}) ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})"
+  "(Coin' ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})"
+  "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man env={})"
+  "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ (left -> Man env={}) env={})" -> "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man env={})" [label="left"]
+  "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ (right -> Man env={}) env={})" -> "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man env={})" [label="right"]
+  "((heads -> Coin env={}) ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})" -> "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ (left -> Man env={}) env={})" [label="heads"]
+  "((tails -> Coin env={}) ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})" -> "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ (right -> Man env={}) env={})" [label="tails"]
+  "(Coin' ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})" -> "((tails -> Coin env={}) ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})" [label="τ"]
+  "(Coin' ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})" -> "((heads -> Coin env={}) ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})" [label="τ"]
+  "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man env={})" -> "(Coin' ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})" [label="toss"]
 }""" =
             actual,
         actual
@@ -385,15 +385,15 @@ let lrh () =
 
     Assert.True(
         """digraph G {
-  "(((sync -> Left env={}) ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync ((event blue []/red []/sync []) set).empty) env={})"
-  "((Left ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync ((event blue []/red []/sync []) set).empty) env={})"
-  "(((sync -> Left env={}) ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ Right env={}) \\ (Set.insert sync ((event blue []/red []/sync []) set).empty) env={})"
-  "((Left ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ Right env={}) \\ (Set.insert sync ((event blue []/red []/sync []) set).empty) env={})"
-  "(((sync -> Left env={}) ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync ((event blue []/red []/sync []) set).empty) env={})" -> "((Left ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ Right env={}) \\ (Set.insert sync ((event blue []/red []/sync []) set).empty) env={})" [label="τ (sync)"]
-  "((Left ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync ((event blue []/red []/sync []) set).empty) env={})" -> "(((sync -> Left env={}) ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync ((event blue []/red []/sync []) set).empty) env={})" [label="blue"]
-  "(((sync -> Left env={}) ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ Right env={}) \\ (Set.insert sync ((event blue []/red []/sync []) set).empty) env={})" -> "(((sync -> Left env={}) ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync ((event blue []/red []/sync []) set).empty) env={})" [label="red"]
-  "((Left ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ Right env={}) \\ (Set.insert sync ((event blue []/red []/sync []) set).empty) env={})" -> "(((sync -> Left env={}) ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ Right env={}) \\ (Set.insert sync ((event blue []/red []/sync []) set).empty) env={})" [label="blue"]
-  "((Left ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ Right env={}) \\ (Set.insert sync ((event blue []/red []/sync []) set).empty) env={})" -> "((Left ⟦(Set.insert sync ((event blue []/red []/sync []) set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync ((event blue []/red []/sync []) set).empty) env={})" [label="red"]
+  "(((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync (event set).empty) env={})"
+  "((Left ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync (event set).empty) env={})"
+  "(((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ Right env={}) \\ (Set.insert sync (event set).empty) env={})"
+  "((Left ⟦(Set.insert sync (event set).empty)⟧ Right env={}) \\ (Set.insert sync (event set).empty) env={})"
+  "(((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync (event set).empty) env={})" -> "((Left ⟦(Set.insert sync (event set).empty)⟧ Right env={}) \\ (Set.insert sync (event set).empty) env={})" [label="τ (sync)"]
+  "((Left ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync (event set).empty) env={})" -> "(((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync (event set).empty) env={})" [label="blue"]
+  "(((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ Right env={}) \\ (Set.insert sync (event set).empty) env={})" -> "(((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync (event set).empty) env={})" [label="red"]
+  "((Left ⟦(Set.insert sync (event set).empty)⟧ Right env={}) \\ (Set.insert sync (event set).empty) env={})" -> "(((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ Right env={}) \\ (Set.insert sync (event set).empty) env={})" [label="blue"]
+  "((Left ⟦(Set.insert sync (event set).empty)⟧ Right env={}) \\ (Set.insert sync (event set).empty) env={})" -> "((Left ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync (event set).empty) env={})" [label="red"]
 }""" =
             actual,
         actual
@@ -420,10 +420,10 @@ let hide3 () =
     Assert.True(
         """digraph G {
   "Ω"
-  "(SKIP \\ (Set.insert a ((event a []) set).empty) env={})"
-  "((a -> SKIP env={}) \\ (Set.insert a ((event a []) set).empty) env={})"
-  "(SKIP \\ (Set.insert a ((event a []) set).empty) env={})" -> "Ω" [label="✓"]
-  "((a -> SKIP env={}) \\ (Set.insert a ((event a []) set).empty) env={})" -> "(SKIP \\ (Set.insert a ((event a []) set).empty) env={})" [label="τ (a)"]
+  "(SKIP \\ (Set.insert a (event set).empty) env={})"
+  "((a -> SKIP env={}) \\ (Set.insert a (event set).empty) env={})"
+  "(SKIP \\ (Set.insert a (event set).empty) env={})" -> "Ω" [label="✓"]
+  "((a -> SKIP env={}) \\ (Set.insert a (event set).empty) env={})" -> "(SKIP \\ (Set.insert a (event set).empty) env={})" [label="τ (a)"]
 }""" =
             actual,
         actual

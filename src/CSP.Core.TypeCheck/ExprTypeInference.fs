@@ -339,7 +339,7 @@ let infer
                     | TSet(tElem) -> generalize tElem s
                     | TList(tElem) -> generalize tElem s
                     | TMap(tK, _) -> generalize tK s
-                    | _ -> failwith $"cannot get element type: %s{Type.format t}" in
+                    | _ -> failwith $"cannot get element type: %s{Type.format true t}" in
 
                 match bind1 var tcElem tcenv with
                 | Error(terr) -> Error(atLine line (TypeEnvError terr))
@@ -370,7 +370,7 @@ let infer
                     | TSet(tElem) -> generalize tElem s
                     | TList(tElem) -> generalize tElem s
                     | TMap(tK, _) -> generalize tK s
-                    | _ -> failwith $"cannot get element type: %s{Type.format t}" in
+                    | _ -> failwith $"cannot get element type: %s{Type.format true t}" in
 
                 match bind1 var tcElem tcenv with
                 | Error(terr) -> Error(atLine line (TypeEnvError terr))

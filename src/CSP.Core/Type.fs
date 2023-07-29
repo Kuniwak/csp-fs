@@ -20,22 +20,29 @@ type Type =
     | TMap of Type * Type
     | TUnion of UnionName * Map<Ctor, Type list>
 
-let rec format (t: Type) : string =
-    match t with
-    | TUnit -> "()"
-    | TVar n -> $"'t%d{n}"
-    | TNat _ -> "nat"
-    | TBool _ -> "bool"
-    | TTuple(tL, tR) -> $"(%s{format tL}, %s{format tR})"
-    | TSet(t) -> $"(%s{format t} set)"
-    | TList(t) -> $"(%s{format t} list)"
-    | TMap(tk, tv) -> $"((%s{format tk}, %s{format tv}) map)"
-    | TUnion(n, cm) ->
-        let s =
-            String.concat
-                "/"
-                (List.map
-                    (fun (ctor, ts) -> let s = String.concat ", " (List.map format ts) in $"{Ctor.format ctor} [%s{s}]")
-                    (Map.toList cm)) in
+let format short (t: Type) : string =
+    let rec format t =
+        match t with
+        | TUnit -> "()"
+        | TVar n -> $"'t%d{n}"
+        | TNat _ -> "nat"
+        | TBool _ -> "bool"
+        | TTuple(tL, tR) -> $"(%s{format tL}, %s{format tR})"
+        | TSet(t) -> $"(%s{format t} set)"
+        | TList(t) -> $"(%s{format t} list)"
+        | TMap(tk, tv) -> $"((%s{format tk}, %s{format tv}) map)"
+        | TUnion(n, cm) ->
+            if short then
+                $"%s{n}"
+            else
+                let s =
+                    String.concat
+                        "/"
+                        (List.map
+                            (fun (ctor, ts) ->
+                                let s = String.concat ", " (List.map format ts) in $"{Ctor.format ctor} [%s{s}]")
+                            (Map.toList cm)) in
 
-        $"(%s{n} %s{s})"
+                $"(%s{n} %s{s})"
+
+    format t

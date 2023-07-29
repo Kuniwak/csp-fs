@@ -30,33 +30,38 @@ type EvalError =
 
 let atLine (line: LineNum) (err: EvalError) : EvalError = At(err, $"line %s{line}")
 
-let rec format (err: EvalError) : string =
-    match err with
-    | At(err, hint) -> $"%s{format err}\n\tat %s{hint}"
-    | TypeNotDerived(t, cls) -> $"%s{Type.format t} not derived %s{cls}"
-    | ValNotBool v -> $"value is not a bool: %s{Val.format v}"
-    | ValNotUnion v -> $"value is not an union: %s{Val.format v}"
-    | TypeMismatch(v, t) -> $"value {Val.format v} is not a {Type.format t}"
-    | ValNotTuple v -> $"not tuple: %s{Val.format v}"
-    | TupleIndexOutOfRange(v, n) -> $"tuple index out of range: %s{Val.format v} at %d{n}"
-    | ListIndexOutOfRange(v, n) -> $"list index out of range: %s{Val.format v} at %d{n}"
-    | RangeLowerGreaterThanUpper(n1, n2) -> $"lower of range is greater than upper: %d{n1} > %d{n2}"
-    | UnivError err -> UnivError.format err
-    | EnvError err -> EnvError.format err
-    | UnionValuesLenMismatch(ctor, actual, expected) ->
-        $"unexpected length of associated values: want %d{expected}, got %d{actual} at %s{Ctor.format ctor}"
-    | NoSuchCtor ctor -> $"no such constructor: %s{Ctor.format ctor}"
-    | Thrown msg -> $"thrown: %s{msg}"
-    | NoClauseMatched ctor -> $"no clause matched: %s{Ctor.format ctor}"
-    | DefaultClauseArgumentLenMustBe1 vars ->
-        let s =
-            String.concat
-                ", "
-                (List.map
-                    (fun varOpt ->
-                        match varOpt with
-                        | Some var -> Var.format var
-                        | None -> "_")
-                    vars) in
+let format (err: EvalError) : string =
+    let typeFormat = Type.format true
 
-        $"length of arguments for default clause must be 1, but got: [%s{s}]"
+    let rec format err =
+        match err with
+        | At(err, hint) -> $"%s{format err}\n\tat %s{hint}"
+        | TypeNotDerived(t, cls) -> $"%s{typeFormat t} not derived %s{cls}"
+        | ValNotBool v -> $"value is not a bool: %s{Val.format v}"
+        | ValNotUnion v -> $"value is not an union: %s{Val.format v}"
+        | TypeMismatch(v, t) -> $"value {Val.format v} is not a {typeFormat t}"
+        | ValNotTuple v -> $"not tuple: %s{Val.format v}"
+        | TupleIndexOutOfRange(v, n) -> $"tuple index out of range: %s{Val.format v} at %d{n}"
+        | ListIndexOutOfRange(v, n) -> $"list index out of range: %s{Val.format v} at %d{n}"
+        | RangeLowerGreaterThanUpper(n1, n2) -> $"lower of range is greater than upper: %d{n1} > %d{n2}"
+        | UnivError err -> UnivError.format err
+        | EnvError err -> EnvError.format err
+        | UnionValuesLenMismatch(ctor, actual, expected) ->
+            $"unexpected length of associated values: want %d{expected}, got %d{actual} at %s{Ctor.format ctor}"
+        | NoSuchCtor ctor -> $"no such constructor: %s{Ctor.format ctor}"
+        | Thrown msg -> $"thrown: %s{msg}"
+        | NoClauseMatched ctor -> $"no clause matched: %s{Ctor.format ctor}"
+        | DefaultClauseArgumentLenMustBe1 vars ->
+            let s =
+                String.concat
+                    ", "
+                    (List.map
+                        (fun varOpt ->
+                            match varOpt with
+                            | Some var -> Var.format var
+                            | None -> "_")
+                        vars) in
+
+            $"length of arguments for default clause must be 1, but got: [%s{s}]"
+
+    format err

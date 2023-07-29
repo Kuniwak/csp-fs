@@ -97,8 +97,8 @@ let inferProcOk (tc: ProcTestCaseOk) =
             tc.Expected = get p,
             $"""line %s{tc.Line}
 
-Expected: %s{String.concat sep (List.map Type.format tc.Expected)}
-Actual:   %s{String.concat sep (List.map Type.format (get p))}
+Expected: %s{String.concat sep (List.map (Type.format true) tc.Expected)}
+Actual:   %s{String.concat sep (List.map (Type.format true) (get p))}
 Inferred as:
 %s{format typeAnnotation p}
 

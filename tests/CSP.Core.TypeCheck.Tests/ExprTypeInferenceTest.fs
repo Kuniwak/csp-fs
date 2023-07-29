@@ -152,8 +152,8 @@ let inferExprOk (tc: ExprTestCaseOk) =
             tc.Expected = get actual,
             $"""line %s{line actual}
 
-Expected: %s{Type.format tc.Expected}
-Actual:   %s{Type.format (get actual)}
+Expected: %s{Type.format true tc.Expected}
+Actual:   %s{Type.format true (get actual)}
 Inferred as:
 %s{Expr.format typeAnnotation actual}
 
