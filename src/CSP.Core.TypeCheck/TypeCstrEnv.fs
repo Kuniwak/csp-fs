@@ -8,6 +8,9 @@ type TypeCstrEnv = TypeCstrEnv of Map<Var, TypeCstr>
 
 let empty: TypeCstrEnv = TypeCstrEnv Map.empty
 
+let from (xs: (string * TypeCstr) seq) =
+    TypeCstrEnv(Map [ for var, tc in xs -> (Var var, tc) ])
+
 let bind1 (var: Var) (tc: TypeCstr) (tcenv: TypeCstrEnv) : Result<TypeCstrEnv, TypeEnvError> =
     match tcenv with
     | TypeCstrEnv m ->

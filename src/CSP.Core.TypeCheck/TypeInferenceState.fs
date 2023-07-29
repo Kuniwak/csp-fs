@@ -3,9 +3,6 @@ module CSP.Core.TypeInferenceState
 open CSP.Core.Ctor
 open CSP.Core.Type
 open CSP.Core.TypeCstr
-open CSP.Core.TypeEnv
-open CSP.Core.TypeCstrEnv
-open CSP.Core.TypeEnvError
 
 type State =
     { UncertainVarMap: TypeCstrUncertainVar.VarMap }
@@ -73,14 +70,3 @@ let generalizeList (ts: Type list) (s: State) : TypeCstr list * State =
 
 let generalizeMap (m: Map<Ctor, Type list>) (s: State) : Map<Ctor, TypeCstr list> * State =
     Map.fold (fun (m, s) ctor ts -> let tcs, s = generalizeList ts s in (Map.add ctor tcs m, s)) (Map.empty, s) m
-
-let from (tenv: TypeEnv) : Result<TypeCstrEnv * State, TypeEnvError> =
-    let tcenvRes, s =
-        fold
-            (fun (tcenvRes, s) var t -> let tc, s = generalize t s in (Result.bind (bind1 var tc) tcenvRes, s))
-            (Ok(empty), init)
-            tenv in
-
-    match tcenvRes with
-    | Ok(tcenv) -> Ok(tcenv, s)
-    | Error(terr) -> Error(terr)

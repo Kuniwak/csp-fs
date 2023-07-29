@@ -8,8 +8,9 @@ open CSP.Core.Proc
 open CSP.Core.ExprShorthand
 open CSP.Core.ProcShorthand
 open CSP.Core.TypeShorthand
+open CSP.Core.TypeCstrShorthand
+open CSP.Core.TypeInferenceState
 open CSP.Core.ProcTypeInference
-open CSP.Core.Util
 
 type ProcTestCaseOk =
     { Proc: Proc<unit>
@@ -75,11 +76,9 @@ let inferProcOk (tc: ProcTestCaseOk) =
     let tOption = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ] in
     let tFoo = tUnion "foo" [ ("Foo", []) ] in
     let cm = CtorMap.from [ tOption; tFoo ] in
+    let tcenv = TypeCstrEnv.from [ ("GLOBAL", tcBool) ] in
 
-    let tenv, s =
-        ResultEx.get TypeEnvError.format (TypeInferenceState.from (TypeEnv.from [ ("GLOBAL", tBool) ])) in
-
-    match postProcess (infer cm tenv tc.Proc s) with
+    match postProcess (infer cm tcenv tc.Proc init) with
     | Ok(p, s) ->
         let sep = ", "
 

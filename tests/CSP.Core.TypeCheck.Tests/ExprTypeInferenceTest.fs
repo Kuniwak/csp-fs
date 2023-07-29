@@ -13,7 +13,6 @@ open CSP.Core.TypeEnvError
 open CSP.Core.TypeError
 open CSP.Core.TypeInferenceState
 open CSP.Core.ExprTypeInference
-open CSP.Core.Util
 
 type ExprTestCaseOk =
     { Expr: Expr<unit>
@@ -164,9 +163,9 @@ let inferExprOk (tc: ExprTestCaseOk) =
     let tOption = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ] in
     let tFoo = tUnion "foo" [ ("Foo", []) ] in
     let cm = CtorMap.from [ tOption; tFoo ] in
-    let tenv, s = ResultEx.get TypeEnvError.format (from (TypeEnv.from [ ("GLOBAL", tBool) ])) in
+    let tenv = TypeCstrEnv.from [ ("GLOBAL", tcBool) ] in
     
-    match postProcess (infer cm tenv tc.Expr s) with
+    match postProcess (infer cm tenv tc.Expr init) with
     | Ok(actual, s) ->
         Assert.True(
             tc.Expected = get actual,
@@ -377,9 +376,9 @@ let inferExprError (tc: ExprTestCaseError) =
     let tOption = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ] in
     let tFoo = tUnion "foo" [ ("Foo", []) ] in
     let cm = CtorMap.from [ tOption; tFoo ] in
-    let tenv, s = ResultEx.get TypeEnvError.format (from (TypeEnv.from [ ("GLOBAL", tBool) ])) in
-
-    match postProcess (infer cm tenv tc.Expr s) with
+    let tenv = TypeCstrEnv.from [ ("GLOBAL", tcBool) ] in
+    
+    match postProcess (infer cm tenv tc.Expr init) with
     | Ok(actual, s) ->
         Assert.Fail
             $"""line %s{tc.Line}
