@@ -175,7 +175,27 @@ let infer
                             match accRes with
                             | None -> Error(atLine line NoCtors)
                             | Some(Error terr) -> Error(atLine line terr)
-                            | Some(Ok(tc, exprMap, s)) -> Ok(Match(exprUnion, exprMap, tc, line), s)
+                            | Some(Ok(tc, exprMap, s)) ->
+                                let hasDefaultClause = Map.containsKey None exprMap in
+
+                                let keysFromExprMap =
+                                    Set(
+                                        Seq.collect
+                                            (fun ctorOpt ->
+                                                match ctorOpt with
+                                                | Some ctor -> Seq.singleton ctor
+                                                | None -> Seq.empty)
+                                            (Map.keys exprMap)
+                                    ) in
+
+                                let keysFromTypeMap = Set(Map.keys ctm) in
+
+                                if hasDefaultClause || (keysFromExprMap = keysFromTypeMap) then
+                                    Ok(Match(exprUnion, exprMap, tc, line), s)
+                                else if Set.isSubset keysFromExprMap keysFromTypeMap then
+                                    Error(NotExhausted(Set.difference keysFromTypeMap keysFromExprMap))
+                                else
+                                    Error(CtorsMismatch(keysFromExprMap, keysFromTypeMap))
         | VarRef(var, _, line) ->
             match tryFind var tcenv with
             | Ok(tc) -> Ok(VarRef(var, tc, line), s)
@@ -389,9 +409,8 @@ let infer
                 let uL, s = newUncertainVarId s in
                 let uR, s = newUncertainVarId s in
 
-                match unify s tcTuple (TCTuple (TCUncertain uL, TCUncertain uR)) with
-                | Ok(TCTuple(tcL, _), s) ->
-                    Ok(TupleFst(exprTuple, tcL, line), s)
+                match unify s tcTuple (TCTuple(TCUncertain uL, TCUncertain uR)) with
+                | Ok(TCTuple(tcL, _), s) -> Ok(TupleFst(exprTuple, tcL, line), s)
                 | Ok(v) -> failwith $"unification between TTuple and any must return TTuple, but come: %A{v}"
                 | Error(err) -> Error(atLine line err)
         | TupleSnd(exprTuple, _, line) ->
@@ -402,9 +421,8 @@ let infer
                 let uL, s = newUncertainVarId s in
                 let uR, s = newUncertainVarId s in
 
-                match unify s tcTuple (TCTuple (TCUncertain uL, TCUncertain uR)) with
-                | Ok(TCTuple(_, tcR), s) ->
-                    Ok(TupleSnd(exprTuple, tcR, line), s)
+                match unify s tcTuple (TCTuple(TCUncertain uL, TCUncertain uR)) with
+                | Ok(TCTuple(_, tcR), s) -> Ok(TupleSnd(exprTuple, tcR, line), s)
                 | Ok(v) -> failwith $"unification between TTuple and any must return TTuple, but come: %A{v}"
                 | Error(err) -> Error(atLine line err)
         | ListCons(exprElem, exprList, _, line) ->

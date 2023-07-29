@@ -1,5 +1,6 @@
 module CSP.Core.ProcTypeInferenceTest
 
+open CSP.Core.Util
 open Xunit
 open CSP.Core
 open CSP.Core.Expr
@@ -85,7 +86,7 @@ let procTestCasesOk: obj[] list =
 let inferProcOk (tc: ProcTestCaseOk) =
     let tOption = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ] in
     let tFoo = tUnion "foo" [ ("Foo", []) ] in
-    let cm = CtorMap.from [ tOption; tFoo ] in
+    let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tOption; tFoo ]) in
     let tcenv = TypeCstrEnv.from [ ("GLOBAL", tcBool) ] in
 
     match postProcess (infer cm tcenv tc.Proc init) with

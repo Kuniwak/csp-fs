@@ -18,6 +18,7 @@ type TypeError =
     | NoCtors
     | DefaultClauseArgumentsLenMustBe1 of Var option list
     | Recursion of UncertainVarId * TypeCstrUncertainVar.VarMap
+    | NotExhausted of Set<Ctor>
     | TypeEnvError of TypeEnvError
 
 let atLine (line: LineNum) (err: TypeError) : TypeError = At(err, $"line %s{line}")
@@ -44,6 +45,9 @@ let format (terr: TypeError) : string =
             let s2 = String.concat ", " (Seq.map Ctor.format s2) in
             $"constructors mismatch: {{%s{s1}}} vs {{%s{s2}}}"
         | NoCtors -> "match needs at least one constructor"
+        | NotExhausted(missing) ->
+            let missing = String.concat ", " (Seq.map Ctor.format (Set.toSeq missing)) in
+            $"not exhausted match: {{%s{missing}}}"
         | DefaultClauseArgumentsLenMustBe1(vars) ->
             let s =
                 String.concat
@@ -68,4 +72,3 @@ let format (terr: TypeError) : string =
         | TypeEnvError(err) -> TypeEnvError.format err
 
     $"""type error: {format terr}"""
-

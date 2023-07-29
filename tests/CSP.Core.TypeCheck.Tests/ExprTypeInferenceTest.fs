@@ -1,5 +1,6 @@
 module CSP.Core.ExprTypeInferenceTest
 
+open CSP.Core.Util
 open Xunit
 open CSP.Core
 open CSP.Core.Type
@@ -54,7 +55,7 @@ let exprTestCasesOk: obj[] list =
       [| { Expr =
              matchExpr
                  (ctor "Some" [ litUnit __LINE__ ] __LINE__)
-                 [ (Some "Some", [ "x" ], ctor "Some" [varRef "x" __LINE__] __LINE__)
+                 [ (Some "Some", [ "x" ], ctor "Some" [ varRef "x" __LINE__ ] __LINE__)
                    (None, [ "x" ], varRef "x" __LINE__) ]
                  __LINE__
            Expected = tUnion "option" [ ("Some", [ tUnit ]); ("None", []) ] } |]
@@ -140,7 +141,7 @@ let inferExprOk (tc: ExprTestCaseOk) =
     let tOption = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ] in
 
     let tFoo = tUnion "foo" [ ("Foo", []) ] in
-    let cm = CtorMap.from [ tOption; tFoo ] in
+    let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tOption; tFoo ]) in
     let tenv = TypeCstrEnv.from [ ("GLOBAL", tcBool) ] in
 
     match postProcess (infer cm tenv tc.Expr init) with
@@ -301,7 +302,21 @@ let exprTestCasesError: obj[] list =
                  [ (Some("Some"), [ "x" ], boolNot (varRef "x" __LINE__) __LINE__)
                    (Some("None"), [], (litTrue __LINE__)) ]
                  __LINE__
-           Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |] ]
+           Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
+      [| { Expr =
+             matchExpr
+                 (ctor "Some" [ (litUnit __LINE__) ] __LINE__)
+                 [ (Some("Some"), [ "x" ], litFalse __LINE__) ]
+                 __LINE__
+           Expected = NotExhausted(Set[Ctor "None"]) } |]
+      [| { Expr =
+             matchExpr
+                 (ctor "Some" [ (litUnit __LINE__) ] __LINE__)
+                 [ (Some("Some"), [ "x" ], litFalse __LINE__)
+                   (Some("None"), [], litFalse __LINE__)
+                   (Some("Foo"), [], litFalse __LINE__) ]
+                 __LINE__
+           Expected = UnionNameMismatch("option", "foo") } |] ]
 
 [<Theory>]
 [<MemberData(nameof exprTestCasesError)>]
@@ -309,7 +324,7 @@ let inferExprError (tc: ExprTestCaseError) =
     let tOption = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ] in
 
     let tFoo = tUnion "foo" [ ("Foo", []) ] in
-    let cm = CtorMap.from [ tOption; tFoo ] in
+    let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tOption; tFoo ]) in
     let tenv = TypeCstrEnv.from [ ("GLOBAL", tcBool) ] in
 
     match postProcess (infer cm tenv tc.Expr init) with

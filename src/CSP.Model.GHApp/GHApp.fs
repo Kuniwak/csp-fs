@@ -5,6 +5,7 @@ open CSP.Core.Env
 open CSP.Core.ProcShorthand
 open CSP.Core.ExprShorthand
 open CSP.Core.TypeShorthand
+open CSP.Core.Util
 open CSP.Core.ValShorthand
 open CSP.Core.ProcMap
 
@@ -13,8 +14,7 @@ let tEvent =
 
 let tPat = tUnion "pat" [ ("Pat1", []); ("Pat2", []); ("PatEmpty", []) ]
 
-let tQuery =
-    tUnion "query" [ ("Query1", []); ("Query2", []); ("QueryEmpty", []) ]
+let tQuery = tUnion "query" [ ("Query1", []); ("Query2", []); ("QueryEmpty", []) ]
 
 let tUser = tUnion "user" [ ("User1", []) ]
 let tRepo = tUnion "repo" [ ("Repo1", []); ("Repo2", []); ("Repo3", []) ]
@@ -22,8 +22,7 @@ let tRepo = tUnion "repo" [ ("Repo1", []); ("Repo2", []); ("Repo3", []) ]
 let tGHAuthError = tUnion "ghAuthError" [ ("GHAuthError", []) ]
 let tGHSearchError = tUnion "ghSearchError" [ ("GHSearchError", []) ]
 
-let tGHSearchMoreError =
-    tUnion "ghSearchMoreError" [ ("GHSearchMoreError", []) ]
+let tGHSearchMoreError = tUnion "ghSearchMoreError" [ ("GHSearchMoreError", []) ]
 
 let tGHChkStarError = tUnion "ghChkStarError" [ ("GHChkStarError", []) ]
 let tGHStarError = tUnion "ghStarError" [ ("GHStarError", []) ]
@@ -40,7 +39,7 @@ let tDispSearchError =
           ("AppChkStarError", [])
           ("AppStarError", [])
           ("AppUnstarError", []) ]
-       
+
 
 
 let tChAuthReq = tUnion "tChAuthReq" [ ("ChAuthReq", [ tPat ]) ]
@@ -48,37 +47,30 @@ let tChAuthReq = tUnion "tChAuthReq" [ ("ChAuthReq", [ tPat ]) ]
 let tChAuthRes =
     tUnion "tChAuthRes" [ ("ChAuthRes", [ tEither tGHAuthError (tOption tUser) ]) ]
 
-let tChSearchReq =
-    tUnion "tChSearchReq" [ ("ChSearchReq", [ tTuple2 tQuery tNat ]) ]
+let tChSearchReq = tUnion "tChSearchReq" [ ("ChSearchReq", [ tQuery; tNat ]) ]
 
 let tChSearchRes =
-    tUnion
-        "tChSearchRes"
-        [ ("ChSearchRes", [ tEither tGHSearchError (tTuple2 (tList tRepo) tBool) ]) ]
-       
+    tUnion "tChSearchRes" [ ("ChSearchRes", [ tEither tGHSearchError (tTuple2 (tList tRepo) tBool) ]) ]
 
-let tChChkStarReq =
-    tUnion "tChChkStarReq" [ ("ChChkStarReq", [ tTuple2 tRepo tPat ]) ]
+
+let tChChkStarReq = tUnion "tChChkStarReq" [ ("ChChkStarReq", [ tRepo; tPat ]) ]
 
 let tChChkStarRes =
     tUnion "tChChkStarRes" [ ("ChChkStarRes", [ tEither tGHChkStarError tBool ]) ]
 
-let tChStarReq =
-    tUnion "tChStarReq" [ ("ChStarReq", [ tTuple2 tRepo tPat ]) ]
+let tChStarReq = tUnion "tChStarReq" [ ("ChStarReq", [ tRepo; tPat ]) ]
 
 let tChStarRes =
     tUnion "tChStarRes" [ ("ChStarRes", [ tEither tGHStarError tBool ]) ]
 
-let tChUnstarReq =
-    tUnion "tChUnstarReq" [ ("ChUnstarReq", [ tTuple2 tRepo tPat ]) ]
+let tChUnstarReq = tUnion "tChUnstarReq" [ ("ChUnstarReq", [ tRepo; tPat ]) ]
 
 let tChUnstarRes =
     tUnion "tChUnstarRes" [ ("ChUnstarRes", [ tEither tGHUnstarError tBool ]) ]
 
 let tChPatField = tUnion "tChPATField" [ ("ChPATField", [ tPat ]) ]
 
-let tChSearchField =
-    tUnion "tChSearchField" [ ("ChSearchField", [ tQuery ]) ]
+let tChSearchField = tUnion "tChSearchField" [ ("ChSearchField", [ tQuery ]) ]
 
 let tChChkStarBtn = tUnion "tChChkStarBtn" [ ("ChChkStarBtn", [ tRepo ]) ]
 let tChStarBtn = tUnion "tChStarBtn" [ ("ChStarBtn", [ tRepo ]) ]
