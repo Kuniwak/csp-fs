@@ -8,13 +8,13 @@ let name: TypeClassName = "Eq"
 let rec derivedBy (t: Type) : bool =
     match t with
     | TVar _ -> false
-    | TNat -> true
-    | TBool -> true
-    | TTuple(ts) -> List.forall derivedBy ts
-    | TSet t -> derivedBy t
-    | TList t -> derivedBy t
-    | TMap(tK, tV) -> derivedBy tK && derivedBy tV
-    | TUnion(_, cm) -> Map.forall (fun _ -> List.forall derivedBy) cm
+    | TNat _ -> true
+    | TBool _ -> true
+    | TTuple(ts, _) -> List.forall derivedBy ts
+    | TSet(t, _) -> derivedBy t
+    | TList(t, _) -> derivedBy t
+    | TMap(tK, tV, _) -> derivedBy tK && derivedBy tV
+    | TUnion(_, cm, _) -> Map.forall (fun _ -> List.forall derivedBy) cm
 
 let rec eq (v1: Val) (v2: Val) : bool =
     match v1, v2 with

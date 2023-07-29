@@ -6,7 +6,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="Graph.fs" />
+        <Compile Include="DotLang.fs" />
     </ItemGroup>
 
     <ItemGroup>

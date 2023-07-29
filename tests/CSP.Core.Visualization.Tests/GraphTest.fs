@@ -8,7 +8,7 @@ open CSP.Core.ExprShorthand
 open CSP.Core.ProcMap
 open CSP.Core.ProcShorthand
 open CSP.Core.Eval
-open CSP.Core.Graph
+open CSP.Core.DotLang
 
 let evalCfg: EvalConfig = { UnivConfig = { NatMax = 5u; ListLenMax = 3u } }
 let dotCfg = dotConfig (searchConfig 100) evalCfg

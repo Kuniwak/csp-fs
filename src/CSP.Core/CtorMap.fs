@@ -10,7 +10,7 @@ let from (ts: Type seq) : CtorMap =
         Seq.collect
             (fun t ->
                 match t with
-                | TUnion(un, cm) -> Seq.map (fun (ctor, _) -> (ctor, (un, cm))) (Map.toSeq cm)
+                | TUnion(un, cm, _) -> Seq.map (fun (ctor, _) -> (ctor, (un, cm))) (Map.toSeq cm)
                 | _ -> Seq.empty)
             ts
     )

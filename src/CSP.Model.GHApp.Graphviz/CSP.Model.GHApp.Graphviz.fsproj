@@ -11,6 +11,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\CSP.Core.Visualization\CSP.Core.Visualization.fsproj" />
         <ProjectReference Include="..\CSP.Core\CSP.Core.fsproj" />
         <ProjectReference Include="..\CSP.Model.GHApp\CSP.Model.GHApp.fsproj" />
     </ItemGroup>

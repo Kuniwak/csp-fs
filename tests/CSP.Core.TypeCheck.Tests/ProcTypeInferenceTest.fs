@@ -18,63 +18,68 @@ type ProcTestCaseOk =
       Line: string }
 
 let procTestCasesOk: obj[] list =
-    [ [| { Proc = unwind "Foo" []
+    [ [| { Proc = unwind "Foo" [] __LINE__
            Expected = []
            Line = __LINE__ } |]
-      [| { Proc = unwind "Foo" [ litUnit ]
-           Expected = [ tUnit ]
+      [| { Proc = unwind "Foo" [ litUnit __LINE__ ] __LINE__
+           Expected = [ tUnit __LINE__ ]
            Line = __LINE__ } |]
-      [| { Proc = stop
+      [| { Proc = stop __LINE__
            Expected = []
            Line = __LINE__ } |]
-      [| { Proc = skip
+      [| { Proc = skip __LINE__
            Expected = []
            Line = __LINE__ } |]
-      [| { Proc = prefix litUnit stop
-           Expected = [ tUnit ]
+      [| { Proc = prefix (litUnit __LINE__) (stop __LINE__) __LINE__
+           Expected = [ (tUnit __LINE__) ]
            Line = __LINE__ } |]
-      [| { Proc = prefixRecv (setInsert (litNat 0u) (litEmpty (tSet tNat))) "x" stop
-           Expected = [ tSet tNat ]
+      [| { Proc =
+             prefixRecv
+                 (setInsert (litNat 0u __LINE__) (litEmpty (tSet (tNat __LINE__) __LINE__) __LINE__) __LINE__)
+                 "x"
+                 (stop __LINE__)
+                 __LINE__
+           Expected = [ tSet (tNat __LINE__) __LINE__ ]
            Line = __LINE__ } |]
-      [| { Proc = intCh stop stop
+      [| { Proc = intCh (stop __LINE__) (stop __LINE__) __LINE__
            Expected = []
            Line = __LINE__ } |]
-      [| { Proc = extCh stop stop
+      [| { Proc = extCh (stop __LINE__) (stop __LINE__) __LINE__
            Expected = []
            Line = __LINE__ } |]
-      [| { Proc = seq stop stop
+      [| { Proc = seq (stop __LINE__) (stop __LINE__) __LINE__
            Expected = []
            Line = __LINE__ } |]
-      [| { Proc = ``if`` litTrue stop stop
-           Expected = [ tBool ]
+      [| { Proc = ``if`` (litTrue __LINE__) (stop __LINE__) (stop __LINE__) __LINE__
+           Expected = [ tBool __LINE__ ]
            Line = __LINE__ } |]
-      [| { Proc = ``if`` (varRef "GLOBAL") stop stop
-           Expected = [ tBool ]
+      [| { Proc = ``if`` (varRef "GLOBAL" __LINE__) (stop __LINE__) (stop __LINE__) __LINE__
+           Expected = [ tBool  __LINE__]
            Line = __LINE__ } |]
-      [| { Proc = ``match`` (ctor "Some" [ litUnit ]) [ ((Some "Some", [ "x" ]), stop) ]
-           Expected = [ tUnion "option" [ ("Some", [ tUnit ]); ("None", []) ] ]
+      [| { Proc = ``match`` (ctor "Some" [ litUnit  __LINE__] __LINE__) [ ((Some "Some", [ "x" ]), stop __LINE__) ] __LINE__
+           Expected = [ tUnion "option" [ ("Some", [ tUnit  __LINE__]); ("None", []) ] __LINE__ ]
            Line = __LINE__ } |]
-      [| { Proc = ``match`` (ctor "Some" [ varRef "GLOBAL" ]) [ ((Some "Some", [ "x" ]), stop) ]
-           Expected = [ tUnion "option" [ ("Some", [ tBool ]); ("None", []) ] ]
+      [| { Proc = ``match`` (ctor "Some" [ varRef "GLOBAL"  __LINE__] __LINE__) [ ((Some "Some", [ "x" ]), stop __LINE__) ] __LINE__
+           Expected = [ tUnion "option" [ ("Some", [ tBool  __LINE__]); ("None", []) ]  __LINE__]
            Line = __LINE__ } |]
-      [| { Proc = interfaceParallel stop (litEmpty (tSet tUnit)) stop
-           Expected = [ tSet tUnit ]
+      [| { Proc = interfaceParallel (stop __LINE__) (litEmpty (tSet (tUnit __LINE__) __LINE__) __LINE__) (stop __LINE__) __LINE__
+           Expected = [ tSet (tUnit __LINE__) __LINE__ ]
            Line = __LINE__ } |]
-      [| { Proc = interleave stop stop
+      [| { Proc = interleave (stop __LINE__) (stop __LINE__) __LINE__
            Expected = []
            Line = __LINE__ } |]
-      [| { Proc = hide stop (litEmpty (tSet tUnit))
-           Expected = [ tSet tUnit ]
+      [| { Proc = hide (stop __LINE__) (litEmpty (tSet (tUnit __LINE__) __LINE__) __LINE__) __LINE__
+           Expected = [ tSet (tUnit __LINE__) __LINE__ ]
            Line = __LINE__ } |]
-      [| { Proc = guard (litEmpty (tSet tUnit)) stop
-           Expected = [ tSet tUnit ]
+      [| { Proc = guard (litEmpty (tSet (tUnit __LINE__) __LINE__) __LINE__) (stop __LINE__) __LINE__
+           Expected = [ tSet (tUnit __LINE__) __LINE__ ]
            Line = __LINE__ } |] ]
 
 [<Theory>]
 [<MemberData(nameof procTestCasesOk)>]
 let inferProcOk (tc: ProcTestCaseOk) =
-    let tOption = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ] in
-    let tFoo = tUnion "foo" [ ("Foo", []) ] in
+    let tOption = tUnion "option" [ ("Some", [ tVar 0u  __LINE__]); ("None", []) ] __LINE__ in
+    let tFoo = tUnion "foo" [ ("Foo", []) ] __LINE__ in
     let cm = CtorMap.from [ tOption; tFoo ] in
     let tcenv = TypeCstrEnv.from [ ("GLOBAL", tcBool) ] in
 

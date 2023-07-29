@@ -28,7 +28,7 @@ let infer
             if ClassEmpty.derivedBy t then
                 let tc, s = generalize t s in Ok(LitEmpty(t, tc, line), s)
             else
-                Error(atLine line (TypeNotDerived(t, ClassEmpty.name)))
+                let tc, _ = generalize t s in Error(atLine line (TypeNotDerived(tc, ClassEmpty.name)))
         | Union(ctor, exprs, _, line) ->
             match Map.tryFind ctor cm with
             | None -> Error(NoSuchCtor ctor)
@@ -65,7 +65,7 @@ let infer
 
                         Result.map (fun (exprs, s) -> (Union(ctor, exprs, t, line), s)) exprsRes
                     else
-                        Error(AssociatedValuesLenMismatch(ctor, Set [List.length exprs; List.length ts]))
+                        Error(AssociatedValuesLenMismatch(ctor, Set [ List.length exprs; List.length ts ]))
 
         | If(exprCond, exprThen, exprElse, _, line) ->
             match infer s tcenv exprCond with
@@ -111,7 +111,9 @@ let infer
                                         | Error terr -> Error(atLine line terr)
                                         | Ok(expr, s) -> Ok(expr, s)
                                 else
-                                    Error(AssociatedValuesLenMismatch(ctor, Set [List.length varOpts; List.length tcs]))
+                                    Error(
+                                        AssociatedValuesLenMismatch(ctor, Set [ List.length varOpts; List.length tcs ])
+                                    )
                         | None ->
                             Result.bind
                                 (fun tenv ->
@@ -177,7 +179,7 @@ let infer
                             | Error terr -> Error(atLine line terr)
                             | Ok(_, s) -> Ok(Eq(t, expr1, expr2, TCBool, line), s)
             else
-                Error(atLine line (TypeNotDerived(t, ClassEq.name)))
+                let tc, _ = generalize t s in Error(atLine line (TypeNotDerived(tc, ClassEq.name)))
         | BoolNot(expr, _, line) ->
             match infer s tcenv expr with
             | Error terr -> Error(atLine line terr)
@@ -208,7 +210,7 @@ let infer
                             | Error terr -> Error(atLine line terr)
                             | Ok(_, s) -> Ok(Less(t, expr1, expr2, TCBool, line), s)
             else
-                Error(atLine line (TypeNotDerived(t, ClassOrd.name)))
+                let tc, _ = generalize t s in Error(atLine line (TypeNotDerived(tc, ClassOrd.name)))
         | Plus(t, expr1, expr2, _, line) ->
             if ClassPlus.derivedBy t then
                 match infer s tcenv expr1 with
@@ -230,6 +232,7 @@ let infer
                             | Error terr -> Error(atLine line terr)
                             | Ok(tcPlus, s) -> Ok(Plus(t, expr1, expr2, tcPlus, line), s)
             else
+                let t, _ = generalize t s in
                 Error(atLine line (TypeNotDerived(t, ClassPlus.name)))
         | Minus(t, expr1, expr2, _, line) ->
             if ClassMinus.derivedBy t then
@@ -252,6 +255,7 @@ let infer
                             | Error terr -> Error(atLine line terr)
                             | Ok(tcMinus, s) -> Ok(Minus(t, expr1, expr2, tcMinus, line), s)
             else
+                let t, _ = generalize t s in
                 Error(atLine line (TypeNotDerived(t, ClassMinus.name)))
         | Times(t, expr1, expr2, _, line) ->
             if ClassTimes.derivedBy t then
@@ -274,6 +278,7 @@ let infer
                             | Error terr -> Error(atLine line terr)
                             | Ok(tcTimes, s) -> Ok(Times(t, expr1, expr2, tcTimes, line), s)
             else
+                let t, _ = generalize t s in
                 Error(atLine line (TypeNotDerived(t, ClassTimes.name)))
         | Size(t, expr, _, line) ->
             if ClassSize.derivedBy t then
@@ -287,14 +292,15 @@ let infer
                     | Error terr -> Error(atLine line terr)
                     | Ok(_, s) -> Ok(Size(t, expr, TCNat, line), s)
             else
+                let t, _ = generalize t s in
                 Error(atLine line (TypeNotDerived(t, ClassSize.name)))
         | Filter(t, var, expr1, expr2, _, line) ->
             if ClassEnum.derivedBy t then
                 let tcElem, s =
                     match t with
-                    | TSet tElem -> generalize tElem s
-                    | TList tElem -> generalize tElem s
-                    | TMap(tK, _) -> generalize tK s
+                    | TSet(tElem, _) -> generalize tElem s
+                    | TList(tElem, _) -> generalize tElem s
+                    | TMap(tK, _, _) -> generalize tK s
                     | _ -> failwith $"cannot get element type: %s{Type.format t}" in
 
                 match bind1 var tcElem tcenv with
@@ -318,14 +324,15 @@ let infer
                                 | Error terr -> Error(atLine line terr)
                                 | Ok(tcFilter, s) -> Ok(Filter(t, var, expr1, expr2, tcFilter, line), s)
             else
+                let t, _ = generalize t s in
                 Error(atLine line (TypeNotDerived(t, ClassEnum.name)))
         | Exists(t, var, expr1, expr2, _, line) ->
             if ClassEnum.derivedBy t then
                 let tcElem, s =
                     match t with
-                    | TSet tElem -> generalize tElem s
-                    | TList tElem -> generalize tElem s
-                    | TMap(tK, _) -> generalize tK s
+                    | TSet(tElem, _) -> generalize tElem s
+                    | TList(tElem, _) -> generalize tElem s
+                    | TMap(tK, _, _) -> generalize tK s
                     | _ -> failwith $"cannot get element type: %s{Type.format t}" in
 
                 match bind1 var tcElem tcenv with
@@ -349,6 +356,7 @@ let infer
                                 | Error terr -> Error(atLine line terr)
                                 | Ok(_, s) -> Ok(Exists(t, var, expr1, expr2, TCBool, line), s)
             else
+                let t, _ = generalize t s in
                 Error(atLine line (TypeNotDerived(t, ClassEnum.name)))
         | Tuple(exprs, _, line) ->
             let accRes =
@@ -511,6 +519,7 @@ let infer
 
 let resolve (s: State) (expr: Expr<TypeCstr>) : Result<Expr<TypeCstr>, TypeError> =
     let expr = map (get >> resolve s) expr in
+
     match error expr with
     | Some(terr) -> Error(terr)
     | None -> Ok(map (fun expr -> ResultEx.get format (get expr)) expr)

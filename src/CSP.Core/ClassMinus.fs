@@ -7,7 +7,7 @@ let name: TypeClassName = "Plus"
 
 let derivedBy (t: Type) : bool =
     match t with
-    | TNat -> true
+    | TNat _ -> true
     | TSet _ -> true
     | _ -> false
 

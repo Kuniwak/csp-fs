@@ -9,7 +9,7 @@ open CSP.Core.Type
 
 type TypeError =
     | At of TypeError * string
-    | TypeNotDerived of Type * TypeClassName
+    | TypeNotDerived of TypeCstr * TypeClassName
     | UnionNameMismatch of UnionName * UnionName
     | NotUnion of TypeCstr
     | NotTuple of TypeCstr
@@ -35,7 +35,7 @@ let format (terr: TypeError) : string =
     let rec format terr =
         match terr with
         | At(terr, hint) -> $"%s{format terr}\n\tat %s{hint}"
-        | TypeNotDerived(t, tcClassName) -> $"type not derived %s{tcClassName}: %s{Type.format t}"
+        | TypeNotDerived(t, tcClassName) -> $"type not derived %s{tcClassName}: %s{TypeCstr.format t}"
         | UnionNameMismatch(un1, un2) -> $"union name mismatch: %s{un1} vs %s{un2}"
         | TypeMismatch(s) ->
             let s = String.concat " vs " (List.map TypeCstr.format (Set.toList s)) in $"type mismatch: %s{s}"

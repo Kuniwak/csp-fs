@@ -1,72 +1,68 @@
 module CSP.Core.ExprShorthand
 
 open CSP.Core.Ctor
-open CSP.Core.LineNum
 open CSP.Core.Expr
 open CSP.Core.Var
 
-let litTrue = LitTrue((), unknown)
-let litFalse = LitFalse((), unknown)
-let litNat n = LitNat(n, (), unknown)
-let litEmpty t = LitEmpty(t, (), unknown)
-let ctor ctor expr = Union(Ctor ctor, expr, (), unknown)
+let litTrue line = LitTrue((), line)
+let litFalse line = LitFalse((), line)
+let litNat n line = LitNat(n, (), line)
+let litEmpty t line = LitEmpty(t, (), line)
+let ctor ctor expr line = Union(Ctor ctor, expr, (), line)
 
-let ifExpr exprCond exprThen exprElse =
-    If(exprCond, exprThen, exprElse, (), unknown)
+let ifExpr exprCond exprThen exprElse line =
+    If(exprCond, exprThen, exprElse, (), line)
 
-let matchExpr exprUnion exprMap =
+let matchExpr exprUnion exprMap line =
     Match(
         exprUnion,
         Map
             [ for ctorOpt, vars, expr in exprMap ->
                   (Option.map Ctor ctorOpt, (List.map (fun v -> if v = "_" then None else Some(Var v)) vars, expr)) ],
         (),
-        unknown
+        line
     )
 
-let varRef var = VarRef(Var var, (), unknown)
-let eq t expr1 expr2 = Eq(t, expr1, expr2, (), unknown)
-let boolNot expr = BoolNot(expr, (), unknown)
-let less t expr1 expr2 = Less(t, expr1, expr2, (), unknown)
-let plus t expr1 expr2 = Plus(t, expr1, expr2, (), unknown)
-let minus t expr1 expr2 = Minus(t, expr1, expr2, (), unknown)
-let times t expr1 expr2 = Times(t, expr1, expr2, (), unknown)
-let size t expr = Size(t, expr, (), unknown)
+let varRef var line = VarRef(Var var, (), line)
+let eq t expr1 expr2 line = Eq(t, expr1, expr2, (), line)
+let boolNot expr line = BoolNot(expr, (), line)
+let less t expr1 expr2 line = Less(t, expr1, expr2, (), line)
+let plus t expr1 expr2 line = Plus(t, expr1, expr2, (), line)
+let minus t expr1 expr2 line = Minus(t, expr1, expr2, (), line)
+let times t expr1 expr2 line = Times(t, expr1, expr2, (), line)
+let size t expr line = Size(t, expr, (), line)
 
-let filter t var expr1 expr2 =
-    Filter(t, Var var, expr1, expr2, (), unknown)
+let filter t var expr1 expr2 line =
+    Filter(t, Var var, expr1, expr2, (), line)
 
-let exists t var expr1 expr2 =
-    Exists(t, Var var, expr1, expr2, (), unknown)
+let exists t var expr1 expr2 line =
+    Exists(t, Var var, expr1, expr2, (), line)
 
-let litUnit = Tuple([], (), unknown)
-let tuple exprs = Tuple(exprs, (), unknown)
-let tuple2 expr1 expr2 = Tuple([ expr1; expr2 ], (), unknown)
+let litUnit line = Tuple([], (), line)
+let tuple exprs line = Tuple(exprs, (), line)
+let tuple2 expr1 expr2 line = Tuple([ expr1; expr2 ], (), line)
 
-let tuple3 expr1 expr2 expr3 =
-    Tuple([ expr1; expr2; expr3 ], (), unknown)
+let tuple3 expr1 expr2 expr3 line =
+    Tuple([ expr1; expr2; expr3 ], (), line)
 
-let tupleNth expr idx = TupleNth(expr, idx, (), unknown)
-let tupleFst expr = TupleNth(expr, 0u, (), unknown)
-let tupleSnd expr = TupleNth(expr, 1u, (), unknown)
+let tupleNth expr idx line = TupleNth(expr, idx, (), line)
+let tupleFst expr line = TupleNth(expr, 0u, (), line)
+let tupleSnd expr line = TupleNth(expr, 1u, (), line)
 
-let listCons exprElem exprList =
-    ListCons(exprElem, exprList, (), unknown)
+let listCons exprElem exprList line = ListCons(exprElem, exprList, (), line)
 
-let listNth expr exprIdx = ListNth(expr, exprIdx, (), unknown)
+let listNth expr exprIdx line = ListNth(expr, exprIdx, (), line)
 
-let setRange exprLower exprUpper =
-    SetRange(exprLower, exprUpper, (), unknown)
+let setRange exprLower exprUpper line =
+    SetRange(exprLower, exprUpper, (), line)
 
-let setInsert exprElem exprSet =
-    SetInsert(exprElem, exprSet, (), unknown)
+let setInsert exprElem exprSet line = SetInsert(exprElem, exprSet, (), line)
 
-let setMem exprElem exprSet = SetMem(exprElem, exprSet, (), unknown)
+let setMem exprElem exprSet line = SetMem(exprElem, exprSet, (), line)
 
-let mapAdd exprKey exprVal exprMap =
-    MapAdd(exprKey, exprVal, exprMap, (), unknown)
+let mapAdd exprKey exprVal exprMap line =
+    MapAdd(exprKey, exprVal, exprMap, (), line)
 
-let mapFindOpt exprKey exprMap =
-    MapFindOpt(exprKey, exprMap, (), unknown)
+let mapFindOpt exprKey exprMap line = MapFindOpt(exprKey, exprMap, (), line)
 
-let univ t = Univ(t, (), unknown)
+let univ t line = Univ(t, (), line)

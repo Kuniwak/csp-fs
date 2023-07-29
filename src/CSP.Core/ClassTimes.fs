@@ -7,8 +7,8 @@ let name: TypeClassName = "Times"
 
 let derivedBy (t: Type) : bool =
     match t with
-    | TBool -> true
-    | TNat -> true
+    | TBool _ -> true
+    | TNat _ -> true
     | TSet _ -> true
     | _ -> false
 

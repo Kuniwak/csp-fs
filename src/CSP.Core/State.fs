@@ -136,7 +136,7 @@ let ofProc (genv: Env) (p: Proc<unit>) : State =
         | Proc.Interleave(p1, p2, line) ->
             let s1 = ofProc p1 in
             let s2 = ofProc p2 in
-            InterfaceParallel(genv, s1, LitEmpty(TSet(TTuple([])), (), line), s2, line)
+            InterfaceParallel(genv, s1, LitEmpty(TSet(TTuple([], __LINE__), __LINE__), (), line), s2, line)
         | Proc.Hide(p, expr, line) -> let s = ofProc p in Hide(genv, s, expr, line)
         | Proc.Guard(e, p, line) -> let s = ofProc p in If(genv, e, s, Stop(line), line)
 

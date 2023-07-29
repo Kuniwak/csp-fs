@@ -1,5 +1,6 @@
 module CSP.Core.Eval
 
+open CSP.Core.LineNum
 open CSP.Core
 open CSP.Core.Ctor
 open CSP.Core.CtorMap
@@ -14,13 +15,13 @@ open CSP.Core.Type
 let rec chkType (t: Type) (v: Val) : bool =
     match t, v with
     | TVar _, _ -> true
-    | TNat, VNat _ -> true
-    | TBool, VBool _ -> true
-    | TTuple ts, VTuple vs -> List.length ts = List.length vs && List.forall2 chkType ts vs
-    | TSet tElem, VSet s -> Set.forall (chkType tElem) s
-    | TList tElem, VList vs -> List.forall (chkType tElem) vs
-    | TMap(tK, tV), VMap m -> Map.forall (fun k v -> chkType tK k && chkType tV v) m
-    | TUnion(_, cm), VUnion(ctor, vs) ->
+    | TNat _, VNat _ -> true
+    | TBool _, VBool _ -> true
+    | TTuple(ts, _), VTuple vs -> List.length ts = List.length vs && List.forall2 chkType ts vs
+    | TSet(tElem, _), VSet s -> Set.forall (chkType tElem) s
+    | TList(tElem, _), VList vs -> List.forall (chkType tElem) vs
+    | TMap(tK, tV, _), VMap m -> Map.forall (fun k v -> chkType tK k && chkType tV v) m
+    | TUnion(_, cm, _), VUnion(ctor, vs) ->
         match Map.tryFind ctor cm with
         | Some ts -> List.length ts = List.length vs && List.forall2 chkType ts vs
         | None -> false
@@ -156,7 +157,7 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
         | BoolNot(e, _, line) ->
             match eval env e with
             | Ok(VBool b) -> Ok(VBool(not b))
-            | Ok(v) -> Error(atLine line (TypeMismatch(v, TBool)))
+            | Ok(v) -> Error(atLine line (TypeMismatch(v, (TBool __LINE__))))
             | Error err -> Error(atLine line err)
         | Plus(t, e1, e2, _, line) ->
             if ClassPlus.derivedBy t then
@@ -225,9 +226,9 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                     match List.tryItem (Checked.int idx) vs with
                     | Some v -> Ok v
                     | None -> Error(atLine line (ListIndexOutOfRange(VList vs, idx)))
-                | Ok(v) -> Error(atLine line (TypeMismatch(v, TNat)))
+                | Ok(v) -> Error(atLine line (TypeMismatch(v, TNat __LINE__)))
                 | Error err -> Error(atLine line err)
-            | Ok(v) -> Error(atLine line (TypeMismatch(v, TList(TVar 0u))))
+            | Ok(v) -> Error(atLine line (TypeMismatch(v, TList(TVar(0u, __LINE__), __LINE__))))
             | Error err -> Error(atLine line err)
         | ListCons(exprElem, exprList, _, line) ->
             match eval env exprList with
@@ -235,16 +236,16 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                 match eval env exprElem with
                 | Ok(v) -> Ok(VList(v :: vs))
                 | Error err -> Error(atLine line err)
-            | Ok(v) -> Error(atLine line (TypeMismatch(v, TList(TVar 0u))))
+            | Ok(v) -> Error(atLine line (TypeMismatch(v, TList(TVar(0u, __LINE__), __LINE__))))
             | Error err -> Error(atLine line err)
         | SetRange(e1, e2, _, line) ->
             match eval env e1 with
             | Ok(VNat n1) ->
                 match eval env e2 with
                 | Ok(VNat n2) -> Ok(VSet(Set.map VNat (Range.ofSet n1 n2)))
-                | Ok(v) -> Error(atLine line (TypeMismatch(v, TNat)))
+                | Ok(v) -> Error(atLine line (TypeMismatch(v, TNat __LINE__)))
                 | Error err -> Error(atLine line err)
-            | Ok(v) -> Error(atLine line (TypeMismatch(v, TNat)))
+            | Ok(v) -> Error(atLine line (TypeMismatch(v, TNat __LINE__)))
             | Error err -> Error(atLine line err)
         | SetInsert(exprElem, exprSet, _, line) ->
             match eval env exprSet with
@@ -252,7 +253,7 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                 match eval env exprElem with
                 | Ok(v) -> Ok(VSet(Set.add v s))
                 | Error err -> Error(atLine line err)
-            | Ok(v) -> Error(atLine line (TypeMismatch(v, TSet(TVar 0u))))
+            | Ok(v) -> Error(atLine line (TypeMismatch(v, TSet(TVar(0u, __LINE__), __LINE__))))
             | Error err -> Error(atLine line err)
         | SetMem(exprElem, exprSet, _, line) ->
             match eval env exprSet with
@@ -260,7 +261,7 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                 match eval env exprElem with
                 | Ok(v) -> Ok(VBool(Set.contains v s))
                 | Error err -> Error(atLine line err)
-            | Ok(v) -> Error(atLine line (TypeMismatch(v, TSet(TVar 0u))))
+            | Ok(v) -> Error(atLine line (TypeMismatch(v, TSet(TVar(0u, __LINE__), __LINE__))))
             | Error err -> Error(atLine line err)
         | Filter(t, var, e1, e2, _, line) ->
             if ClassEnum.derivedBy t then
@@ -275,7 +276,7 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                                     | Ok(env) ->
                                         match eval env e1 with
                                         | Ok(VBool b) -> Ok(if b then Set.add v sAcc else sAcc)
-                                        | Ok(v) -> Error(TypeMismatch(v, TBool))
+                                        | Ok(v) -> Error(TypeMismatch(v, TBool __LINE__))
                                         | Error err -> Error err
                                     | Error err -> Error(EnvError err)
                                 | Error err -> Error err)
@@ -295,7 +296,7 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                                     | Ok(env) ->
                                         match eval env e1 with
                                         | Ok(VBool b) -> Ok(if b then v :: vsAcc else vsAcc)
-                                        | Ok(v) -> Error(TypeMismatch(v, TBool))
+                                        | Ok(v) -> Error(TypeMismatch(v, TBool __LINE__))
                                         | Error err -> Error err
                                     | Error err -> Error(EnvError err)
                                 | Error err -> Error err)
@@ -315,7 +316,7 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                                     | Ok(env) ->
                                         match eval env e1 with
                                         | Ok(VBool b) -> Ok(if b then Map.add k v mAcc else mAcc)
-                                        | Ok(v) -> Error(TypeMismatch(v, TBool))
+                                        | Ok(v) -> Error(TypeMismatch(v, TBool __LINE__))
                                         | Error err -> Error err
                                     | Error err -> Error(EnvError err)
                                 | Error err -> Error err)
@@ -342,7 +343,7 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                                     | Ok(env) ->
                                         match eval env e1 with
                                         | Ok(VBool b) -> Ok(b || bAcc)
-                                        | Ok(v) -> Error(TypeMismatch(v, TBool))
+                                        | Ok(v) -> Error(TypeMismatch(v, TBool __LINE__))
                                         | Error err -> Error err
                                     | Error err -> Error(EnvError err)
                                 | Error err -> Error err)
@@ -362,7 +363,7 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                                     | Ok(env) ->
                                         match eval env e1 with
                                         | Ok(VBool b) -> Ok(b || bAcc)
-                                        | Ok(v) -> Error(TypeMismatch(v, TBool))
+                                        | Ok(v) -> Error(TypeMismatch(v, TBool __LINE__))
                                         | Error err -> Error err
                                     | Error err -> Error(EnvError err)
                                 | Error err -> Error err)
@@ -382,7 +383,7 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                                     | Ok(env) ->
                                         match eval env e1 with
                                         | Ok(VBool b) -> Ok(b || bAcc)
-                                        | Ok(v) -> Error(TypeMismatch(v, TBool))
+                                        | Ok(v) -> Error(TypeMismatch(v, TBool __LINE__))
                                         | Error err -> Error err
                                     | Error err -> Error(EnvError err)
                                 | Error err -> Error err)
@@ -403,7 +404,7 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                 | Ok(vV) ->
                     match eval env exprMap with
                     | Ok(VMap m) -> Ok(VMap(Map.add vK vV m))
-                    | Ok(v) -> Error(atLine line (TypeMismatch(v, TMap(TVar 0u, TVar 1u))))
+                    | Ok(v) -> Error(atLine line (TypeMismatch(v, TMap(TVar(0u, __LINE__), TVar(1u, __LINE__), __LINE__))))
                     | Error err -> Error(atLine line err)
                 | Error err -> Error(atLine line err)
             | Error err -> Error(atLine line err)
@@ -415,7 +416,7 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                     match Map.tryFind vK m with
                     | Some v -> Ok(VUnion(Ctor "Some", [ v ]))
                     | None -> Ok(VUnion(Ctor "None", []))
-                | Ok(v) -> Error(atLine line (TypeMismatch(v, TMap(TVar 0u, TVar 1u))))
+                | Ok(v) -> Error(atLine line (TypeMismatch(v, TMap(TVar(0u, __LINE__), TVar(1u, __LINE__), __LINE__))))
                 | Error err -> Error(atLine line err)
             | Error err -> Error(atLine line err)
         | Univ(t, _, line) ->

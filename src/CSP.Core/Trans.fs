@@ -4,7 +4,6 @@ open CSP.Core.Env
 open CSP.Core.Type
 open CSP.Core.Val
 open CSP.Core.Expr
-open CSP.Core.LineNum
 open CSP.Core.CtorMap
 open CSP.Core.Proc
 open CSP.Core.ProcMap
@@ -38,7 +37,7 @@ let init
                     (Ok([]))
 
             Result.map
-                (fun env -> ofProc env (Proc.Unwind(pn, exprs, unknown)))
+                (fun env -> ofProc env (Proc.Unwind(pn, exprs, __LINE__)))
                 (Result.bind
                     (fun vs -> Result.mapError TransError.EnvError (Env.bindAll (List.zip varOpts vs) genv))
                     (Result.mapError TransError.EvalError vsRes))
@@ -112,7 +111,7 @@ let trans (cfg: TransConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0: 
                 | Ok(VBool false) -> trans s2
                 | Ok(v) ->
                     [ (ErrorEvent,
-                       ErrorState(EvalError.format (EvalError.atLine line (EvalError.TypeMismatch(v, TBool))))) ]
+                       ErrorState(EvalError.format (EvalError.atLine line (EvalError.TypeMismatch(v, TBool __LINE__))))) ]
                 | Error(err) -> [ (ErrorEvent, ErrorState(EvalError.format (EvalError.atLine line err))) ]
             | Match(env, expr, sm, line) ->
                 match eval env expr with
@@ -208,7 +207,11 @@ let trans (cfg: TransConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0: 
                         (List.allPairs t1 t2))
                 | Ok(v) ->
                     [ ErrorEvent,
-                      ErrorState(EvalError.format (EvalError.atLine line (EvalError.TypeMismatch(v, TSet(TVar 0u))))) ]
+                      ErrorState(
+                          EvalError.format (
+                              EvalError.atLine line (EvalError.TypeMismatch(v, TSet(TVar(0u, __LINE__), __LINE__)))
+                          )
+                      ) ]
                 | Error(err) -> [ ErrorEvent, ErrorState(EvalError.format (EvalError.atLine line err)) ]
             | Hide(env, s, expr, line) ->
                 match eval env expr with
@@ -226,7 +229,11 @@ let trans (cfg: TransConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0: 
                         (trans s)
                 | Ok(v) ->
                     [ (ErrorEvent,
-                       ErrorState(EvalError.format (EvalError.atLine line (EvalError.TypeMismatch(v, TSet(TVar 0u)))))) ]
+                       ErrorState(
+                           EvalError.format (
+                               EvalError.atLine line (EvalError.TypeMismatch(v, TSet(TVar(0u, __LINE__), __LINE__)))
+                           )
+                       )) ]
                 | Error(err) -> [ (ErrorEvent, ErrorState(EvalError.format (EvalError.atLine line err))) ]
             | Omega _ -> []
             | ErrorState _ -> []

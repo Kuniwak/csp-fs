@@ -8,9 +8,9 @@ let name: TypeClassName = "Ord"
 let rec derivedBy (t: Type) : bool =
     match t with
     | TVar _ -> false
-    | TNat -> true
-    | TBool -> false
-    | TTuple(ts) -> List.forall derivedBy ts
+    | TNat _ -> true
+    | TBool _ -> false
+    | TTuple(ts, _) -> List.forall derivedBy ts
     | TSet _ -> true
     | TList _ -> false
     | TMap _ -> false
