@@ -62,37 +62,37 @@ let trans (cfg: TransConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0: 
             match s with
             | Unwind _ -> failwith "unwind cannot return Unwind"
             | Stop _ -> []
-            | Prefix(env, expr, s, line) ->
+            | Prefix(env, expr, s) ->
                 match eval env expr with
                 | Ok(v) -> [ (Vis(v), s) ]
-                | Error err -> [ (ErrorEvent, ErrorState(EvalError.format (EvalError.atLine line err))) ]
-            | PrefixRecv(env, expr, var, s, line) ->
+                | Error err -> [ (ErrorEvent, ErrorState(EvalError.format err)) ]
+            | PrefixRecv(env, expr, var, s) ->
                 match eval env expr with
                 | Ok(VSet vs) ->
                     List.map
                         (fun v ->
                             match bind1 var v s with
                             | Ok(s) -> (Vis v, s)
-                            | Error(err) -> (ErrorEvent, ErrorState(EnvError.format (EnvError.atLine line err))))
+                            | Error(err) -> (ErrorEvent, ErrorState(EnvError.format err)))
                         (Set.toList vs)
                 | Ok(v) -> [ (ErrorEvent, ErrorState(TransError.format (NotSet(v)))) ]
                 | Error err -> [ (ErrorEvent, ErrorState(EvalError.format err)) ]
-            | IntCh(s1, s2, _) -> [ (Tau, s1); (Tau, s2) ]
-            | ExtCh(s1, s2, line) ->
+            | IntCh(s1, s2) -> [ (Tau, s1); (Tau, s2) ]
+            | ExtCh(s1, s2) ->
                 (List.map
                     (fun (ev, s1') ->
                         match ev with
-                        | Tau -> (Tau, ExtCh(s1', s2, line))
+                        | Tau -> (Tau, ExtCh(s1', s2))
                         | _ -> (ev, s1'))
                     (trans s1))
                 @ (List.map
                     (fun (ev, s2') ->
                         match ev with
-                        | Tau -> (Tau, ExtCh(s1, s2', line))
+                        | Tau -> (Tau, ExtCh(s1, s2'))
                         | _ -> (ev, s2'))
                     (trans s2))
             | Skip _ -> [ (Tick, Omega) ]
-            | Seq(s1, s2, line) ->
+            | Seq(s1, s2) ->
                 let t1 = trans s1 in
 
                 List.fold
@@ -102,18 +102,16 @@ let trans (cfg: TransConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0: 
                             match s1' with
                             | Omega _ -> (Tau, s2) :: acc
                             | _ -> acc // can happen?
-                        | _ -> (ev, Seq(s1', s2, line)) :: acc)
+                        | _ -> (ev, Seq(s1', s2)) :: acc)
                     []
                     t1
-            | If(env, expr, s1, s2, line) ->
+            | If(env, expr, s1, s2) ->
                 match eval env expr with
                 | Ok(VBool true) -> trans s1
                 | Ok(VBool false) -> trans s2
-                | Ok(v) ->
-                    [ (ErrorEvent,
-                       ErrorState(EvalError.format (EvalError.atLine line (EvalError.TypeMismatch(v, TBool __LINE__))))) ]
-                | Error(err) -> [ (ErrorEvent, ErrorState(EvalError.format (EvalError.atLine line err))) ]
-            | Match(env, expr, sm, line) ->
+                | Ok(v) -> [ (ErrorEvent, ErrorState(EvalError.format (EvalError.TypeMismatch(v, TBool __LINE__)))) ]
+                | Error(err) -> [ (ErrorEvent, ErrorState(EvalError.format err)) ]
+            | Match(env, expr, sm) ->
                 match eval env expr with
                 | Ok(VUnion(ctor, vs)) ->
                     match Map.tryFind (Some ctor) sm with
@@ -121,7 +119,7 @@ let trans (cfg: TransConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0: 
                         if List.length varOpts = List.length vs then
                             match bindAll (List.zip varOpts vs) p2 with
                             | Ok(p2) -> trans p2
-                            | Error(err) -> [ (ErrorEvent, ErrorState(EnvError.format (EnvError.atLine line err))) ]
+                            | Error(err) -> [ (ErrorEvent, ErrorState(EnvError.format err)) ]
                         else
                             [ (ErrorEvent,
                                ErrorState(
@@ -136,23 +134,16 @@ let trans (cfg: TransConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0: 
                             | [ Some var ] ->
                                 match bind1 var (VUnion(ctor, vs)) p2 with
                                 | Ok(p2) -> trans p2
-                                | Error(err) -> [ (ErrorEvent, ErrorState(EnvError.format (EnvError.atLine line err))) ]
+                                | Error(err) -> [ (ErrorEvent, ErrorState(EnvError.format err)) ]
                             | [ None ] -> trans p2
                             | _ ->
                                 [ (ErrorEvent,
-                                   ErrorState(
-                                       EvalError.format (
-                                           EvalError.atLine line (EvalError.DefaultClauseArgumentLenMustBe1 varOpts)
-                                       )
-                                   )) ]
-                        | None ->
-                            [ (ErrorEvent,
-                               ErrorState(EvalError.format (EvalError.atLine line (EvalError.NoClauseMatched ctor)))) ]
-                | Ok(v) ->
-                    [ (ErrorEvent, ErrorState(EvalError.format (EvalError.atLine line (EvalError.ValNotUnion v)))) ]
-                | Error(err) -> [ (ErrorEvent, ErrorState(EvalError.format (EvalError.atLine line err))) ]
-            | InterfaceParallel(_, Omega, _, Omega, _) -> [ (Tick, Omega) ] // Para6
-            | InterfaceParallel(env, p1, expr, p2, line) ->
+                                   ErrorState(EvalError.format (EvalError.DefaultClauseArgumentLenMustBe1 varOpts))) ]
+                        | None -> [ (ErrorEvent, ErrorState(EvalError.format (EvalError.NoClauseMatched ctor))) ]
+                | Ok(v) -> [ (ErrorEvent, ErrorState(EvalError.format (EvalError.ValNotUnion v))) ]
+                | Error(err) -> [ (ErrorEvent, ErrorState(EvalError.format err)) ]
+            | InterfaceParallel(_, Omega, _, Omega) -> [ (Tick, Omega) ] // Para6
+            | InterfaceParallel(env, p1, expr, p2) ->
                 let t1 = trans p1 in
                 let t2 = trans p2 in
 
@@ -165,13 +156,13 @@ let trans (cfg: TransConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0: 
                                 if Set.contains ev vs then
                                     acc
                                 else
-                                    (Vis ev, InterfaceParallel(env, p1', expr, p2, line)) :: acc // Para1
+                                    (Vis ev, InterfaceParallel(env, p1', expr, p2)) :: acc // Para1
                             | Tick ->
                                 match p1' with
-                                | Omega _ -> (Tau, InterfaceParallel(env, p1', expr, p2, line)) :: acc // Para4
+                                | Omega _ -> (Tau, InterfaceParallel(env, p1', expr, p2)) :: acc // Para4
                                 | _ -> acc
-                            | Tau -> (Tau, InterfaceParallel(env, p1', expr, p2, line)) :: acc // Para1
-                            | Hid ev' -> (Hid ev', InterfaceParallel(env, p1', expr, p2, line)) :: acc // para1
+                            | Tau -> (Tau, InterfaceParallel(env, p1', expr, p2)) :: acc // Para1
+                            | Hid ev' -> (Hid ev', InterfaceParallel(env, p1', expr, p2)) :: acc // para1
                             | ErrorEvent -> (ErrorEvent, p1') :: acc)
                         []
                         t1)
@@ -182,13 +173,13 @@ let trans (cfg: TransConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0: 
                                 if Set.contains ev vs then
                                     acc
                                 else
-                                    (Vis ev, InterfaceParallel(env, p1, expr, p2', line)) :: acc // Para2
+                                    (Vis ev, InterfaceParallel(env, p1, expr, p2')) :: acc // Para2
                             | Tick ->
                                 match p2' with
-                                | Omega _ -> (Tau, InterfaceParallel(env, p1, expr, p2', line)) :: acc // Para5
+                                | Omega _ -> (Tau, InterfaceParallel(env, p1, expr, p2')) :: acc // Para5
                                 | _ -> acc
-                            | Tau -> (Tau, InterfaceParallel(env, p1, expr, p2', line)) :: acc // Para2
-                            | Hid ev' -> (Hid ev', InterfaceParallel(env, p1, expr, p2', line)) :: acc // para1
+                            | Tau -> (Tau, InterfaceParallel(env, p1, expr, p2')) :: acc // Para2
+                            | Hid ev' -> (Hid ev', InterfaceParallel(env, p1, expr, p2')) :: acc // para1
                             | ErrorEvent -> (ErrorEvent, p2') :: acc)
                         []
                         t2)
@@ -197,7 +188,7 @@ let trans (cfg: TransConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0: 
                             match (ev1, ev2) with
                             | Vis ev1, Vis ev2 when ev1 = ev2 ->
                                 if Set.contains ev1 vs then
-                                    (Vis ev1, InterfaceParallel(env, s1', expr, s2', line)) :: acc // Para3
+                                    (Vis ev1, InterfaceParallel(env, s1', expr, s2')) :: acc // Para3
                                 else
                                     acc
                             | ErrorEvent, _ -> (ErrorEvent, s1') :: acc
@@ -207,34 +198,26 @@ let trans (cfg: TransConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0: 
                         (List.allPairs t1 t2))
                 | Ok(v) ->
                     [ ErrorEvent,
-                      ErrorState(
-                          EvalError.format (
-                              EvalError.atLine line (EvalError.TypeMismatch(v, TSet(TVar(0u, __LINE__), __LINE__)))
-                          )
-                      ) ]
-                | Error(err) -> [ ErrorEvent, ErrorState(EvalError.format (EvalError.atLine line err)) ]
-            | Hide(env, s, expr, line) ->
+                      ErrorState(EvalError.format (EvalError.TypeMismatch(v, TSet(TVar(0u, __LINE__), __LINE__)))) ]
+                | Error(err) -> [ ErrorEvent, ErrorState(EvalError.format err) ]
+            | Hide(env, s, expr) ->
                 match eval env expr with
                 | Ok(VSet vs) ->
                     List.map
                         (fun (ev, s') ->
                             match ev with
-                            | Vis ev when Set.contains ev vs -> (Hid ev, Hide(env, s', expr, line))
+                            | Vis ev when Set.contains ev vs -> (Hid ev, Hide(env, s', expr))
                             | Tick ->
                                 match s' with
                                 | Omega _ -> (Tick, s')
-                                | _ -> (ev, Hide(env, s', expr, line))
+                                | _ -> (ev, Hide(env, s', expr))
                             | ErrorEvent -> (ErrorEvent, s')
-                            | _ -> (ev, Hide(env, s', expr, line)))
+                            | _ -> (ev, Hide(env, s', expr)))
                         (trans s)
                 | Ok(v) ->
                     [ (ErrorEvent,
-                       ErrorState(
-                           EvalError.format (
-                               EvalError.atLine line (EvalError.TypeMismatch(v, TSet(TVar(0u, __LINE__), __LINE__)))
-                           )
-                       )) ]
-                | Error(err) -> [ (ErrorEvent, ErrorState(EvalError.format (EvalError.atLine line err))) ]
+                       ErrorState(EvalError.format (EvalError.TypeMismatch(v, TSet(TVar(0u, __LINE__), __LINE__))))) ]
+                | Error(err) -> [ (ErrorEvent, ErrorState(EvalError.format err)) ]
             | Omega _ -> []
             | ErrorState _ -> []
 
