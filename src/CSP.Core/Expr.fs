@@ -36,6 +36,7 @@ type Expr<'a> =
     | ListCons of Expr<'a> * Expr<'a> * 'a * LineNum
     | SetRange of Expr<'a> * Expr<'a> * 'a * LineNum
     | SetInsert of Expr<'a> * Expr<'a> * 'a * LineNum
+    | SetRemove of Expr<'a> * Expr<'a> * 'a * LineNum
     | SetMem of Expr<'a> * Expr<'a> * 'a * LineNum
     | MapAdd of Expr<'a> * Expr<'a> * Expr<'a> * 'a * LineNum
     | MapFindOpt of Expr<'a> * Expr<'a> * 'a * LineNum
@@ -206,6 +207,12 @@ let format (fmt: string -> 'a -> string) (expr: Expr<'a>) : string =
 {render indent1}%s{format indent2 e1}
 {render indent1}%s{format indent2 e2})"""
                 x
+        | SetRemove(e1, e2, x, _) ->
+            fmt
+                $"""(Set.remove
+{render indent1}%s{format indent2 e1}
+{render indent1}%s{format indent2 e2})"""
+                x
         | SetMem(e1, e2, x, _) ->
             fmt
                 $"""(Set.contains
@@ -256,6 +263,7 @@ let line (expr: Expr<'a>) : LineNum =
     | ListNth(_, _, _, line) -> line
     | SetRange(_, _, _, line) -> line
     | SetInsert(_, _, _, line) -> line
+    | SetRemove(_, _, _, line) -> line
     | SetMem(_, _, _, line) -> line
     | MapAdd(_, _, _, _, line) -> line
     | MapFindOpt(_, _, _, line) -> line
@@ -288,6 +296,7 @@ let get (expr: Expr<'a>) : 'a =
     | ListNth(_, _, x, _) -> x
     | SetRange(_, _, x, _) -> x
     | SetInsert(_, _, x, _) -> x
+    | SetRemove(_, _, x, _) -> x
     | SetMem(_, _, x, _) -> x
     | MapAdd(_, _, _, x, _) -> x
     | MapFindOpt(_, _, x, _) -> x
@@ -320,6 +329,7 @@ let children (expr: Expr<'a>) : Expr<'a> list =
     | ListNth(expr1, expr2, _, _) -> [ expr1; expr2 ]
     | SetRange(expr1, expr2, _, _) -> [ expr1; expr2 ]
     | SetInsert(expr1, expr2, _, _) -> [ expr1; expr2 ]
+    | SetRemove(expr1, expr2, _, _) -> [ expr1; expr2 ]
     | SetMem(expr1, expr2, _, _) -> [ expr1; expr2 ]
     | MapAdd(expr1, expr2, expr3, _, _) -> [ expr1; expr2; expr3 ]
     | MapFindOpt(expr1, expr2, _, _) -> [ expr1; expr2 ]
@@ -389,6 +399,7 @@ let map (f: Expr<'a> -> 'b) (expr: Expr<'a>) : Expr<'b> =
         | ListNth(exprList, exprIdx, _, line) -> ListNth(mapType exprList, mapType exprIdx, f expr, line)
         | SetRange(exprLower, exprUpper, _, line) -> SetRange(mapType exprLower, mapType exprUpper, f expr, line)
         | SetInsert(exprElem, exprSet, _, line) -> SetInsert(mapType exprElem, mapType exprSet, f expr, line)
+        | SetRemove(exprElem, exprSet, _, line) -> SetRemove(mapType exprElem, mapType exprSet, f expr, line)
         | SetMem(exprElem, exprSet, _, line) -> SetMem(mapType exprElem, mapType exprSet, f expr, line)
         | MapAdd(exprKey, exprVal, exprMap, _, line) ->
             MapAdd(mapType exprKey, mapType exprVal, mapType exprMap, f expr, line)

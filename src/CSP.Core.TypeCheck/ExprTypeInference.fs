@@ -491,6 +491,21 @@ let infer
                     | Error terr -> Error(atLine line terr)
                     | Ok(tcSet, s) -> Ok(SetInsert(exprElem, exprSet, tcSet, line), s)
 
+        | SetRemove(exprElem, exprSet, _, line) ->
+            match infer s tcenv exprElem with
+            | Error terr -> Error(atLine line terr)
+            | Ok(exprElem, s) ->
+                let tcElem = get exprElem in
+
+                match infer s tcenv exprSet with
+                | Error terr -> Error(atLine line terr)
+                | Ok(exprSet, s) ->
+                    let tcSet = get exprSet in
+
+                    match unify s tcSet (TCSet(tcElem)) with
+                    | Error terr -> Error(atLine line terr)
+                    | Ok(tcSet, s) -> Ok(SetInsert(exprElem, exprSet, tcSet, line), s)
+
         | SetMem(exprElem, exprSet, _, line) ->
             match infer s tcenv exprElem with
             | Error terr -> Error(atLine line terr)

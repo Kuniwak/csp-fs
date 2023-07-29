@@ -55,6 +55,7 @@ let setRange exprLower exprUpper line =
     SetRange(exprLower, exprUpper, (), line)
 
 let setInsert exprElem exprSet line = SetInsert(exprElem, exprSet, (), line)
+let setRemove exprElem exprSet line = SetRemove(exprElem, exprSet, (), line)
 
 let setMem exprElem exprSet line = SetMem(exprElem, exprSet, (), line)
 

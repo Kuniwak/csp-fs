@@ -249,6 +249,14 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                 | Error err -> Error(atLine line err)
             | Ok(v) -> Error(atLine line (TypeMismatch(v, tSet (tVar 0u))))
             | Error err -> Error(atLine line err)
+        | SetRemove(exprElem, exprSet, _, line) ->
+            match eval env exprSet with
+            | Ok(VSet s) ->
+                match eval env exprElem with
+                | Ok(v) -> Ok(VSet(Set.remove v s))
+                | Error err -> Error(atLine line err)
+            | Ok(v) -> Error(atLine line (TypeMismatch(v, tSet (tVar 0u))))
+            | Error err -> Error(atLine line err)
         | SetMem(exprElem, exprSet, _, line) ->
             match eval env exprSet with
             | Ok(VSet s) ->
