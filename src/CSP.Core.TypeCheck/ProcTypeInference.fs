@@ -35,15 +35,28 @@ let infer (cm: CtorMap) (tcenv: TypeCstrEnv) (p: Proc<unit>) (s: State) : Result
             match exprInfer tcenv expr s with
             | Ok(expr, s) -> Result.map (fun (p, s) -> (Prefix(expr, p, line), s)) (procInfer tcenv p s)
             | Error(terr) -> Error(atLine line terr)
-        | PrefixRecv(expr, var, p, line) ->
-            match exprInfer tcenv expr s with
-            | Ok(expr, s) ->
-                let tc = Expr.get expr in
-                let tcenvRes = Result.mapError TypeEnvError (bind1 var tc tcenv) in
+        | PrefixRecv(exprSet, var, p, line) ->
+            match exprInfer tcenv exprSet s with
+            | Ok(exprSet, s) ->
+                let tcSet = Expr.get exprSet in
+                let u, s = newUncertainVarId s in
 
-                Result.bind
-                    (fun tcenv -> Result.map (fun (p, s) -> (PrefixRecv(expr, var, p, line), s)) (procInfer tcenv p s))
-                    tcenvRes
+                match unify s tcSet (TCSet(TCUncertain u)) with
+                | Ok(tcSet, s) ->
+                    match tcSet with
+                    | TCSet tcElem ->
+                        let tcenvRes = Result.mapError TypeEnvError (bind1 var tcElem tcenv) in
+
+                        Result.mapError
+                            (atLine line)
+                            (Result.bind
+                                (fun tcenv ->
+                                    Result.map
+                                        (fun (p, s) -> (PrefixRecv(exprSet, var, p, line), s))
+                                        (procInfer tcenv p s))
+                                tcenvRes)
+                    | _ -> failwith ""
+                | Error(err) -> Error(atLine line err)
             | Error(terr) -> Error(atLine line terr)
         | IntCh(p1, p2, line) ->
             match procInfer tcenv p1 s with
