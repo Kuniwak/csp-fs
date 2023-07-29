@@ -308,7 +308,7 @@ let procMap =
                    [ ((Some "Some", [ "user" ]),
                       unwind
                           "GHStarRecv2"
-                          [ varRef "repo" __LINE__; varRef "user" __LINE__; varRef "u" __LINE__ ]
+                          [ varRef "repo" __LINE__; varRef "user" __LINE__; varRef "starRel" __LINE__ ]
                           __LINE__)
                      ((Some "None", []), unwind "GHStarWillFail" [] __LINE__) ]
                    __LINE__)
@@ -316,14 +316,17 @@ let procMap =
               (("GHStarRecv2", [ "repo"; "user"; "starRel" ]),
                intCh
                    (unwind "GHStarWillFail" [ varRef "starRel" __LINE__ ] __LINE__)
-                   (unwind "GHStarWillResp" [ varRef "t" __LINE__ ] __LINE__)
+                   (unwind
+                       "GHStarWillResp"
+                       [ varRef "repo" __LINE__; varRef "user" __LINE__; varRef "starRel" __LINE__ ]
+                       __LINE__)
                    __LINE__)
               (("GHStarWillFail", [ "starRel" ]),
                prefix
                    (ctor "ChStarRes" [ ctor "Left" [ ctor "GHStarError" [] __LINE__ ] __LINE__ ] __LINE__)
                    (unwind "GHStar" [ varRef "starRel" __LINE__ ] __LINE__)
                    __LINE__)
-              (("GHStarWillResp", [ "repo"; "user" ]),
+              (("GHStarWillResp", [ "repo"; "user"; "starRel" ]),
                prefix
                    (ctor
                        "ChStarRes"
@@ -337,7 +340,13 @@ let procMap =
                                    __LINE__ ]
                              __LINE__ ]
                        __LINE__)
-                   (unwind "GHStar" [ setInsert (varRef "t" __LINE__) (varRef "starRel" __LINE__) __LINE__ ] __LINE__)
+                   (unwind
+                       "GHStar"
+                       [ setInsert
+                             (tuple2 (varRef "repo" __LINE__) (varRef "user" __LINE__) __LINE__)
+                             (varRef "starRel" __LINE__)
+                             __LINE__ ]
+                       __LINE__)
                    __LINE__)
 
               (("GHUnstarRecv1", [ "repo"; "pat"; "starRel" ]),
@@ -346,29 +355,29 @@ let procMap =
                    [ ((Some "Some", [ "user" ]),
                       unwind
                           "GHUnstarRecv2"
-                          [ varRef "repo" __LINE__; varRef "user" __LINE__; varRef "u" __LINE__ ]
+                          [ varRef "repo" __LINE__; varRef "user" __LINE__; varRef "starRel" __LINE__ ]
                           __LINE__)
                      ((Some "None", []), unwind "GHUnstarWillFail" [] __LINE__) ]
                    __LINE__)
               (("GHUnstarRecv2", [ "repo"; "user"; "starRel" ]),
                intCh
-                   (unwind "GHUnstarWillFail" [] __LINE__)
+                   (unwind "GHUnstarWillFail" [ varRef "starRel" __LINE__ ] __LINE__)
                    (unwind
                        "GHUnstarWillResp"
                        [ varRef "repo" __LINE__; varRef "user" __LINE__; varRef "starRel" __LINE__ ]
                        __LINE__)
                    __LINE__)
 
-              (("GHUnstarWillFail", []),
+              (("GHUnstarWillFail", [ "starRel" ]),
                prefix
-                   (ctor "ChStarRes" [ ctor "Left" [ ctor "GHUnstarError" [] __LINE__ ] __LINE__ ] __LINE__)
-                   (unwind "GHStar" [ varRef "starRel" __LINE__ ] __LINE__)
+                   (ctor "ChUnstarRes" [ ctor "Left" [ ctor "GHUnstarError" [] __LINE__ ] __LINE__ ] __LINE__)
+                   (unwind "GHUnstar" [ varRef "starRel" __LINE__ ] __LINE__)
                    __LINE__)
 
               (("GHUnstarWillResp", [ "repo"; "user"; "starRel" ]),
                prefix
                    (ctor
-                       "ChStarRes"
+                       "ChUnstarRes"
                        [ ctor
                              "Right"
                              [ setMem
@@ -377,7 +386,13 @@ let procMap =
                                    __LINE__ ]
                              __LINE__ ]
                        __LINE__)
-                   (unwind "GHStar" [ setInsert (varRef "t" __LINE__) (varRef "starRel" __LINE__) __LINE__ ] __LINE__)
+                   (unwind
+                       "GHUnstar"
+                       [ setRemove
+                             (tuple2 (varRef "repo" __LINE__) (varRef "user" __LINE__) __LINE__)
+                             (varRef "starRel" __LINE__)
+                             __LINE__ ]
+                       __LINE__)
                    __LINE__)
 
               (("AppLaunch", [ "pOpt" ]),
@@ -401,22 +416,30 @@ let procMap =
                            __LINE__)
                        __LINE__)
                    __LINE__)
-              (("AppDidPressLoginBtn", [ "p" ]),
+              (("AppDidPressLoginBtn", [ "pat" ]),
                prefix
-                   (ctor "ChAuthReq" [ varRef "p" __LINE__ ] __LINE__)
-                   (unwind "AppReqAuth" [ varRef "p" __LINE__ ] __LINE__)
+                   (ctor "ChAuthReq" [ varRef "pat" __LINE__ ] __LINE__)
+                   (unwind "AppReqAuth" [ varRef "pat" __LINE__ ] __LINE__)
                    __LINE__)
-              (("AppReqAuth", [ "p" ]),
-               ``match``
-                   (varRef "p" __LINE__)
-                   [ ((Some "Left", [ "_" ]), unwind "AppDialogAuthError" [ varRef "p" __LINE__ ] __LINE__)
-                     ((Some "Right", [ "b" ]),
-                      ``if``
-                          (varRef "b" __LINE__)
-                          (unwind "AppRecvAuth" [ varRef "p" __LINE__ ] __LINE__)
-                          (unwind "AppDialogAuthFailed" [] __LINE__)
-                          __LINE__) ]
-                   __LINE__)
+              (("AppReqAuth", [ "pat" ]),
+               (prefixRecv
+                   (univ tChAuthRes __LINE__)
+                   "res"
+                   (``match``
+                       (varRef "res" __LINE__)
+                       [ ((Some "ChAuthRes", [ "res" ]),
+                          ``match``
+                              (varRef "res" __LINE__)
+                              [ ((Some "Left", [ "_" ]), unwind "AppDialogAuthError" [ varRef "pat" __LINE__ ] __LINE__)
+                                ((Some "Right", [ "userOpt" ]),
+                                 ``match``
+                                     (varRef "userOpt" __LINE__)
+                                     [ ((Some "Some", [ "_" ]), unwind "AppRecvAuth" [ varRef "pat" __LINE__ ] __LINE__)
+                                       ((Some "None", []), unwind "AppDialogAuthFailed" [] __LINE__) ]
+                                     __LINE__) ]
+                              __LINE__) ]
+                       __LINE__)
+                   __LINE__))
               (("AppDialogAuthError", [ "p" ]),
                prefix
                    (ctor "ChDispLogin" [ ctor "AppAuthError" [] __LINE__ ] __LINE__)
@@ -427,7 +450,7 @@ let procMap =
                    (ctor "ChDispLogin" [ ctor "AppAuthFailed" [] __LINE__ ] __LINE__)
                    (unwind "appDispLogin" [ ctor "PatEmpty" [] __LINE__ ] __LINE__)
                    __LINE__)
-              (("AppRecvAuth", [ "p" ]),
+              (("AppRecvAuth", [ "pat" ]),
                prefix
                    (ctor "ChDispLogin" [ ctor "AppAuthSuccess" [] __LINE__ ] __LINE__)
                    (unwind "AppDispSearch" [ ctor "QueryEmpty" [] __LINE__ ] __LINE__)
