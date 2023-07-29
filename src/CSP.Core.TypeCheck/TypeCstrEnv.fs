@@ -13,11 +13,7 @@ let from (xs: (string * TypeCstr) seq) =
 
 let bind1 (var: Var) (tc: TypeCstr) (tcenv: TypeCstrEnv) : Result<TypeCstrEnv, TypeEnvError> =
     match tcenv with
-    | TypeCstrEnv m ->
-        if Map.containsKey var m then
-            Error(Shadow(var, Set.ofSeq (Map.keys m)))
-        else
-            Ok(TypeCstrEnv(Map.add var tc m))
+    | TypeCstrEnv m -> Ok(TypeCstrEnv(Map.add var tc m))
 
 let bindAll (xs: (Var option * TypeCstr) seq) (tcenv: TypeCstrEnv) : Result<TypeCstrEnv, TypeEnvError> =
     Seq.fold

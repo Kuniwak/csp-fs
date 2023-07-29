@@ -16,11 +16,7 @@ let fold (f: 'State -> Var -> Val -> 'State) (s: 'State) (env: Env) =
 
 let bind1 (var: Var) (v: Val) (env: Env) : Result<Env, EnvError> =
     match env with
-    | Env env ->
-        if Map.containsKey var env then
-            Error(Shadow(var, List.ofSeq (Map.keys env)))
-        else
-            Ok(Env(Map.add var v env))
+    | Env env -> Ok(Env(Map.add var v env))
 
 let bindAll (xs: (Var option * Val) seq) (env: Env) : Result<Env, EnvError> =
     Seq.fold

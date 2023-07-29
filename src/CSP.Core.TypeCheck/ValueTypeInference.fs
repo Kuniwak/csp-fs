@@ -1,6 +1,7 @@
 module CSP.Core.ValueTypeInference
 
 open CSP.Core.TypeInferenceState
+open CSP.Core.TypeCstrUnification
 open CSP.Core.TypeCstr
 open CSP.Core.CtorMap
 open CSP.Core.Val
@@ -25,16 +26,7 @@ let infer (cm: CtorMap) (s: State) (v: Val) : Result<TypeCstr * State, TypeError
             let tRes =
                 Set.fold
                     (fun tRes v ->
-                        Result.bind
-                            (fun (t, s) ->
-                                Result.bind
-                                    (fun (t', s) ->
-                                        if t = t' then
-                                            Ok(t, s)
-                                        else
-                                            Error(TypeMismatch(Set [ t; t' ])))
-                                    (infer s v))
-                            tRes)
+                        Result.bind (fun (t, s) -> Result.bind (fun (t', s) -> unify s t t') (infer s v)) tRes)
                     (Ok(TCUncertain u, s))
                     vs
 
@@ -45,16 +37,7 @@ let infer (cm: CtorMap) (s: State) (v: Val) : Result<TypeCstr * State, TypeError
             let tRes =
                 List.fold
                     (fun tRes v ->
-                        Result.bind
-                            (fun (t, s) ->
-                                Result.bind
-                                    (fun (t', s) ->
-                                        if t = t' then
-                                            Ok(t, s)
-                                        else
-                                            Error(TypeMismatch(Set [ t; t' ])))
-                                    (infer s v))
-                            tRes)
+                        Result.bind (fun (t, s) -> Result.bind (fun (t', s) -> unify s t t') (infer s v)) tRes)
                     (Ok(TCUncertain u, s))
                     vs
 
@@ -70,13 +53,9 @@ let infer (cm: CtorMap) (s: State) (v: Val) : Result<TypeCstr * State, TypeError
                             (fun (tK, tV, s) ->
                                 Result.bind
                                     (fun (tK', tV', s) ->
-                                        if tK = tK' then
-                                            (if tV = tV' then
-                                                 Ok(tK, tV, s)
-                                             else
-                                                 Error(TypeMismatch(Set [ tV; tV' ])))
-                                        else
-                                            Error(TypeMismatch(Set [ tK; tK' ])))
+                                        Result.bind
+                                            (fun (tK, s) -> Result.map (fun (tV, s) -> (tK, tV, s)) (unify s tV tV'))
+                                            (unify s tK tK'))
                                     (Result.bind
                                         (fun (tK', s) -> Result.map (fun (tV', s) -> (tK', tV', s)) (infer s vV))
                                         (infer s vK)))
@@ -92,31 +71,21 @@ let infer (cm: CtorMap) (s: State) (v: Val) : Result<TypeCstr * State, TypeError
                 let tcs = Map.find ctor cm in
 
                 if List.length tcs = List.length vs then
-                    let res =
+                    let accRes =
                         List.fold
-                            (fun nRes (t, v) ->
+                            (fun accRes (tc, v) ->
                                 Result.bind
                                     (fun s ->
                                         Result.bind
-                                            (fun (t', s) ->
-                                                if t = t' then
-                                                    Ok(s)
-                                                else
-                                                    Error(
-                                                        TypeMismatch(
-                                                            Set[t
-                                                                t']
-                                                        )
-                                                    ))
+                                            (fun (tc', s) -> Result.map snd (unify s tc tc'))
                                             (infer s v))
-                                    nRes)
+                                    accRes)
                             (Ok(s))
                             (List.zip tcs vs)
 
-                    Result.map (fun s -> (TCUnion(un, cm), s)) res
+                    Result.map (fun s -> (TCUnion(un, cm), s)) accRes
                 else
                     Error(AssociatedValuesLenMismatch(ctor, Set [ List.length tcs; List.length vs ]))
             | None -> Error(NoSuchCtor(ctor))
 
     infer s v
-    
