@@ -1,15 +1,26 @@
 module CSP.Core.ProcMap
 
 open CSP.Core.Proc
+open CSP.Core.ProcMapError
 open CSP.Core.Var
 
 type ProcMap<'a> = ProcMap of Map<ProcId, Var option list * Proc<'a>>
 
-let from (pm: ((ProcId * string list) * Proc<'a>) seq) : ProcMap<'a> =
-    ProcMap(
-        Map
-            [ for (pn, vars), p in pm -> (pn, (List.map (fun var -> if var = "_" then None else Some(Var var)) vars, p)) ]
-    )
+let from (pm: ((ProcId * string list) * Proc<'a>) seq) : Result<ProcMap<'a>, ProcMapError> =
+    Result.map
+        ProcMap
+        (Seq.fold
+            (fun mRes ((pn, vars), p) ->
+                Result.bind
+                    (fun m ->
+                        if Map.containsKey pn m then
+                            Error(DuplicatedProcId(pn))
+                        else
+                            let varOpts = List.map (fun var -> if var = "_" then None else Some(Var var)) vars in
+                            Ok(Map.add pn (varOpts, p) m))
+                    mRes)
+            (Ok(Map.empty))
+            pm)
 
 let fold folder s pm =
     match pm with
