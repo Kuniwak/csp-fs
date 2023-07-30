@@ -1,13 +1,19 @@
-﻿open CSP.Core.Eval
-open CSP.Core.Univ
-open CSP.Core.Search
+﻿open CSP.Core
+open CSP.Core.ProcEval
 open CSP.Core.Visualization.DotLang
 open CSP.Model.GHApp
 
-let nodeMax = 10000
-let natMax = 5u
-let listMax = 3u
-let cfg = dotConfig (searchConfig 10000) (evalConfig (univConfig natMax listMax)) 
+let procEvalCfg: ProcEvalConfig =
+    { EvalConfig = { UnivConfig = { NatMax = 3u; ListLenMax = 2u } }
+      MaxUnwind = 100 }
 
-let pn = "GHSearch" in
-printfn $"%s{dot cfg procMap ctorMap genv pn []}"
+let dotCfg: DotConfig =
+    { GraphConfig =
+        { TransConfig = { ProcEvalConfig = procEvalCfg }
+          ProcEvalConfig = procEvalCfg
+          SearchConfig = { NodeMax = 10000 } } }
+
+match ProcMap.tryFind "GHSearch" procMap with
+| Some(_, p) ->
+    printfn $"%s{dot dotCfg procMap ctorMap genv p}"
+|

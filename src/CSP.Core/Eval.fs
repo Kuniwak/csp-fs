@@ -83,24 +83,14 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                 match Map.tryFind (Some ctor) exprMap with
                 | Some(varOpts, e1) ->
                     if List.length varOpts = List.length vs then
-                        match bindAll (List.zip varOpts vs) env with
-                        | Ok(env) -> Result.mapError (fun err -> atLine line err) (eval env e1)
-                        | Error err -> Error(atLine line (EnvError err))
+                        let env = bindAllOpts (List.zip varOpts vs) env in Result.mapError (atLine line) (eval env e1)
                     else
                         Error(atLine line (UnionValuesLenMismatch(ctor, List.length varOpts, List.length vs)))
                 | None ->
                     match Map.tryFind None exprMap with
                     | Some(varOpts, e2) ->
                         match List.length varOpts with
-                        | 1 ->
-                            let envRes =
-                                match List.head varOpts with
-                                | Some var -> bind1 var (VUnion(ctor, vs)) env
-                                | None -> Ok(env)
-
-                            match envRes with
-                            | Ok(env) -> eval env e2
-                            | Error err -> Error(atLine line (EnvError err))
+                        | 1 -> let env = bind1Opt (List.head varOpts) (VUnion(ctor, vs)) env in eval env e2
                         | _ -> Error(atLine line (DefaultClauseArgumentLenMustBe1 varOpts))
                     | None -> Error(atLine line (NoClauseMatched ctor))
             | Ok(v) -> Error(atLine line (ValNotUnion v))
@@ -274,13 +264,12 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                             (fun accRes v ->
                                 match accRes with
                                 | Ok sAcc ->
-                                    match bind1 var v env with
-                                    | Ok(env) ->
-                                        match eval env e1 with
-                                        | Ok(VBool b) -> Ok(if b then Set.add v sAcc else sAcc)
-                                        | Ok(v) -> Error(TypeMismatch(v, tBool))
-                                        | Error err -> Error err
-                                    | Error err -> Error(EnvError err)
+                                    let env = bind1 var v env in
+
+                                    match eval env e1 with
+                                    | Ok(VBool b) -> Ok(if b then Set.add v sAcc else sAcc)
+                                    | Ok(v) -> Error(TypeMismatch(v, tBool))
+                                    | Error err -> Error err
                                 | Error err -> Error err)
                             (Ok Set.empty)
                             s) in
@@ -294,13 +283,12 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                             (fun v accRes ->
                                 match accRes with
                                 | Ok(vsAcc) ->
-                                    match bind1 var v env with
-                                    | Ok(env) ->
-                                        match eval env e1 with
-                                        | Ok(VBool b) -> Ok(if b then v :: vsAcc else vsAcc)
-                                        | Ok(v) -> Error(TypeMismatch(v, tBool))
-                                        | Error err -> Error err
-                                    | Error err -> Error(EnvError err)
+                                    let env = bind1 var v env in
+
+                                    match eval env e1 with
+                                    | Ok(VBool b) -> Ok(if b then v :: vsAcc else vsAcc)
+                                    | Ok(v) -> Error(TypeMismatch(v, tBool))
+                                    | Error err -> Error err
                                 | Error err -> Error err)
                             vs
                             (Ok([])) in
@@ -314,13 +302,12 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                             (fun accRes k v ->
                                 match accRes with
                                 | Ok(mAcc) ->
-                                    match bind1 var k env with
-                                    | Ok(env) ->
-                                        match eval env e1 with
-                                        | Ok(VBool b) -> Ok(if b then Map.add k v mAcc else mAcc)
-                                        | Ok(v) -> Error(TypeMismatch(v, tBool))
-                                        | Error err -> Error err
-                                    | Error err -> Error(EnvError err)
+                                    let env = bind1 var k env in
+
+                                    match eval env e1 with
+                                    | Ok(VBool b) -> Ok(if b then Map.add k v mAcc else mAcc)
+                                    | Ok(v) -> Error(TypeMismatch(v, tBool))
+                                    | Error err -> Error err
                                 | Error err -> Error err)
                             (Ok(Map.empty))
                             m) in
@@ -341,13 +328,12 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                             (fun accRes v ->
                                 match accRes with
                                 | Ok bAcc ->
-                                    match bind1 var v env with
-                                    | Ok(env) ->
-                                        match eval env e1 with
-                                        | Ok(VBool b) -> Ok(b || bAcc)
-                                        | Ok(v) -> Error(TypeMismatch(v, tBool))
-                                        | Error err -> Error err
-                                    | Error err -> Error(EnvError err)
+                                    let env = bind1 var v env in
+
+                                    match eval env e1 with
+                                    | Ok(VBool b) -> Ok(b || bAcc)
+                                    | Ok(v) -> Error(TypeMismatch(v, tBool))
+                                    | Error err -> Error err
                                 | Error err -> Error err)
                             (Ok false)
                             s) in
@@ -361,13 +347,12 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                             (fun v accRes ->
                                 match accRes with
                                 | Ok(bAcc) ->
-                                    match bind1 var v env with
-                                    | Ok(env) ->
-                                        match eval env e1 with
-                                        | Ok(VBool b) -> Ok(b || bAcc)
-                                        | Ok(v) -> Error(TypeMismatch(v, tBool))
-                                        | Error err -> Error err
-                                    | Error err -> Error(EnvError err)
+                                    let env = bind1 var v env in
+
+                                    match eval env e1 with
+                                    | Ok(VBool b) -> Ok(b || bAcc)
+                                    | Ok(v) -> Error(TypeMismatch(v, tBool))
+                                    | Error err -> Error err
                                 | Error err -> Error err)
                             vs
                             (Ok(false)) in
@@ -381,13 +366,12 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                             (fun accRes k _ ->
                                 match accRes with
                                 | Ok(bAcc) ->
-                                    match bind1 var k env with
-                                    | Ok(env) ->
-                                        match eval env e1 with
-                                        | Ok(VBool b) -> Ok(b || bAcc)
-                                        | Ok(v) -> Error(TypeMismatch(v, tBool))
-                                        | Error err -> Error err
-                                    | Error err -> Error(EnvError err)
+                                    let env = bind1 var k env in
+
+                                    match eval env e1 with
+                                    | Ok(VBool b) -> Ok(b || bAcc)
+                                    | Ok(v) -> Error(TypeMismatch(v, tBool))
+                                    | Error err -> Error err
                                 | Error err -> Error err)
                             (Ok(false))
                             m in

@@ -1,18 +1,30 @@
 module CSP.Core.Tests.GraphTests
 
-open CSP.Core.Util
 open Xunit
 open CSP.Core
+open CSP.Core.Util
+open CSP.Core.ProcEval
+open CSP.Core.Trans
 open CSP.Core.Search
 open CSP.Core.TypeShorthand
 open CSP.Core.ExprShorthand
 open CSP.Core.ProcMap
 open CSP.Core.ProcShorthand
 open CSP.Core.Eval
+open CSP.Core.ValShorthand
 open CSP.Core.Visualization.DotLang
 
-let evalCfg: EvalConfig = { UnivConfig = { NatMax = 5u; ListLenMax = 3u } }
-let dotCfg = dotConfig (searchConfig 100) evalCfg
+
+let procEvalCfg: ProcEvalConfig =
+    { EvalConfig = { UnivConfig = { NatMax = 5u; ListLenMax = 3u } }
+      MaxUnwind = 100 }
+
+let dotCfg: DotConfig =
+    { GraphConfig =
+        { TransConfig = { ProcEvalConfig = procEvalCfg }
+          ProcEvalConfig = procEvalCfg
+          SearchConfig = { NodeMax = 1000 } } }
+
 let dot = dot dotCfg
 
 [<Fact>]
@@ -457,7 +469,7 @@ let count () =
 
     let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tEvent ])
     let genv = Env.empty in
-    let actual = dot pm cm genv "COUNT" [ litNat 0u __LINE__ ] in
+    let actual = dot pm cm genv "COUNT" [ vNat 0u ] in
 
     Assert.True(
         """digraph G {

@@ -37,10 +37,10 @@
         <Compile Include="ProcShorthand.fs" />
         <Compile Include="ProcMapError.fs" />
         <Compile Include="ProcMap.fs" />
-        <Compile Include="UnwindError.fs" />
         <Compile Include="State.fs" />
+        <Compile Include="ProcEvalError.fs" />
+        <Compile Include="ProcEval.fs" />
         <Compile Include="Event.fs" />
-        <Compile Include="TransError.fs" />
         <Compile Include="Trans.fs" />
     </ItemGroup>
 

@@ -4,7 +4,7 @@ open CSP.Core.Ctor
 open CSP.Core.Proc
 open CSP.Core.Var
 
-let unwind pn exprOpt line = Unwind(pn, exprOpt, line)
+let unwind pn exprs line = Unwind(pn, exprs, line)
 let stop line = Stop(line)
 let skip line = Skip(line)
 let prefix expr p line = Prefix(expr, p, line)

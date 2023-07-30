@@ -1,220 +1,116 @@
 module CSP.Core.Trans
 
-open CSP.Core.Env
-open CSP.Core.TypeShorthand
-open CSP.Core.Val
-open CSP.Core.Expr
 open CSP.Core.CtorMap
-open CSP.Core.Proc
-open CSP.Core.ProcMap
+open CSP.Core.Env
 open CSP.Core.Event
-open CSP.Core.TransError
+open CSP.Core.ProcEval
+open CSP.Core.ProcEvalError
+open CSP.Core.ProcMap
 open CSP.Core.State
-open CSP.Core.Eval
-open CSP.Core.UnwindError
+open CSP.Core.Util
 
-type InitConfig = { EvalConfig: EvalConfig }
+type TransConfig = { ProcEvalConfig: ProcEvalConfig }
 
-let initConfig (evalCfg: EvalConfig) : InitConfig = { EvalConfig = evalCfg }
-
-let init
-    (cfg: InitConfig)
-    (cm: CtorMap)
+let trans
+    (cfg: TransConfig)
     (pm: ProcMap<unit>)
+    (cm: CtorMap)
     (genv: Env)
-    (pn: ProcId)
-    (exprs: Expr<unit> list)
-    : Result<State, TransError> =
-    match tryFind pn pm with
-    | None -> failwith $"no such process: {pn}"
-    | Some(varOpts, _) ->
-        if List.length varOpts = List.length exprs then
-            let vsRes =
-                List.foldBack
-                    (fun expr ->
-                        Result.bind (fun vs -> Result.map (fun v -> v :: vs) (eval cfg.EvalConfig cm genv expr)))
-                    exprs
-                    (Ok([]))
-
-            Result.map
-                (fun env -> ofProc env (Proc.Unwind(pn, exprs, __LINE__)))
-                (Result.bind
-                    (fun vs -> Result.mapError TransError.EnvError (Env.bindAll (List.zip varOpts vs) genv))
-                    (Result.mapError TransError.EvalError vsRes))
-        else
-            Error(UnwindError(ArgumentsLengthMismatch(List.length exprs, varOpts)))
-
-type TransConfig =
-    { EvalConfig: EvalConfig
-      UnwindConfig: UnwindConfig }
-
-let transConfig cfg =
-    { EvalConfig = cfg
-      UnwindConfig = unwindConfig cfg }
-
-let trans (cfg: TransConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (s0: State) : (Event * State) list =
-    let eval = eval cfg.EvalConfig cm in
+    (s: State)
+    : Result<(Event * State) list, ProcEvalError> =
+    let eval = eval cfg.ProcEvalConfig pm cm genv in
 
     let rec trans s =
-        match unwind cfg.UnwindConfig pm cm genv s with
-        | Error(err) -> [ (ErrorEvent, ErrorState(format err)) ]
-        | Ok(s) ->
-            match s with
-            | Unwind _ -> failwith "unwind cannot return Unwind"
-            | Stop _ -> []
-            | Prefix(env, expr, s) ->
-                match eval env expr with
-                | Ok(v) -> [ (Vis(v), s) ]
-                | Error err -> [ (ErrorEvent, ErrorState(EvalError.format err)) ]
-            | PrefixRecv(env, expr, var, s) ->
-                match eval env expr with
-                | Ok(VSet vs) ->
-                    List.map
-                        (fun v ->
-                            match bind1 var v s with
-                            | Ok(s) -> (Vis v, s)
-                            | Error(err) -> (ErrorEvent, ErrorState(EnvError.format err)))
-                        (Set.toList vs)
-                | Ok(v) -> [ (ErrorEvent, ErrorState(TransError.format (NotSet(v)))) ]
-                | Error err -> [ (ErrorEvent, ErrorState(EvalError.format err)) ]
-            | IntCh(s1, s2) -> [ (Tau, s1); (Tau, s2) ]
-            | ExtCh(s1, s2) ->
-                (List.map
-                    (fun (ev, s1') ->
+        match s with
+        | Skip -> Ok [ (Tick, Omega) ] // Skip
+        | Prefix(v, s) -> Ok [ (Vis v, s) ] // Prefix
+        | PrefixRecv(vs, env, var, p) ->
+            ResultEx.bindAll
+                (fun v -> let env = bind1 var v env in p |> eval env |> Result.map (fun s -> (Vis v, s)))
+                (Set.toSeq vs)
+        | IntCh(s1, s2) ->
+            Ok
+                [ (Tau, s1) // IntCh1
+                  (Tau, s2) ] // IntCh2
+        | ExtCh(s1, s2) ->
+            let ts1 s1 =
+                s1
+                |> trans
+                |> Result.map (
+                    List.map (fun (ev, s1') ->
                         match ev with
-                        | Tau -> (Tau, ExtCh(s1', s2))
-                        | _ -> (ev, s1'))
-                    (trans s1))
-                @ (List.map
-                    (fun (ev, s2') ->
+                        | Tau -> (Tau, ExtCh(s1', s2)) // ExtCh3
+                        | _ -> (ev, s1')) // ExtCh1
+                )
+
+            let ts2 s2 =
+                s2
+                |> trans
+                |> Result.map (
+                    List.map (fun (ev, s2') ->
                         match ev with
-                        | Tau -> (Tau, ExtCh(s1, s2'))
-                        | _ -> (ev, s2'))
-                    (trans s2))
-            | Skip _ -> [ (Tick, Omega) ]
-            | Seq(s1, s2) ->
-                let t1 = trans s1 in
+                        | Tau -> (Tau, ExtCh(s1, s2')) // ExtCh4
+                        | _ -> (ev, s2')) // ExtCh2
+                )
 
-                List.fold
-                    (fun acc (ev, s1') ->
-                        match ev with
-                        | Tick ->
-                            match s1' with
-                            | Omega _ -> (Tau, s2) :: acc
-                            | _ -> acc // can happen?
-                        | _ -> (ev, Seq(s1', s2)) :: acc)
-                    []
-                    t1
-            | If(env, expr, s1, s2) ->
-                match eval env expr with
-                | Ok(VBool true) -> trans s1
-                | Ok(VBool false) -> trans s2
-                | Ok(v) -> [ (ErrorEvent, ErrorState(EvalError.format (EvalError.TypeMismatch(v, tBool)))) ]
-                | Error(err) -> [ (ErrorEvent, ErrorState(EvalError.format err)) ]
-            | Match(env, expr, sm) ->
-                match eval env expr with
-                | Ok(VUnion(ctor, vs)) ->
-                    match Map.tryFind (Some ctor) sm with
-                    | Some(varOpts, p2) ->
-                        if List.length varOpts = List.length vs then
-                            match bindAll (List.zip varOpts vs) p2 with
-                            | Ok(p2) -> trans p2
-                            | Error(err) -> [ (ErrorEvent, ErrorState(EnvError.format err)) ]
-                        else
-                            [ (ErrorEvent,
-                               ErrorState(
-                                   EvalError.format (
-                                       EvalError.UnionValuesLenMismatch(ctor, List.length varOpts, List.length vs)
-                                   )
-                               )) ]
-                    | None ->
-                        match Map.tryFind None sm with
-                        | Some(varOpts, p2) ->
-                            match varOpts with
-                            | [ Some var ] ->
-                                match bind1 var (VUnion(ctor, vs)) p2 with
-                                | Ok(p2) -> trans p2
-                                | Error(err) -> [ (ErrorEvent, ErrorState(EnvError.format err)) ]
-                            | [ None ] -> trans p2
-                            | _ ->
-                                [ (ErrorEvent,
-                                   ErrorState(EvalError.format (EvalError.DefaultClauseArgumentLenMustBe1 varOpts))) ]
-                        | None -> [ (ErrorEvent, ErrorState(EvalError.format (EvalError.NoClauseMatched ctor))) ]
-                | Ok(v) -> [ (ErrorEvent, ErrorState(EvalError.format (EvalError.ValNotUnion v))) ]
-                | Error(err) -> [ (ErrorEvent, ErrorState(EvalError.format err)) ]
-            | InterfaceParallel(_, Omega, _, Omega) -> [ (Tick, Omega) ] // Para6
-            | InterfaceParallel(env, p1, expr, p2) ->
-                let t1 = trans p1 in
-                let t2 = trans p2 in
+            (s1, s2) |> ResultEx.bind2 ts1 ts2 |> Result.map (fun (ts1, ts2) -> ts1 @ ts2)
+        | Seq(s1, s2) ->
+            s1
+            |> trans
+            |> Result.map (
+                List.map (fun (ev, s1') ->
+                    match ev with
+                    | Tick -> (Tau, s2) // Seq2
+                    | _ -> (ev, s1'))
+            ) // Seq1
+        | InterfaceParallel(Omega, _, Omega) -> Ok [ (Tick, Omega) ] // Para6
+        | InterfaceParallel(s1, vs, s2) ->
+            match trans s1, trans s2 with
+            | Ok(ts1), Ok(ts2) ->
+                let ts1' =
+                    List.collect
+                        (fun (ev, s1') ->
+                            match ev with
+                            | Vis v when not (Set.contains v vs) -> [ (ev, InterfaceParallel(s1', vs, s2)) ] // Para1
+                            | Tau -> [ (Tau, InterfaceParallel(s1', vs, s2)) ] // Para1
+                            | Hid v -> [ (Hid v, InterfaceParallel(s1', vs, s2)) ] // Para1
+                            | Tick -> [ (Tau, InterfaceParallel(Omega, vs, s2)) ] // Para4
+                            | _ -> [])
+                        ts1 in
 
-                match eval env expr with
-                | Ok(VSet vs) ->
-                    (List.fold
-                        (fun acc (ev, p1') ->
+                let ts2' =
+                    List.collect
+                        (fun (ev, s2') ->
                             match ev with
-                            | Vis ev ->
-                                if Set.contains ev vs then
-                                    acc
-                                else
-                                    (Vis ev, InterfaceParallel(env, p1', expr, p2)) :: acc // Para1
-                            | Tick ->
-                                match p1' with
-                                | Omega _ -> (Tau, InterfaceParallel(env, p1', expr, p2)) :: acc // Para4
-                                | _ -> acc
-                            | Tau -> (Tau, InterfaceParallel(env, p1', expr, p2)) :: acc // Para1
-                            | Hid ev' -> (Hid ev', InterfaceParallel(env, p1', expr, p2)) :: acc // para1
-                            | ErrorEvent -> (ErrorEvent, p1') :: acc)
-                        []
-                        t1)
-                    @ (List.fold
-                        (fun acc (ev, p2') ->
-                            match ev with
-                            | Vis ev ->
-                                if Set.contains ev vs then
-                                    acc
-                                else
-                                    (Vis ev, InterfaceParallel(env, p1, expr, p2')) :: acc // Para2
-                            | Tick ->
-                                match p2' with
-                                | Omega _ -> (Tau, InterfaceParallel(env, p1, expr, p2')) :: acc // Para5
-                                | _ -> acc
-                            | Tau -> (Tau, InterfaceParallel(env, p1, expr, p2')) :: acc // Para2
-                            | Hid ev' -> (Hid ev', InterfaceParallel(env, p1, expr, p2')) :: acc // para1
-                            | ErrorEvent -> (ErrorEvent, p2') :: acc)
-                        []
-                        t2)
-                    @ (List.fold
-                        (fun acc ((ev1, s1'), (ev2, s2')) ->
-                            match (ev1, ev2) with
-                            | Vis ev1, Vis ev2 when ev1 = ev2 ->
-                                if Set.contains ev1 vs then
-                                    (Vis ev1, InterfaceParallel(env, s1', expr, s2')) :: acc // Para3
-                                else
-                                    acc
-                            | ErrorEvent, _ -> (ErrorEvent, s1') :: acc
-                            | _, ErrorEvent -> (ErrorEvent, s2') :: acc
-                            | _ -> acc)
-                        []
-                        (List.allPairs t1 t2))
-                | Ok(v) -> [ ErrorEvent, ErrorState(EvalError.format (EvalError.TypeMismatch(v, tSet (tVar 0u)))) ]
-                | Error(err) -> [ ErrorEvent, ErrorState(EvalError.format err) ]
-            | Hide(env, s, expr) ->
-                match eval env expr with
-                | Ok(VSet vs) ->
-                    List.map
-                        (fun (ev, s') ->
-                            match ev with
-                            | Vis ev when Set.contains ev vs -> (Hid ev, Hide(env, s', expr))
-                            | Tick ->
-                                match s' with
-                                | Omega _ -> (Tick, s')
-                                | _ -> (ev, Hide(env, s', expr))
-                            | ErrorEvent -> (ErrorEvent, s')
-                            | _ -> (ev, Hide(env, s', expr)))
-                        (trans s)
-                | Ok(v) -> [ (ErrorEvent, ErrorState(EvalError.format (EvalError.TypeMismatch(v, tSet (tVar 0u))))) ]
-                | Error(err) -> [ (ErrorEvent, ErrorState(EvalError.format err)) ]
-            | Omega _ -> []
-            | ErrorState _ -> []
+                            | Vis v when not (Set.contains v vs) -> [ (ev, InterfaceParallel(s1, vs, s2')) ] // Para2
+                            | Tau -> [ (Tau, InterfaceParallel(s1, vs, s2')) ] // Para2
+                            | Hid v -> [ (Hid v, InterfaceParallel(s1, vs, s2')) ] // Para2
+                            | Tick -> [ (Tau, InterfaceParallel(s1, vs, Omega)) ] // Para5
+                            | _ -> [])
+                        ts2 in
 
-    trans s0
+                let t1t2s' =
+                    ListEx.cartesian2 ts1 ts2
+                    |> List.collect (fun ((ev1, s1'), (ev2, s2')) ->
+                        match ev1, ev2 with
+                        | Vis v1, Vis v2 when v1 = v2 && Set.contains v1 vs ->
+                            [ (Vis v1, InterfaceParallel(s1', vs, s2')) ] // Para3
+                        | _ -> [])
+
+                Ok(ts1' @ ts2' @ t1t2s')
+            | Error(err), _ -> Error(err)
+            | _, Error(err) -> Error(err)
+        | Hide(s, vs) ->
+            s
+            |> trans
+            |> Result.map (
+                List.collect (fun (ev, s') ->
+                    match ev with
+                    | Vis(v) when not (Set.contains v vs) -> [ (Vis(v), s') ] // Hide1
+                    | Vis(v) -> [ (Hid(v), s') ] // Hide2
+                    | Tick -> [ (Tick, Omega) ] // Hide3
+                    | _ -> [])
+            )
+        | _ -> Ok []
+
+    trans s

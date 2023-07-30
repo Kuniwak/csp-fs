@@ -6,26 +6,26 @@ open CSP.Core.Var
 
 type Env = Env of Map<Var, Val>
 
-let from (xs: (string * Val) seq): Env = Env (Map [for var, v in xs -> (Var var, v)])
+let from (xs: (string * Val) seq) : Env =
+    Env(Map [ for var, v in xs -> (Var var, v) ])
+
 let empty: Env = Env Map.empty
 
 let fold (f: 'State -> Var -> Val -> 'State) (s: 'State) (env: Env) =
     match env with
     | Env env -> Map.fold f s env
 
-
-let bind1 (var: Var) (v: Val) (env: Env) : Result<Env, EnvError> =
+let bind1 (var: Var) (v: Val) (env: Env) : Env =
     match env with
-    | Env env -> Ok(Env(Map.add var v env))
+    | Env env -> Env(Map.add var v env)
 
-let bindAll (xs: (Var option * Val) seq) (env: Env) : Result<Env, EnvError> =
-    Seq.fold
-        (fun envRes (varOpt, v) ->
-            match varOpt with
-            | Some var -> Result.bind (bind1 var v) envRes
-            | None -> envRes)
-        (Ok(env))
-        xs
+let bind1Opt (varOpt: Var option) (v: Val) (env: Env) : Env =
+    match varOpt with
+    | None -> env
+    | Some(var) -> bind1 var v env
+
+let bindAllOpts (xs: (Var option * Val) seq) (env: Env) : Env =
+    Seq.fold (fun env (varOpt, v) -> bind1Opt varOpt v env) env xs
 
 let declared (env: Env) : Var list =
     match env with
@@ -47,3 +47,8 @@ let format (genv: Env) (env: Env) : string =
             String.concat ", " (List.map (fun (var, v) -> $"{format var}={Val.format v}") (Map.toList env)) in
 
         $"{{{s}}}"
+
+let localVars (env: Env) (genv: Env) : (Var * Val) seq =
+    match env, genv with
+    | Env env, Env genv ->
+        Map.toSeq (Map.fold (fun m var v -> if Map.containsKey var genv then m else Map.add var v m) Map.empty env)

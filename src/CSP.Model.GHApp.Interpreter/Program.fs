@@ -1,9 +1,13 @@
 ﻿open CSP.Core.CLI
+open CSP.Core.ProcEval
 open CSP.Model.GHApp
 
-let natMax = 5u
-let listMax = 3u
-let cfg = interpreterConfig natMax listMax
-let pn = "GHSearch" in
+let procEvalCfg: ProcEvalConfig =
+    { EvalConfig = { UnivConfig = { NatMax = 3u; ListLenMax = 2u } }
+      MaxUnwind = 100 }
 
-start cfg procMap ctorMap genv pn []
+let interpreterCfg: InterpreterConfig =
+    { TransConfig = { ProcEvalConfig = procEvalCfg }
+      ProcEvalConfig = procEvalCfg }
+
+start interpreterCfg procMap ctorMap genv "GHSearch" []
