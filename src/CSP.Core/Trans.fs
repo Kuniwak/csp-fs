@@ -18,10 +18,22 @@ let trans
     (genv: Env)
     (s: State)
     : Result<(Event * State) list, ProcEvalError> =
-    let eval = eval cfg.ProcEvalConfig pm cm genv in
+    let eval = eval cfg.ProcEvalConfig cm in
 
     let rec trans s =
         match s with
+        | Unwind(pn, vs) ->
+            match pm with
+            | ProcMap pm ->
+                match Map.tryFind pn pm with
+                | None -> Error(NoSuchProcess(pn))
+                | Some(varOpts, p) ->
+                    if List.length varOpts = List.length vs then
+                        let env = bindAllOpts (List.zip varOpts vs) genv in
+                        eval env p |> Result.bind trans
+                    else
+                        Error(ArgumentsLengthMismatch(pn, varOpts, vs))
+            
         | Skip -> Ok [ (Tick, Omega) ] // Skip
         | Prefix(v, s) -> Ok [ (Vis v, s) ] // Prefix
         | PrefixRecv(vs, env, var, p) ->
@@ -34,8 +46,7 @@ let trans
                   (Tau, s2) ] // IntCh2
         | ExtCh(s1, s2) ->
             let ts1 s1 =
-                s1
-                |> trans
+                trans s1
                 |> Result.map (
                     List.map (fun (ev, s1') ->
                         match ev with
@@ -44,8 +55,7 @@ let trans
                 )
 
             let ts2 s2 =
-                s2
-                |> trans
+                trans s2
                 |> Result.map (
                     List.map (fun (ev, s2') ->
                         match ev with
@@ -55,8 +65,7 @@ let trans
 
             (s1, s2) |> ResultEx.bind2 ts1 ts2 |> Result.map (fun (ts1, ts2) -> ts1 @ ts2)
         | Seq(s1, s2) ->
-            s1
-            |> trans
+            trans s1
             |> Result.map (
                 List.map (fun (ev, s1') ->
                     match ev with
@@ -101,8 +110,7 @@ let trans
             | Error(err), _ -> Error(err)
             | _, Error(err) -> Error(err)
         | Hide(s, vs) ->
-            s
-            |> trans
+            trans s
             |> Result.map (
                 List.collect (fun (ev, s') ->
                     match ev with

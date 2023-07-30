@@ -1,10 +1,10 @@
 module CSP.Core.ProcEvalError
 
 open CSP.Core.Ctor
-open CSP.Core.EnvError
 open CSP.Core.EvalError
 open CSP.Core.Proc
 open CSP.Core.ProcMapError
+open CSP.Core.Util
 open CSP.Core.Val
 open CSP.Core.Var
 
@@ -19,6 +19,8 @@ type ProcEvalError =
     | NoClauseMatched of Ctor * Val list
     | DefaultClauseArgumentLenMustBe1 of Var option list
     | Recursion of ProcId * Val list
+    | NoSuchProcess of ProcId
+    | ArgumentsLengthMismatch of ProcId * Var option list * Val list
 
 let format (err: ProcEvalError): string =
     match err with
@@ -40,5 +42,10 @@ let format (err: ProcEvalError): string =
     | Recursion(pn, vs) ->
         let s = String.concat " " (Seq.map Val.format vs) in
         $"recursion: %s{pn} %s{s}"
+    | ArgumentsLengthMismatch(pn, varOpts, vs) ->
+        let s1 = varOpts |> Seq.map formatOpt |> String.concat " " |> StringEx.wrapBy "(" ")" in
+        let s2 = vs |> Seq.map Val.format |> String.concat " " |> StringEx.wrapBy "(" ")" in
+        $"arguments length mismatch: %s{pn} %s{s1} vs %s{s2}"
+    | NoSuchProcess(pn) -> $"no such process: %s{pn}"
         
     

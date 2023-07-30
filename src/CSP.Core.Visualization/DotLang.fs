@@ -27,28 +27,22 @@ let graph
     (pn: ProcId)
     (vs: Val list)
     : (State * int) list * (State * Event * State) list =
-    match init pm genv pn vs with
-    | Error(err) -> ([ ErrorState(ProcMapError.format err), 0 ], [])
-    | Ok(env, p) ->
-        match eval cfg.ProcEvalConfig pm cm genv env p with
-        | Error(err) -> ([ (ErrorState(ProcEvalError.format err), 0) ], [])
-        | Ok s0 ->
-            let mutable ss: (State * int) list = [] in
-            let mutable es: (State * Event * State) list = [] in
+    let mutable ss: (State * int) list = [] in
+    let mutable es: (State * Event * State) list = [] in
+    
+    bfs
+        cfg.SearchConfig
+        (fun s es' ->
+            ss <- (s, List.length es') :: ss
+            es <- (List.map (fun (e, s') -> (s, e, s')) es') @ es)
+        (fun s ->
+            match trans cfg.TransConfig pm cm genv s with
+            | Error(err) -> [ (ErrorEvent, ErrorState(ProcEvalError.format err)) ]
+            | Ok(ts) -> ts)
+        id // TODO: unification
+        (Unwind(pn, vs))
 
-            bfs
-                cfg.SearchConfig
-                (fun s es' ->
-                    ss <- (s, List.length es') :: ss
-                    es <- (List.map (fun (e, s') -> (s, e, s')) es') @ es)
-                (fun s ->
-                    match trans cfg.TransConfig pm cm genv s with
-                    | Error(err) -> [ (ErrorEvent, ErrorState(ProcEvalError.format err)) ]
-                    | Ok(ts) -> ts)
-                id
-                s0
-
-            (ss, es)
+    (ss, es)
 
 type DotConfig = { GraphConfig: GraphConfig }
 

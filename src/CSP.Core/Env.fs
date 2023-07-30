@@ -1,6 +1,7 @@
 module CSP.Core.Env
 
 open CSP.Core.EnvError
+open CSP.Core.Util
 open CSP.Core.Val
 open CSP.Core.Var
 
@@ -38,17 +39,15 @@ let valOf (var: Var) (env: Env) : Result<Val, EnvError> =
         | Some v -> Ok(v)
         | None -> Error(UnboundVariable(var, List.ofSeq (Map.keys env)))
 
-let format (genv: Env) (env: Env) : string =
-    match genv, env with
-    | Env genv, Env env ->
-        let env = Map.filter (fun var _ -> not (Map.containsKey var genv)) env
-
-        let s =
-            String.concat ", " (List.map (fun (var, v) -> $"{format var}={Val.format v}") (Map.toList env)) in
-
-        $"{{{s}}}"
-
 let localVars (env: Env) (genv: Env) : (Var * Val) seq =
     match env, genv with
     | Env env, Env genv ->
-        Map.toSeq (Map.fold (fun m var v -> if Map.containsKey var genv then m else Map.add var v m) Map.empty env)
+        env
+        |> Map.filter (fun var _ -> not (Map.containsKey var genv))
+        |> Map.toSeq
+
+let format (genv: Env) (env: Env) : string =
+    localVars env genv
+    |> Seq.map (fun (var, v) -> $"{format var}={Val.format v}")
+    |> String.concat ", "
+    |> StringEx.wrapBy "{" "}"

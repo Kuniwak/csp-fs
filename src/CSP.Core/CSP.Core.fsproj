@@ -35,9 +35,9 @@
         <Compile Include="Eval.fs" />
         <Compile Include="Proc.fs" />
         <Compile Include="ProcShorthand.fs" />
+        <Compile Include="State.fs" />
         <Compile Include="ProcMapError.fs" />
         <Compile Include="ProcMap.fs" />
-        <Compile Include="State.fs" />
         <Compile Include="ProcEvalError.fs" />
         <Compile Include="ProcEval.fs" />
         <Compile Include="Event.fs" />

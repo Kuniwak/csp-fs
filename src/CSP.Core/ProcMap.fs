@@ -1,9 +1,7 @@
 module CSP.Core.ProcMap
 
-open CSP.Core.Env
 open CSP.Core.Proc
 open CSP.Core.ProcMapError
-open CSP.Core.Val
 open CSP.Core.Var
 
 type ProcMap<'a> = ProcMap of Map<ProcId, Var option list * Proc<'a>>
@@ -27,19 +25,10 @@ let from (pm: ((ProcId * string list) * Proc<'a>) seq) : Result<ProcMap<'a>, Pro
 let fold folder s pm =
     match pm with
     | ProcMap m -> Map.fold folder s m
-
-let init (pm: ProcMap<unit>) (genv: Env) (pn: ProcId) (vs: Val list): Result<Env * Proc<unit>, ProcMapError> = 
+    
+let tryFind pn pm =
     match pm with
-    | ProcMap m ->
-        match Map.tryFind pn m with
-        | Some(varOpts, p) ->
-            if List.length varOpts = List.length vs then
-                let env = bindAllOpts (List.zip varOpts vs) genv in
-                Ok(env, p)
-            else
-                Error(ArgumentsLengthMismatch(pn, varOpts, vs))
-        | None ->
-            Error(NoSuchProcess(pn))
+    | ProcMap pm -> Map.tryFind pn pm
 
 let formatIds (pm: ProcMap<'a>) : string =
     match pm with
