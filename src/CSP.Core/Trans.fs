@@ -20,19 +20,22 @@ let trans
     : Result<(Event * State) list, ProcEvalError> =
     let eval = eval cfg.ProcEvalConfig cm in
 
-    let rec trans s =
+    let rec trans visited s =
         match s with
         | Unwind(pn, vs) ->
-            match pm with
-            | ProcMap pm ->
-                match Map.tryFind pn pm with
-                | None -> Error(NoSuchProcess(pn))
-                | Some(varOpts, p) ->
-                    if List.length varOpts = List.length vs then
-                        let env = bindAllOpts (List.zip varOpts vs) genv in
-                        eval env p |> Result.bind trans
-                    else
-                        Error(ArgumentsLengthMismatch(pn, varOpts, vs))
+            if Set.contains (pn, vs) visited then
+                Error(Recursion(pn, vs))
+            else
+                match pm with
+                | ProcMap pm ->
+                    match Map.tryFind pn pm with
+                    | None -> Error(NoSuchProcess(pn))
+                    | Some(varOpts, p) ->
+                        if List.length varOpts = List.length vs then
+                            let env = bindAllOpts (List.zip varOpts vs) genv in
+                            eval env p |> Result.bind (trans (Set.add (pn, vs) visited))
+                        else
+                            Error(ArgumentsLengthMismatch(pn, varOpts, vs))
             
         | Skip -> Ok [ (Tick, Omega) ] // Skip
         | Prefix(v, s) -> Ok [ (Vis v, s) ] // Prefix
@@ -46,7 +49,7 @@ let trans
                   (Tau, s2) ] // IntCh2
         | ExtCh(s1, s2) ->
             let ts1 s1 =
-                trans s1
+                trans visited s1
                 |> Result.map (
                     List.map (fun (ev, s1') ->
                         match ev with
@@ -55,7 +58,7 @@ let trans
                 )
 
             let ts2 s2 =
-                trans s2
+                trans visited s2
                 |> Result.map (
                     List.map (fun (ev, s2') ->
                         match ev with
@@ -65,7 +68,7 @@ let trans
 
             (s1, s2) |> ResultEx.bind2 ts1 ts2 |> Result.map (fun (ts1, ts2) -> ts1 @ ts2)
         | Seq(s1, s2) ->
-            trans s1
+            trans visited s1
             |> Result.map (
                 List.map (fun (ev, s1') ->
                     match ev with
@@ -74,7 +77,7 @@ let trans
             ) // Seq1
         | InterfaceParallel(Omega, _, Omega) -> Ok [ (Tick, Omega) ] // Para6
         | InterfaceParallel(s1, vs, s2) ->
-            match trans s1, trans s2 with
+            match trans visited s1, trans visited s2 with
             | Ok(ts1), Ok(ts2) ->
                 let ts1' =
                     List.collect
@@ -110,7 +113,7 @@ let trans
             | Error(err), _ -> Error(err)
             | _, Error(err) -> Error(err)
         | Hide(s, vs) ->
-            trans s
+            trans visited s
             |> Result.map (
                 List.collect (fun (ev, s') ->
                     match ev with
@@ -121,4 +124,4 @@ let trans
             )
         | _ -> Ok []
 
-    trans s
+    trans Set.empty s
