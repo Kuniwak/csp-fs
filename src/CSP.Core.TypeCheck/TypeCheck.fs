@@ -33,7 +33,7 @@ let typeCheck (cm: CtorMap) (genv: Env) (pm: ProcMap<unit>) : TypeError option =
                     |> Result.bind (fun s ->
                         let xs, s =
                             List.foldBack
-                                (fun var (xs, s) -> let u, s = newUncertainVarId s in ((var, TCUncertain u) :: xs, s))
+                                (fun (var, t) (xs, s) -> let tc, s = generalize t s in ((var, tc) :: xs, s))
                                 vars
                                 ([], s)
 

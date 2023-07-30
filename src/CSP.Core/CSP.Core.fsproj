@@ -32,6 +32,7 @@
         <Compile Include="Expr.fs" />
         <Compile Include="ExprShorthand.fs" />
         <Compile Include="EvalError.fs" />
+        <Compile Include="ValTypeCheck.fs" />
         <Compile Include="Eval.fs" />
         <Compile Include="Proc.fs" />
         <Compile Include="ProcShorthand.fs" />

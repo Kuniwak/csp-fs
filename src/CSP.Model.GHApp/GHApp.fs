@@ -85,7 +85,7 @@ let tChDispSearch =
 
 let tPage = tList tRepo
 let tPages = tList tPage
-
+let tStarRel = tSet (tTuple2 tRepo tUser)
 
 let ctorMap =
     ResultEx.get
@@ -130,17 +130,17 @@ let procMap =
         (from
             [ (("GHAuth", []),
                prefixRecv (univ tChAuthReq __LINE__) "p" (unwind "GHAuthRecv" [ varRef "p" __LINE__ ] __LINE__) __LINE__)
-              (("GHAuthRecv", [ "p" ]),
+              (("GHAuthRecv", [ ("p", tPat) ]),
                intCh
                    (unwind "GHAuthWillFail" [ varRef "p" __LINE__ ] __LINE__)
                    (unwind "GHAuthWillResp" [ varRef "p" __LINE__ ] __LINE__)
                    __LINE__)
-              (("GHAuthWillFail", [ "p" ]),
+              (("GHAuthWillFail", [ ("p", tPat) ]),
                prefix
                    (ctor "ChAuthRes" [ (ctor "Left" [ ctor "GHAuthError" [] __LINE__ ] __LINE__) ] __LINE__)
                    (unwind "GHAuth" [] __LINE__)
                    __LINE__)
-              (("GHAuthWillResp", [ "p" ]),
+              (("GHAuthWillResp", [ ("p", tPat) ]),
                (prefix
                    (ctor
                        "ChAuthRes"
@@ -162,7 +162,7 @@ let procMap =
                           unwind "GHSearchRecv" [ (varRef "q" __LINE__); (varRef "i" __LINE__) ] __LINE__) ]
                        __LINE__)
                    __LINE__)
-              (("GHSearchRecv", [ "q"; "i" ]),
+              (("GHSearchRecv", [ ("q", tQuery); ("i", tNat) ]),
                intCh
                    (unwind "GHSearchWillFail" [] __LINE__)
                    (unwind "GHSearchWillResp" [ varRef "q" __LINE__; varRef "i" __LINE__ ] __LINE__)
@@ -172,7 +172,7 @@ let procMap =
                    (ctor "ChSearchRes" [ ctor "Left" [ ctor "GHSearchError" [] __LINE__ ] __LINE__ ] __LINE__)
                    (unwind "GHSearch" [] __LINE__)
                    __LINE__)
-              (("GHSearchWillResp", [ "q"; "i" ]),
+              (("GHSearchWillResp", [ ("q", tQuery); ("i", tNat) ]),
                prefix
                    (ctor
                        "ChSearchRes"
@@ -217,7 +217,7 @@ let procMap =
                    (unwind "GHSearch" [] __LINE__)
                    __LINE__)
 
-              (("GHStar", [ "starRel" ]),
+              (("GHStar", [ ("starRel", tStarRel) ]),
                extCh
                    (prefixRecv
                        (univ tChChkStarReq __LINE__)
@@ -258,7 +258,7 @@ let procMap =
                            __LINE__)
                        __LINE__)
                    __LINE__)
-              (("GHChkStarRecv1", [ "repo"; "pat"; "starRel" ]),
+              (("GHChkStarRecv1", [ ("repo", tRepo); ("pat", tPat); ("starRel", tStarRel) ]),
                ``match``
                    (mapFindOpt (varRef "pat" __LINE__) (varRef "PAT_REL" __LINE__) __LINE__)
                    [ ((Some "Some", [ "user" ]),
@@ -270,7 +270,7 @@ let procMap =
                           __LINE__)
                      ((Some "None", []), unwind "GHChkStarWillFail" [] __LINE__) ]
                    __LINE__)
-              (("GHChkStarRecv2", [ "repo"; "user"; "starRel" ]),
+              (("GHChkStarRecv2", [ ("repo", tRepo); ("user", tUser); ("starRel", tStarRel) ]),
                intCh
                    (unwind "GHChkStarWillFail" [ varRef "starRel" __LINE__ ] __LINE__)
                    (unwind
@@ -278,12 +278,12 @@ let procMap =
                        [ varRef "repo" __LINE__; varRef "user" __LINE__; varRef "starRel" __LINE__ ]
                        __LINE__)
                    __LINE__)
-              (("GHChkStarWillFail", [ "starRel" ]),
+              (("GHChkStarWillFail", [ ("starRel", tStarRel) ]),
                prefix
                    (ctor "ChChkStarRes" [ ctor "Left" [ ctor "GHChkStarError" [] __LINE__ ] __LINE__ ] __LINE__)
                    (unwind "GHStar" [ varRef "starRel" __LINE__ ] __LINE__)
                    __LINE__)
-              (("GHChkStarWillResp", [ "repo"; "user"; "starRel" ]),
+              (("GHChkStarWillResp", [ ("repo", tRepo); ("user", tUser); ("starRel", tStarRel) ]),
                prefix
                    (ctor
                        "ChChkStarRes"
@@ -298,7 +298,7 @@ let procMap =
                    (unwind "GHStar" [] __LINE__)
                    __LINE__)
 
-              (("GHStarRecv1", [ "repo"; "pat"; "starRel" ]),
+              (("GHStarRecv1", [ ("repo", tRepo); ("pat", tPat); ("starRel", tStarRel) ]),
                ``match``
                    (mapFindOpt (varRef "pat" __LINE__) (varRef "PAT_REL" __LINE__) __LINE__)
                    [ ((Some "Some", [ "user" ]),
@@ -309,7 +309,7 @@ let procMap =
                      ((Some "None", []), unwind "GHStarWillFail" [] __LINE__) ]
                    __LINE__)
 
-              (("GHStarRecv2", [ "repo"; "user"; "starRel" ]),
+              (("GHStarRecv2", [ ("repo", tRepo); ("user", tUser); ("starRel", tStarRel) ]),
                intCh
                    (unwind "GHStarWillFail" [ varRef "starRel" __LINE__ ] __LINE__)
                    (unwind
@@ -317,12 +317,12 @@ let procMap =
                        [ varRef "repo" __LINE__; varRef "user" __LINE__; varRef "starRel" __LINE__ ]
                        __LINE__)
                    __LINE__)
-              (("GHStarWillFail", [ "starRel" ]),
+              (("GHStarWillFail", [ ("starRel", tStarRel) ]),
                prefix
                    (ctor "ChStarRes" [ ctor "Left" [ ctor "GHStarError" [] __LINE__ ] __LINE__ ] __LINE__)
                    (unwind "GHStar" [ varRef "starRel" __LINE__ ] __LINE__)
                    __LINE__)
-              (("GHStarWillResp", [ "repo"; "user"; "starRel" ]),
+              (("GHStarWillResp", [ ("repo", tRepo); ("user", tUser); ("starRel", tStarRel) ]),
                prefix
                    (ctor
                        "ChStarRes"
@@ -345,7 +345,7 @@ let procMap =
                        __LINE__)
                    __LINE__)
 
-              (("GHUnstarRecv1", [ "repo"; "pat"; "starRel" ]),
+              (("GHUnstarRecv1", [ ("repo", tRepo); ("pat", tPat); ("starRel", tStarRel) ]),
                ``match``
                    (mapFindOpt (varRef "pat" __LINE__) (varRef "PAT_REL" __LINE__) __LINE__)
                    [ ((Some "Some", [ "user" ]),
@@ -355,7 +355,7 @@ let procMap =
                           __LINE__)
                      ((Some "None", []), unwind "GHUnstarWillFail" [] __LINE__) ]
                    __LINE__)
-              (("GHUnstarRecv2", [ "repo"; "user"; "starRel" ]),
+              (("GHUnstarRecv2", [ ("repo", tRepo); ("user", tUser); ("starRel", tStarRel) ]),
                intCh
                    (unwind "GHUnstarWillFail" [ varRef "starRel" __LINE__ ] __LINE__)
                    (unwind
@@ -364,13 +364,13 @@ let procMap =
                        __LINE__)
                    __LINE__)
 
-              (("GHUnstarWillFail", [ "starRel" ]),
+              (("GHUnstarWillFail", [ ("starRel", tStarRel) ]),
                prefix
                    (ctor "ChUnstarRes" [ ctor "Left" [ ctor "GHUnstarError" [] __LINE__ ] __LINE__ ] __LINE__)
                    (unwind "GHUnstar" [ varRef "starRel" __LINE__ ] __LINE__)
                    __LINE__)
 
-              (("GHUnstarWillResp", [ "repo"; "user"; "starRel" ]),
+              (("GHUnstarWillResp", [ ("repo", tRepo); ("user", tUser); ("starRel", tStarRel) ]),
                prefix
                    (ctor
                        "ChUnstarRes"
@@ -391,13 +391,13 @@ let procMap =
                        __LINE__)
                    __LINE__)
 
-              (("AppLaunch", [ "pOpt" ]),
+              (("AppLaunch", [ ("pOpt", tOption tPat) ]),
                ``match``
                    (varRef "pOpt" __LINE__)
                    [ ((Some "Some", [ "p" ]), unwind "AppDispSearch" [ varRef "p" __LINE__ ] __LINE__)
                      ((Some "None", []), unwind "AppDispLogin" [ ctor "PatEmpty" [] __LINE__ ] __LINE__) ]
                    __LINE__)
-              (("AppDispLogin", [ "p1" ]),
+              (("AppDispLogin", [ ("p1", tPat) ]),
                extCh
                    (prefixRecv
                        (univ tChPatField __LINE__)
@@ -412,12 +412,12 @@ let procMap =
                            __LINE__)
                        __LINE__)
                    __LINE__)
-              (("AppDidPressLoginBtn", [ "pat" ]),
+              (("AppDidPressLoginBtn", [ ("pat", tPat) ]),
                prefix
                    (ctor "ChAuthReq" [ varRef "pat" __LINE__ ] __LINE__)
                    (unwind "AppReqAuth" [ varRef "pat" __LINE__ ] __LINE__)
                    __LINE__)
-              (("AppReqAuth", [ "pat" ]),
+              (("AppReqAuth", [ ("pat", tPat) ]),
                (prefixRecv
                    (univ tChAuthRes __LINE__)
                    "res"
@@ -436,7 +436,7 @@ let procMap =
                               __LINE__) ]
                        __LINE__)
                    __LINE__))
-              (("AppDialogAuthError", [ "p" ]),
+              (("AppDialogAuthError", [ ("p", tPat) ]),
                prefix
                    (ctor "ChDispLogin" [ ctor "AppAuthError" [] __LINE__ ] __LINE__)
                    (unwind "AppDispLogin" [ varRef "p" __LINE__ ] __LINE__)
@@ -446,12 +446,12 @@ let procMap =
                    (ctor "ChDispLogin" [ ctor "AppAuthFailed" [] __LINE__ ] __LINE__)
                    (unwind "appDispLogin" [ ctor "PatEmpty" [] __LINE__ ] __LINE__)
                    __LINE__)
-              (("AppRecvAuth", [ "pat" ]),
+              (("AppRecvAuth", [ ("pat", tPat) ]),
                prefix
                    (ctor "ChDispLogin" [ ctor "AppAuthSuccess" [] __LINE__ ] __LINE__)
                    (unwind "AppDispSearch" [ ctor "QueryEmpty" [] __LINE__ ] __LINE__)
                    __LINE__)
-              (("AppDispSearch", [ "q" ]),
+              (("AppDispSearch", [ ("q", tQuery) ]),
                extCh
                    (prefix
                        (ctor "EvLogoutBtn" [] __LINE__)

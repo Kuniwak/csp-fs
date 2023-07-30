@@ -2,11 +2,13 @@ module CSP.Core.Trans
 
 open CSP.Core.CtorMap
 open CSP.Core.Env
+open CSP.Core.EvalError
 open CSP.Core.Event
 open CSP.Core.ProcEval
 open CSP.Core.ProcEvalError
 open CSP.Core.ProcMap
 open CSP.Core.State
+open CSP.Core.ValTypeCheck
 open CSP.Core.Util
 
 type TransConfig = { ProcEvalConfig: ProcEvalConfig }
@@ -30,10 +32,19 @@ let trans
                 | ProcMap pm ->
                     match Map.tryFind pn pm with
                     | None -> Error(NoSuchProcess(pn))
-                    | Some(vars, p) ->
-                        if List.length vars = List.length vs then
-                            let env = bindAll (List.zip vars vs) genv in
-                            eval env p |> Result.bind (trans (Set.add (pn, vs) visited))
+                    | Some(xs, p) ->
+                        let vars = List.map fst xs in
+
+                        if List.length xs = List.length vs then
+                            List.zip (List.map snd xs) vs
+                            |> ResultEx.bindAll (fun (t, v) ->
+                                if typeCheck t v then
+                                    Ok(())
+                                else
+                                    Error(ExprError(TypeMismatch(v, t))))
+                            |> Result.bind (fun _ ->
+                                let env = bindAll (List.zip vars vs) genv in
+                                eval env p |> Result.bind (trans (Set.add (pn, vs) visited)))
                         else
                             Error(ArgumentsLengthMismatch(pn, vars, vs))
 

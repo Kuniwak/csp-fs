@@ -449,7 +449,7 @@ let count () =
         ResultEx.get
             ProcMapError.format
             (from
-                [ (("COUNT", [ "n" ]),
+                [ (("COUNT", [ ("n", tNat) ]),
                    extCh
                        (guard
                            (less tNat (varRef "n" __LINE__) (litNat 10u __LINE__) __LINE__)
@@ -534,7 +534,7 @@ let roVarSys1 () =
                            (interfaceParallel (unwind "Reader2" [] __LINE__) evs (unwind "Reader3" [] __LINE__) __LINE__)
                            __LINE__)
                        __LINE__)
-                  (("ROVar", [ "n" ]),
+                  (("ROVar", [ ("n", tNat) ]),
                    prefix
                        (varRef "n" __LINE__)
                        (unwind
@@ -597,7 +597,7 @@ let roVarSys2 () =
                            (interleave (unwind "Reader2" [] __LINE__) (unwind "Reader3" [] __LINE__) __LINE__)
                            __LINE__)
                        __LINE__))
-                  (("ROVar", [ "x" ]),
+                  (("ROVar", [ ("x", tNat) ]),
                    (prefix
                        (varRef "x" __LINE__)
                        (unwind

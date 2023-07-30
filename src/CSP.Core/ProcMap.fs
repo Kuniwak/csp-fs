@@ -2,20 +2,21 @@ module CSP.Core.ProcMap
 
 open CSP.Core.Proc
 open CSP.Core.ProcMapError
+open CSP.Core.Type
 open CSP.Core.Var
 
-type ProcMap<'a> = ProcMap of Map<ProcId, Var list * Proc<'a>>
+type ProcMap<'a> = ProcMap of Map<ProcId, (Var * Type) list * Proc<'a>>
 
-let from (pm: ((ProcId * string list) * Proc<'a>) seq) : Result<ProcMap<'a>, ProcMapError> =
+let from (pm: ((ProcId * (string * Type) list) * Proc<'a>) seq) : Result<ProcMap<'a>, ProcMapError> =
     pm
     |> Seq.fold
-        (fun mRes ((pn, vars), p) ->
+        (fun mRes ((pn, xs), p) ->
             mRes
             |> Result.bind (fun m ->
                 if Map.containsKey pn m then
                     Error(DuplicatedProcId(pn))
                 else
-                    Ok(Map.add pn (List.map Var vars, p) m)))
+                    Ok(Map.add pn (List.map (fun (var, t) -> (Var var, t)) xs, p) m)))
         (Ok(Map.empty))
     |> Result.map ProcMap
 
@@ -32,7 +33,7 @@ let formatIds (pm: ProcMap<'a>) : string =
     | ProcMap m ->
         m
         |> Map.toSeq
-        |> Seq.map (fun (n, (vars, _)) -> let s = String.concat "" (List.map format vars) in $"  %s{n}%s{s}")
+        |> Seq.map (fun (n, (vars, _)) -> let s = String.concat "" (List.map (format << fst) vars) in $"  %s{n}%s{s}")
         |> String.concat "\n"
 
 let procIds (pm: ProcMap<'a>) : Set<ProcId> =

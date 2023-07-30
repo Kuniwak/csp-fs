@@ -9,24 +9,8 @@ open CSP.Core.Expr
 open CSP.Core.EvalError
 open CSP.Core.Univ
 open CSP.Core.Val
-open CSP.Core.Type
 open CSP.Core.TypeShorthand
-
-let rec chkType (t: Type) (v: Val) : bool =
-    match t, v with
-    | TUnit _, VUnit -> true
-    | TVar _, _ -> true
-    | TNat _, VNat _ -> true
-    | TBool _, VBool _ -> true
-    | TTuple(tL, tR), VTuple(vL, vR) -> chkType tL vL && chkType tR vR
-    | TSet(tElem), VSet s -> Set.forall (chkType tElem) s
-    | TList(tElem), VList vs -> List.forall (chkType tElem) vs
-    | TMap(tK, tV), VMap m -> Map.forall (fun k v -> chkType tK k && chkType tV v) m
-    | TUnion(_, cm), VUnion(ctor, vs) ->
-        match Map.tryFind ctor cm with
-        | Some ts -> List.length ts = List.length vs && List.forall2 chkType ts vs
-        | None -> false
-    | _, _ -> false
+open CSP.Core.ValTypeCheck
 
 type EvalConfig = { UnivConfig: UnivConfig }
 let evalConfig cfg = { UnivConfig = cfg }
@@ -100,11 +84,11 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                 match eval env e1 with
                 | Error err -> Error(atLine line err)
                 | Ok(v1) ->
-                    if chkType t v1 then
+                    if typeCheck t v1 then
                         match eval env e2 with
                         | Error err -> Error(atLine line err)
                         | Ok(v2) ->
-                            if chkType t v2 then
+                            if typeCheck t v2 then
                                 Ok(VBool(ClassEq.eq v1 v2))
                             else
                                 Error(atLine line (TypeMismatch(v2, t)))
@@ -117,11 +101,11 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                 match eval env e1 with
                 | Error err -> Error(atLine line err)
                 | Ok(v1) ->
-                    if chkType t v1 then
+                    if typeCheck t v1 then
                         match eval env e2 with
                         | Error err -> Error(atLine line err)
                         | Ok(v2) ->
-                            if chkType t v2 then
+                            if typeCheck t v2 then
                                 Ok(VBool(ClassOrd.less v1 v2))
                             else
                                 Error(atLine line (TypeMismatch(v2, t)))
@@ -145,10 +129,10 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
             if ClassPlus.derivedBy t then
                 match eval env e1 with
                 | Ok v1 ->
-                    if chkType t v1 then
+                    if typeCheck t v1 then
                         match eval env e2 with
                         | Ok v2 ->
-                            if chkType t v2 then
+                            if typeCheck t v2 then
                                 Ok(ClassPlus.plus v1 v2)
                             else
                                 Error(TypeMismatch(v2, t))
@@ -162,10 +146,10 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
             if ClassTimes.derivedBy t then
                 match eval env e1 with
                 | Ok v1 ->
-                    if chkType t v1 then
+                    if typeCheck t v1 then
                         match eval env e2 with
                         | Ok v2 ->
-                            if chkType t v2 then
+                            if typeCheck t v2 then
                                 Ok(ClassTimes.times v1 v2)
                             else
                                 Error(TypeMismatch(v2, t))
@@ -179,10 +163,10 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
             if ClassMinus.derivedBy t then
                 match eval env e1 with
                 | Ok v1 ->
-                    if chkType t v1 then
+                    if typeCheck t v1 then
                         match eval env e2 with
                         | Ok v2 ->
-                            if chkType t v2 then
+                            if typeCheck t v2 then
                                 Ok(ClassMinus.minus v1 v2)
                             else
                                 Error(TypeMismatch(v2, t))
@@ -315,7 +299,7 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                     match mAcc with
                     | Ok m -> Ok(VMap m)
                     | Error err -> Error(atLine line err)
-                | Ok(v) -> failwith $"cannot filter: %s{Val.format v}"
+                | Ok(v) -> failwith $"cannot filter: %s{format v}"
                 | Error err -> Error(atLine line err)
             else
                 Error(atLine line (TypeNotDerived(t, ClassEnum.name)))
@@ -379,7 +363,7 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                     match bRes with
                     | Ok b -> Ok(VBool b)
                     | Error err -> Error(atLine line err)
-                | Ok(v) -> failwith $"cannot satisfy exists: %s{Val.format v}"
+                | Ok(v) -> failwith $"cannot satisfy exists: %s{format v}"
                 | Error err -> Error(atLine line err)
             else
                 Error(atLine line (TypeNotDerived(t, ClassEnum.name)))
