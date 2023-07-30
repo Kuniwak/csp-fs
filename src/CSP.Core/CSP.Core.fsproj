@@ -43,6 +43,7 @@
         <Compile Include="ProcEval.fs" />
         <Compile Include="Event.fs" />
         <Compile Include="Trans.fs" />
+        <Compile Include="StateSpace.fs" />
     </ItemGroup>
 
     <ItemGroup>

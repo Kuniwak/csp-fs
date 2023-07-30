@@ -1,5 +1,7 @@
 module CSP.Core.Tests.GraphTests
 
+open CSP.Core.ProcEvalError
+open CSP.Core.Univ
 open Xunit
 open CSP.Core
 open CSP.Core.Util
@@ -14,16 +16,20 @@ open CSP.Core.Eval
 open CSP.Core.ValShorthand
 open CSP.Core.Visualization.DotLang
 
+let univCfg: UnivConfig = { NatMax = 5u; ListLenMax = 3u }
 
 let procEvalCfg: ProcEvalConfig =
-    { EvalConfig = { UnivConfig = { NatMax = 5u; ListLenMax = 3u } }
+    { EvalConfig = { UnivConfig = univCfg }
       MaxUnwind = 100 }
 
 let dotCfg: DotConfig =
     { GraphConfig =
         { TransConfig = { ProcEvalConfig = procEvalCfg }
           ProcEvalConfig = procEvalCfg
-          SearchConfig = { NodeMax = 1000 } } }
+          SearchConfig = { NodeMax = 1000 }
+          NamedConfig =
+            { ProcEvalConfig = procEvalCfg
+              UnivConfig = univCfg } } }
 
 let dot = dot dotCfg
 
@@ -41,10 +47,12 @@ let abSkip () =
 
     let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tEvent ]) in
     let genv = Env.empty in
-    let actual = dot pm cm genv "ABSkip" [] in
 
-    Assert.True(
-        """digraph G {
+    match dot pm cm genv "ABSkip" [] with
+    | Error(err) -> Assert.Fail(format err)
+    | Ok(actual) ->
+        Assert.True(
+            """digraph G {
   "Ω"
   "SKIP"
   "(b -> SKIP env={})"
@@ -55,9 +63,9 @@ let abSkip () =
   "(SKIP ; BSkip)" -> "(b -> SKIP env={})" [label="τ"]
   "(ASkip ; BSkip)" -> "(SKIP ; BSkip)" [label="a"]
 }""" =
-            actual,
-        actual
-    )
+                actual,
+            actual
+        )
 
 [<Fact>]
 let parABC () =
@@ -80,10 +88,13 @@ let parABC () =
 
     let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tEvent ]) in
     let genv = Env.empty in
-    let actual = dot pm cm genv "P" [] in
 
-    Assert.True(
-        """digraph G {
+    match dot pm cm genv "P" [] with
+    | Error(err) -> Assert.Fail(format err)
+    | Ok(actual) ->
+
+        Assert.True(
+            """digraph G {
   "Ω"
   "SKIP"
   "(d -> SKIP env={})"
@@ -180,9 +191,9 @@ let parABC () =
   "(ParABC ; (d -> SKIP env={}))" -> "(((a -> SKIP env={}) ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="c"]
   "(ParABC ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" [label="a"]
 }""" =
-            actual,
-        actual
-    )
+                actual,
+            actual
+        )
 
 [<Fact>]
 let rand2 () =
@@ -198,10 +209,12 @@ let rand2 () =
 
     let cm = CtorMap.empty
     let genv = Env.empty in
-    let actual = dot pm cm genv "P" [] in
 
-    Assert.True(
-        """digraph G {
+    match dot pm cm genv "P" [] with
+    | Error(err) -> Assert.Fail(format err)
+    | Ok(actual) ->
+        Assert.True(
+            """digraph G {
   "(2 -> P env={})"
   "(1 -> P env={})"
   "((1 -> P env={}) ⨅ (2 -> P env={}))"
@@ -210,9 +223,9 @@ let rand2 () =
   "((1 -> P env={}) ⨅ (2 -> P env={}))" -> "(1 -> P env={})" [label="τ"]
   "((1 -> P env={}) ⨅ (2 -> P env={}))" -> "(2 -> P env={})" [label="τ"]
 }""" =
-            actual,
-        actual
-    )
+                actual,
+            actual
+        )
 
 [<Fact>]
 let abs () =
@@ -233,10 +246,12 @@ let abs () =
 
     let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tEvent ])
     let genv = Env.empty in
-    let actual = dot pm cm genv "ABS" [] in
 
-    Assert.True(
-        """digraph G {
+    match dot pm cm genv "ABS" [] with
+    | Error(err) -> Assert.Fail(format err)
+    | Ok(actual) ->
+        Assert.True(
+            """digraph G {
   "STOP"  [fillcolor=red, style=filled, fontcolor=white]
   "((b -> ABS env={}) □ (s -> STOP env={}))"
   "((a -> ABS env={}) □ (s -> STOP env={}))"
@@ -249,9 +264,9 @@ let abs () =
   "(((a -> ABS env={}) ⨅ (b -> ABS env={})) □ (s -> STOP env={}))" -> "((b -> ABS env={}) □ (s -> STOP env={}))" [label="τ"]
   "(((a -> ABS env={}) ⨅ (b -> ABS env={})) □ (s -> STOP env={}))" -> "STOP" [label="s"]
 }""" =
-            actual,
-        actual
-    )
+                actual,
+            actual
+        )
 
 [<Fact>]
 let lr () =
@@ -281,10 +296,13 @@ let lr () =
     let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tEvent ])
 
     let genv = Env.empty in
-    let actual = dot pm cm genv "LR" [] in
 
-    Assert.True(
-        """digraph G {
+    match dot pm cm genv "LR" [] with
+    | Error(err) -> Assert.Fail(format err)
+    | Ok(actual) ->
+
+        Assert.True(
+            """digraph G {
   "((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={})"
   "(Left ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={})"
   "((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ Right env={})"
@@ -295,9 +313,9 @@ let lr () =
   "(Left ⟦(Set.insert sync (event set).empty)⟧ Right env={})" -> "((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ Right env={})" [label="blue"]
   "(Left ⟦(Set.insert sync (event set).empty)⟧ Right env={})" -> "(Left ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={})" [label="red"]
 }""" =
-            actual,
-        actual
-    )
+                actual,
+            actual
+        )
 
 [<Fact>]
 let coinToss () =
@@ -341,10 +359,13 @@ let coinToss () =
 
     let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tEvent ])
     let genv = Env.empty in
-    let actual = dot pm cm genv "CoinToss" [] in
 
-    Assert.True(
-        """digraph G {
+    match dot pm cm genv "CoinToss" [] with
+    | Error(err) -> Assert.Fail(format err)
+    | Ok(actual) ->
+
+        Assert.True(
+            """digraph G {
   "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ (left -> Man env={}) env={})"
   "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ (right -> Man env={}) env={})"
   "((heads -> Coin env={}) ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})"
@@ -359,9 +380,9 @@ let coinToss () =
   "(Coin' ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})" -> "((heads -> Coin env={}) ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})" [label="τ"]
   "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man env={})" -> "(Coin' ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})" [label="toss"]
 }""" =
-            actual,
-        actual
-    )
+                actual,
+            actual
+        )
 
 [<Fact>]
 let lrh () =
@@ -393,10 +414,13 @@ let lrh () =
 
     let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tEvent ])
     let genv = Env.empty in
-    let actual = dot pm cm genv "LRH" [] in
 
-    Assert.True(
-        """digraph G {
+    match dot pm cm genv "LRH" [] with
+    | Error(err) -> Assert.Fail(format err)
+    | Ok(actual) ->
+
+        Assert.True(
+            """digraph G {
   "(((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync (event set).empty) env={})"
   "((Left ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync (event set).empty) env={})"
   "(((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ Right env={}) \\ (Set.insert sync (event set).empty) env={})"
@@ -407,9 +431,9 @@ let lrh () =
   "((Left ⟦(Set.insert sync (event set).empty)⟧ Right env={}) \\ (Set.insert sync (event set).empty) env={})" -> "(((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ Right env={}) \\ (Set.insert sync (event set).empty) env={})" [label="blue"]
   "((Left ⟦(Set.insert sync (event set).empty)⟧ Right env={}) \\ (Set.insert sync (event set).empty) env={})" -> "((Left ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync (event set).empty) env={})" [label="red"]
 }""" =
-            actual,
-        actual
-    )
+                actual,
+            actual
+        )
 
 [<Fact>]
 let hide3 () =
@@ -427,19 +451,22 @@ let hide3 () =
 
     let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tEvent ])
     let genv = Env.empty in
-    let actual = dot pm cm genv "P" [] in
 
-    Assert.True(
-        """digraph G {
+    match dot pm cm genv "P" [] with
+    | Error(err) -> Assert.Fail(format err)
+    | Ok(actual) ->
+
+        Assert.True(
+            """digraph G {
   "Ω"
   "(SKIP \\ (Set.insert a (event set).empty) env={})"
   "((a -> SKIP env={}) \\ (Set.insert a (event set).empty) env={})"
   "(SKIP \\ (Set.insert a (event set).empty) env={})" -> "Ω" [label="✓"]
   "((a -> SKIP env={}) \\ (Set.insert a (event set).empty) env={})" -> "(SKIP \\ (Set.insert a (event set).empty) env={})" [label="τ (a)"]
 }""" =
-            actual,
-        actual
-    )
+                actual,
+            actual
+        )
 
 [<Fact>]
 let count () =
@@ -469,10 +496,13 @@ let count () =
 
     let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tEvent ])
     let genv = Env.empty in
-    let actual = dot pm cm genv "COUNT" [ vNat 0u ] in
 
-    Assert.True(
-        """digraph G {
+    match dot pm cm genv "COUNT" [ vNat 0u ] with
+    | Error(err) -> Assert.Fail(format err)
+    | Ok(actual) ->
+
+        Assert.True(
+            """digraph G {
   "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=10} env={n=10}) else STOP) env={n=10}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=10} env={n=10}) else STOP) env={n=10}))"
   "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=9} env={n=9}) else STOP) env={n=9}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=9} env={n=9}) else STOP) env={n=9}))"
   "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=8} env={n=8}) else STOP) env={n=8}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=8} env={n=8}) else STOP) env={n=8}))"
@@ -496,9 +526,9 @@ let count () =
   "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=1} env={n=1}) else STOP) env={n=1}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=1} env={n=1}) else STOP) env={n=1}))" -> "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=2} env={n=2}) else STOP) env={n=2}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=2} env={n=2}) else STOP) env={n=2}))" [label="push"]
   "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=0} env={n=0}) else STOP) env={n=0}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=0} env={n=0}) else STOP) env={n=0}))" -> "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=1} env={n=1}) else STOP) env={n=1}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=1} env={n=1}) else STOP) env={n=1}))" [label="push"]
 }""" =
-            actual,
-        actual
-    )
+                actual,
+            actual
+        )
 
 [<Fact>]
 let roVarSys1 () =
@@ -552,17 +582,20 @@ let roVarSys1 () =
 
     let cm = CtorMap.empty
     let genv = Env.empty in
-    let actual = dot pm cm genv "ROVarSys1" [] in
 
-    Assert.True(
-        """digraph G {
+    match dot pm cm genv "ROVarSys1" [] with
+    | Error(err) -> Assert.Fail(format err)
+    | Ok(actual) ->
+
+        Assert.True(
+            """digraph G {
   "(ROVar (if (nat.less n 4) then (nat.plus n 1) else 0) env={n=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ STOP env={}) env={}) env={})"  [fillcolor=red, style=filled, fontcolor=white]
   "(ROVar 0 env={} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader2 ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ Reader3 env={}) env={}) env={})"
   "(ROVar 0 env={} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader2 ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (nat.less n 4) then (nat.plus n 1) else 0) env={n=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ STOP env={}) env={}) env={})" [label="0"]
 }""" =
-            actual,
-        actual
-    )
+                actual,
+            actual
+        )
 
 [<Fact>]
 let roVarSys2 () =
@@ -615,10 +648,13 @@ let roVarSys2 () =
 
     let cm = CtorMap.empty
     let genv = Env.empty in
-    let actual = dot pm cm genv "ROVarSys2" [] in
 
-    Assert.True(
-        """digraph G {
+    match dot pm cm genv "ROVarSys2" [] with
+    | Error(err) -> Assert.Fail(format err)
+    | Ok(actual) ->
+
+        Assert.True(
+            """digraph G {
   "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=2} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (STOP ⟦(() set).empty⟧ STOP env={}) env={}) env={})"  [fillcolor=red, style=filled, fontcolor=white]
   "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=1} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ STOP env={}) env={}) env={})"
   "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=1} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (STOP ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})"
@@ -640,6 +676,6 @@ let roVarSys2 () =
   "(ROVar 0 env={} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ STOP env={}) env={}) env={})" [label="0"]
   "(ROVar 0 env={} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})" [label="0"]
 }""" =
-            actual,
-        actual
-    )
+                actual,
+            actual
+        )

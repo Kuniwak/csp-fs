@@ -2,6 +2,8 @@ module CSP.Core.Visualization.DotLang
 
 open FSharpPlus
 open CSP.Core
+open CSP.Core.StateSpace
+open CSP.Core.ProcEvalError
 open CSP.Core.Val
 open CSP.Core.Indent
 open CSP.Core.CtorMap
@@ -17,7 +19,9 @@ open CSP.Core.ProcEval
 type GraphConfig =
     { TransConfig: TransConfig
       ProcEvalConfig: ProcEvalConfig
-      SearchConfig: SearchConfig }
+      SearchConfig: SearchConfig
+      NamedConfig: NamedConfig }
+
 
 let graph
     (cfg: GraphConfig)
@@ -26,50 +30,63 @@ let graph
     (genv: Env)
     (pn: ProcId)
     (vs: Val list)
-    : (State * int) list * (State * Event * State) list =
+    : Result<(State * int) list * (State * Event * State) list, ProcEvalError> =
     let mutable ss: (State * int) list = [] in
     let mutable es: (State * Event * State) list = [] in
-    
-    bfs
-        cfg.SearchConfig
-        (fun s es' ->
-            ss <- (s, List.length es') :: ss
-            es <- (List.map (fun (e, s') -> (s, e, s')) es') @ es)
-        (fun s ->
-            match trans cfg.TransConfig pm cm genv s with
-            | Error(err) -> [ (ErrorEvent, ErrorState(ProcEvalError.format err)) ]
-            | Ok(ts) -> ts)
-        id // TODO: unification
-        (Unwind(pn, vs))
 
-    (ss, es)
+    namedSpace cfg.NamedConfig cm pm genv
+    |> Result.map (fun namedSpace ->
+        bfs
+            cfg.SearchConfig
+            (fun s es' ->
+                ss <- (s, List.length es') :: ss
+                es <- (List.map (fun (e, s') -> (s, e, s')) es') @ es)
+            (fun s ->
+                match trans cfg.TransConfig pm cm genv s with
+                | Error(err) -> [ (ErrorEvent, ErrorState(ProcEvalError.format err)) ]
+                | Ok(ts) -> ts)
+            (fun s ->
+                match Map.tryFind s namedSpace with
+                | Some(xs) -> let pn, vs = List.head xs in Unwind(pn, vs)
+                | None -> s)
+            (Unwind(pn, vs))
+
+        (ss, es))
+
 
 type DotConfig = { GraphConfig: GraphConfig }
 
-let dot (cfg: DotConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (pn: ProcId) (vs: Val list) : string =
+let dot
+    (cfg: DotConfig)
+    (pm: ProcMap<unit>)
+    (cm: CtorMap)
+    (genv: Env)
+    (pn: ProcId)
+    (vs: Val list)
+    : Result<string, ProcEvalError> =
     let escape = String.replace "\"" "'" in
     let format = format genv in
-    let ss, es = graph cfg.GraphConfig pm cm genv pn vs in
 
-    let r1 =
-        List.map
-            (fun (s, n) ->
+    graph cfg.GraphConfig pm cm genv pn vs
+    |> Result.map (fun (ss, es) ->
+        let r1 =
+            ss
+            |> List.map (fun (s, n) ->
                 match s with
                 | Omega -> $"  \"%s{escape (oneline (format s))}\""
                 | _ when n = 0 ->
                     $"  \"%s{escape (oneline (format s))}\"  [fillcolor=red, style=filled, fontcolor=white]"
                 | _ -> $"  \"%s{escape (oneline (format s))}\"")
-            ss
+            |> String.concat "\n"
 
-    let r2 =
-        List.map
-            (fun (s, ev, s') ->
-                $"  \"%s{escape (oneline (format s))}\" -> \"%s{escape (oneline (format s'))}\" [label=\"%s{escape (oneline (Event.format ev))}\"]")
+        let r2 =
             es
+            |> List.map (fun (s, ev, s') ->
+                $"  \"%s{escape (oneline (format s))}\" -> \"%s{escape (oneline (format s'))}\" [label=\"%s{escape (oneline (Event.format ev))}\"]")
+            |> String.concat "\n"
 
-    let sep = "\n"
+        $"""digraph G {{
+%s{r1}
 
-    $"""digraph G {{
-%s{String.concat sep r1}
-%s{String.concat sep r2}
-}}"""
+%s{r2}
+}}""")

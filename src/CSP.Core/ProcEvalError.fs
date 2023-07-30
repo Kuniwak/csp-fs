@@ -4,6 +4,7 @@ open CSP.Core.Ctor
 open CSP.Core.EvalError
 open CSP.Core.Proc
 open CSP.Core.ProcMapError
+open CSP.Core.UnivError
 open CSP.Core.Util
 open CSP.Core.Val
 open CSP.Core.Var
@@ -12,6 +13,7 @@ open CSP.Core.Var
 type ProcEvalError =
     | ExprError of EvalError
     | ProcMapError of ProcMapError
+    | UnivError of UnivError
     | ValNotSet of Val
     | ValNotBool of Val
     | ValNotUnion of Val
@@ -26,6 +28,7 @@ let format (err: ProcEvalError) : string =
     match err with
     | ExprError(err) -> EvalError.format err
     | ProcMapError(err) -> ProcMapError.format err
+    | UnivError(err) -> UnivError.format err
     | ValNotSet(v) -> $"expected a set, but got: %s{Val.format v}"
     | ValNotBool(v) -> $"expected a bool, but got: %s{Val.format v}"
     | ValNotUnion(v) -> $"expected an union, but got: %s{Val.format v}"
