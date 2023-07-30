@@ -20,9 +20,9 @@ type ProcEvalError =
     | DefaultClauseArgumentLenMustBe1 of Var option list
     | Recursion of ProcId * Val list
     | NoSuchProcess of ProcId
-    | ArgumentsLengthMismatch of ProcId * Var option list * Val list
+    | ArgumentsLengthMismatch of ProcId * Var list * Val list
 
-let format (err: ProcEvalError): string =
+let format (err: ProcEvalError) : string =
     match err with
     | ExprError(err) -> EvalError.format err
     | ProcMapError(err) -> ProcMapError.format err
@@ -30,22 +30,16 @@ let format (err: ProcEvalError): string =
     | ValNotBool(v) -> $"expected a bool, but got: %s{Val.format v}"
     | ValNotUnion(v) -> $"expected an union, but got: %s{Val.format v}"
     | AssociatedValuesLengthMismatch(ctor, varOpts, vs) ->
-        let s1 = String.concat " " (Seq.map (fun varOpt -> match varOpt with Some(var) -> format var | None -> "_" ) varOpts) in
-        let s2 = String.concat " " (Seq.map Val.format vs) in
+        let s1 = varOpts |> Seq.map formatOpt |> String.concat " " in
+        let s2 = vs |> Seq.map Val.format |> String.concat " " in
         $"length of associated values for %s{Ctor.format ctor} mismatch: (%s{s1}) vs (${s2})"
     | NoClauseMatched(ctor, vs) ->
-        let s = String.concat " " (Seq.map Val.format vs)
-        $"no clause matched: %s{Ctor.format ctor} %s{s}"
+        let s = String.concat " " (Seq.map Val.format vs) in $"no clause matched: %s{Ctor.format ctor} %s{s}"
     | DefaultClauseArgumentLenMustBe1(varOpts) ->
-        let s = String.concat " " (Seq.map (fun varOpt -> match varOpt with Some(var) -> format var | None -> "_" ) varOpts) in
-        $"no clause matched: (x) vs (%s{s})"
-    | Recursion(pn, vs) ->
-        let s = String.concat " " (Seq.map Val.format vs) in
-        $"recursion: %s{pn} %s{s}"
+        let s = varOpts |> Seq.map formatOpt |> String.concat " " in $"no clause matched: (x) vs (%s{s})"
+    | Recursion(pn, vs) -> let s = String.concat " " (Seq.map Val.format vs) in $"recursion: %s{pn} %s{s}"
     | ArgumentsLengthMismatch(pn, varOpts, vs) ->
-        let s1 = varOpts |> Seq.map formatOpt |> String.concat " " |> StringEx.wrapBy "(" ")" in
+        let s1 = varOpts |> Seq.map format |> String.concat " " |> StringEx.wrapBy "(" ")" in
         let s2 = vs |> Seq.map Val.format |> String.concat " " |> StringEx.wrapBy "(" ")" in
         $"arguments length mismatch: %s{pn} %s{s1} vs %s{s2}"
     | NoSuchProcess(pn) -> $"no such process: %s{pn}"
-        
-    

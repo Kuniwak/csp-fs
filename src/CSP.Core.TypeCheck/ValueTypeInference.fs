@@ -14,14 +14,16 @@ let infer (cm: CtorMap) (s: State) (v: Val) : Result<TypeCstr * State, TypeError
         | VNat _ -> Ok(TCNat, s)
         | VBool _ -> Ok(TCBool, s)
         | VTuple(vL, vR) ->
-            Result.bind (fun (tcL, s) -> Result.map (fun (tcR, s) -> (TCTuple(tcL, tcR), s)) (infer s vR)) (infer s vL)
+            infer s vL
+            |> Result.bind (fun (tcL, s) -> infer s vR |> Result.map (fun (tcR, s) -> (TCTuple(tcL, tcR), s)))
         | VSet vs ->
             let u, s = newUncertainVarId s in
 
             let tRes =
                 Set.fold
                     (fun tRes v ->
-                        Result.bind (fun (t, s) -> Result.bind (fun (t', s) -> unify s t t') (infer s v)) tRes)
+                        tRes
+                        |> Result.bind (fun (t, s) -> infer s v |> Result.bind (fun (t', s) -> unify s t t')))
                     (Ok(TCUncertain u, s))
                     vs
 
@@ -44,17 +46,14 @@ let infer (cm: CtorMap) (s: State) (v: Val) : Result<TypeCstr * State, TypeError
             let tRes =
                 Map.fold
                     (fun tRes vK vV ->
-                        Result.bind
-                            (fun (tK, tV, s) ->
-                                Result.bind
-                                    (fun (tK', tV', s) ->
-                                        Result.bind
-                                            (fun (tK, s) -> Result.map (fun (tV, s) -> (tK, tV, s)) (unify s tV tV'))
-                                            (unify s tK tK'))
-                                    (Result.bind
-                                        (fun (tK', s) -> Result.map (fun (tV', s) -> (tK', tV', s)) (infer s vV))
-                                        (infer s vK)))
-                            tRes)
+                        tRes
+                        |> Result.bind (fun (tK, tV, s) ->
+                            infer s vK
+                            |> Result.bind (fun (tK', s) -> infer s vV |> Result.map (fun (tV', s) -> (tK', tV', s)))
+                            |> Result.bind (fun (tK', tV', s) ->
+                                unify s tK tK'
+                                |> Result.bind (fun (tK, s) ->
+                                    unify s tV tV' |> Result.map (fun (tV, s) -> (tK, tV, s))))))
                     (Ok(TCUncertain uK, TCUncertain uV, s))
                     m
 
@@ -66,19 +65,22 @@ let infer (cm: CtorMap) (s: State) (v: Val) : Result<TypeCstr * State, TypeError
                 let tcs = Map.find ctor cm in
 
                 if List.length tcs = List.length vs then
-                    let accRes =
-                        List.fold
-                            (fun accRes (tc, v) ->
-                                Result.bind
-                                    (fun s ->
-                                        Result.bind (fun (tc', s) -> Result.map snd (unify s tc tc')) (infer s v))
-                                    accRes)
-                            (Ok(s))
-                            (List.zip tcs vs)
-
-                    Result.map (fun s -> (TCUnion(un, cm), s)) accRes
+                    List.fold
+                        (fun accRes (tc, v) ->
+                            accRes
+                            |> Result.bind (fun s ->
+                                infer s v |> Result.bind (fun (tc', s) -> unify s tc tc') |> Result.map snd))
+                        (Ok(s))
+                        (List.zip tcs vs)
+                    |> Result.map (fun s -> (TCUnion(un, cm), s))
                 else
-                    Error(AssociatedValuesLenMismatch(ctor, Set [ List.length tcs; List.length vs ]))
+                    Error(
+                        AssociatedValuesLenMismatch(
+                            ctor,
+                            Set[List.length tcs
+                                List.length vs]
+                        )
+                    )
             | None -> Error(NoSuchCtor(ctor))
 
     infer s v

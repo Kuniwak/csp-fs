@@ -10,16 +10,15 @@ open CSP.Core.ProcTypeInference
 open CSP.Core.TypeInferenceState
 
 let typeEnv (cm: CtorMap) (env: Env) (s: State) : Result<TypeCstrEnv * State, TypeError> =
-    let accRes =
-        Env.fold
-            (fun accRes var v ->
-                Result.bind
-                    (fun (m, s) -> Result.map (fun (tc, s) -> (Map.add var tc m, s)) (ValueTypeInference.infer cm s v))
-                    accRes)
-            (Ok(Map.empty, s))
-            env in
-
-    Result.map (fun (m, s) -> (TypeCstrEnv m, s)) accRes
+    env
+    |> Env.fold
+        (fun accRes var v ->
+            accRes
+            |> Result.bind (fun (m, s) ->
+                ValueTypeInference.infer cm s v
+                |> Result.map (fun (tc, s) -> (Map.add var tc m, s))))
+        (Ok(Map.empty, s))
+    |> Result.map (fun (m, s) -> (TypeCstrEnv m, s))
 
 
 let typeCheck (cm: CtorMap) (genv: Env) (pm: ProcMap<unit>) : TypeError option =
@@ -27,24 +26,23 @@ let typeCheck (cm: CtorMap) (genv: Env) (pm: ProcMap<unit>) : TypeError option =
     | Error(err) -> Some(err)
     | Ok(tcenv, s) ->
         let sRes =
-            fold
-                (fun sRes pn (varOpts, p) ->
-                    Result.bind
-                        (fun s ->
-                            let xs, s =
-                                List.foldBack
-                                    (fun varOpt (xs, s) ->
-                                        let u, s = newUncertainVarId s in ((varOpt, TCUncertain u) :: xs, s))
-                                    varOpts
-                                    ([], s)
+            pm
+            |> fold
+                (fun sRes pn (vars, p) ->
+                    sRes
+                    |> Result.bind (fun s ->
+                        let xs, s =
+                            List.foldBack
+                                (fun var (xs, s) -> let u, s = newUncertainVarId s in ((var, TCUncertain u) :: xs, s))
+                                vars
+                                ([], s)
 
-                            let tcenvRes =
-                                Result.mapError (fun terr -> At(TypeEnvError terr, pn)) (bindAll xs tcenv)
+                        let tcenv = bindAll xs tcenv in
 
-                            Result.map snd (Result.bind (fun tcenv -> infer cm tcenv p s) tcenvRes))
-                        sRes)
+                        match infer cm tcenv p s with
+                        | Error(err) -> Error(At(err, $"process `{pn}`"))
+                        | Ok(_, s) -> Ok(s)))
                 (Ok(s))
-                pm
 
         match sRes with
         | Ok _ -> None

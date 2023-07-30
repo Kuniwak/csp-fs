@@ -30,13 +30,13 @@ let trans
                 | ProcMap pm ->
                     match Map.tryFind pn pm with
                     | None -> Error(NoSuchProcess(pn))
-                    | Some(varOpts, p) ->
-                        if List.length varOpts = List.length vs then
-                            let env = bindAllOpts (List.zip varOpts vs) genv in
+                    | Some(vars, p) ->
+                        if List.length vars = List.length vs then
+                            let env = bindAll (List.zip vars vs) genv in
                             eval env p |> Result.bind (trans (Set.add (pn, vs) visited))
                         else
-                            Error(ArgumentsLengthMismatch(pn, varOpts, vs))
-            
+                            Error(ArgumentsLengthMismatch(pn, vars, vs))
+
         | Skip -> Ok [ (Tick, Omega) ] // Skip
         | Prefix(v, s) -> Ok [ (Vis v, s) ] // Prefix
         | PrefixRecv(vs, env, var, p) ->

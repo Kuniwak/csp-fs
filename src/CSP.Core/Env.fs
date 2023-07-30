@@ -19,6 +19,9 @@ let fold (f: 'State -> Var -> Val -> 'State) (s: 'State) (env: Env) =
 let bind1 (var: Var) (v: Val) (env: Env) : Env =
     match env with
     | Env env -> Env(Map.add var v env)
+    
+let bindAll (xs: (Var * Val) seq) (env: Env) : Env =
+    Seq.fold (fun env (var, v) -> bind1 var v env) env xs
 
 let bind1Opt (varOpt: Var option) (v: Val) (env: Env) : Env =
     match varOpt with

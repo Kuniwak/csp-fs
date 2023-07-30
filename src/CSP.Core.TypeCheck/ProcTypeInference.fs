@@ -20,9 +20,10 @@ let infer (cm: CtorMap) (tcenv: TypeCstrEnv) (p: Proc<unit>) (s: State) : Result
         | Unwind(pn, exprs, line) ->
             let exprsRes =
                 List.foldBack
-                    (fun expr ->
-                        Result.bind (fun (exprs, s) ->
-                            Result.map (fun (expr, s) -> (expr :: exprs, s)) (exprInfer tcenv expr s)))
+                    (fun expr accRes ->
+                        accRes
+                        |> Result.bind (fun (exprs, s) ->
+                            exprInfer tcenv expr s |> Result.map (fun (expr, s) -> (expr :: exprs, s))))
                     exprs
                     (Ok([], s))
 
@@ -33,7 +34,7 @@ let infer (cm: CtorMap) (tcenv: TypeCstrEnv) (p: Proc<unit>) (s: State) : Result
         | Skip(line) -> Ok(Skip(line), s)
         | Prefix(expr, p, line) ->
             match exprInfer tcenv expr s with
-            | Ok(expr, s) -> Result.map (fun (p, s) -> (Prefix(expr, p, line), s)) (procInfer tcenv p s)
+            | Ok(expr, s) -> procInfer tcenv p s |> Result.map (fun (p, s) -> (Prefix(expr, p, line), s))
             | Error(terr) -> Error(atLine line terr)
         | PrefixRecv(exprSet, var, p, line) ->
             match exprInfer tcenv exprSet s with
@@ -45,16 +46,10 @@ let infer (cm: CtorMap) (tcenv: TypeCstrEnv) (p: Proc<unit>) (s: State) : Result
                 | Ok(tcSet, s) ->
                     match tcSet with
                     | TCSet tcElem ->
-                        let tcenvRes = Result.mapError TypeEnvError (bind1 var tcElem tcenv) in
+                        let tcenv = bind1 var tcElem tcenv in
 
-                        Result.mapError
-                            (atLine line)
-                            (Result.bind
-                                (fun tcenv ->
-                                    Result.map
-                                        (fun (p, s) -> (PrefixRecv(exprSet, var, p, line), s))
-                                        (procInfer tcenv p s))
-                                tcenvRes)
+                        procInfer tcenv p s
+                        |> Result.map (fun (p, s) -> (PrefixRecv(exprSet, var, p, line), s))
                     | _ -> failwith ""
                 | Error(err) -> Error(atLine line err)
             | Error(terr) -> Error(atLine line terr)
@@ -94,16 +89,16 @@ let infer (cm: CtorMap) (tcenv: TypeCstrEnv) (p: Proc<unit>) (s: State) : Result
             | Ok(exprUnion, s) ->
                 let tcUnion = Expr.get exprUnion in
 
-                let ctorOpt =
-                    Map.fold
+                let tryFindAnyCtor pm =
+                    pm
+                    |> Map.fold
                         (fun acc ctorOpt _ ->
                             match acc with
                             | None -> ctorOpt
                             | Some(ctor) -> Some ctor)
                         None
-                        pm
 
-                match ctorOpt with
+                match tryFindAnyCtor pm with
                 | None -> Error(atLine line NoCtors)
                 | Some(ctor) ->
                     match Map.tryFind ctor cm with
@@ -115,69 +110,43 @@ let infer (cm: CtorMap) (tcenv: TypeCstrEnv) (p: Proc<unit>) (s: State) : Result
                         match unify s tcUnion tcUnion' with
                         | Error(err) -> Error(atLine line err)
                         | Ok(_, s) ->
-                            let pmRes =
-                                (Map.fold
-                                    (fun accRes ctorOpt (varOpts, p) ->
-                                        Result.bind
-                                            (fun (pm, s) ->
-                                                match ctorOpt with
-                                                | Some ctor ->
-                                                    match Map.tryFind ctor ctm with
-                                                    | None -> Error(NoSuchCtor ctor)
-                                                    | Some(tcs) ->
-                                                        if List.length varOpts = List.length tcs then
-                                                            let tcenvRes =
-                                                                Result.mapError
-                                                                    TypeEnvError
-                                                                    (bindAll (List.zip varOpts tcs) tcenv) in
+                            Map.fold
+                                (fun accRes ctorOpt (varOpts, p) ->
+                                    accRes
+                                    |> Result.bind (fun (pm, s) ->
+                                        match ctorOpt with
+                                        | Some ctor ->
+                                            match Map.tryFind ctor ctm with
+                                            | None -> Error(NoSuchCtor ctor)
+                                            | Some(tcs) ->
+                                                if List.length varOpts = List.length tcs then
+                                                    let tcenv = bindAllOpts (List.zip varOpts tcs) tcenv in
 
-                                                            (Result.bind
-                                                                (fun tcenv ->
-                                                                    (Result.bind
-                                                                        (fun (pm, s) ->
-                                                                            Result.map
-                                                                                (fun (p, s) ->
-                                                                                    (Map.add
-                                                                                        (Some ctor)
-                                                                                        (varOpts, p)
-                                                                                        pm,
-                                                                                     s))
-                                                                                (procInfer tcenv p s))
-                                                                        accRes))
-                                                                tcenvRes)
-                                                        else
-                                                            Error(
-                                                                AssociatedValuesLenMismatch(
-                                                                    ctor,
-                                                                    Set [ List.length varOpts; List.length tcs ]
-                                                                )
-                                                            )
-                                                | None ->
-                                                    let tcenvRes =
-                                                        match varOpts with
-                                                        | [ Some var ] ->
-                                                            Result.mapError TypeEnvError (bind1 var tcUnion tcenv)
-                                                        | [ None ] -> Ok(tcenv)
-                                                        | _ ->
-                                                            Error(
-                                                                atLine
-                                                                    line
-                                                                    (DefaultClauseArgumentsLenMustBe1(varOpts))
-                                                            )
-
-                                                    Result.bind
-                                                        (fun tcenv ->
-                                                            Result.map
-                                                                (fun (p, s) -> (Map.add None (varOpts, p) pm, s))
-                                                                (procInfer tcenv p s))
-                                                        tcenvRes)
-                                            accRes)
-                                    (Ok(Map.empty, s))
-                                    pm)
-
-                            match pmRes with
-                            | Ok(pm, s) -> Ok(Match(exprUnion, pm, line), s)
-                            | Error(terr) -> Error(atLine line terr)
+                                                    accRes
+                                                    |> Result.bind (fun (pm, s) ->
+                                                        procInfer tcenv p s
+                                                        |> Result.map (fun (p, s) ->
+                                                            (Map.add (Some ctor) (varOpts, p) pm, s)))
+                                                else
+                                                    Error(
+                                                        AssociatedValuesLenMismatch(
+                                                            ctor,
+                                                            Set [ List.length tcs; List.length varOpts ]
+                                                        )
+                                                    )
+                                        | None ->
+                                            match varOpts with
+                                            | [ varOpt ] -> Ok(bind1Opt varOpt tcUnion tcenv)
+                                            | _ -> Error(atLine line (DefaultClauseArgumentsLenMustBe1(varOpts)))
+                                            |> Result.bind (fun tcenv ->
+                                                procInfer tcenv p s
+                                                |> Result.map (fun (p, s) -> (Map.add None (varOpts, p) pm, s)))))
+                                (Ok(Map.empty, s))
+                                pm
+                            |> fun pmRes ->
+                                match pmRes with
+                                | Ok(pm, s) -> Ok(Match(exprUnion, pm, line), s)
+                                | Error(terr) -> Error(atLine line terr)
             | Error terr -> Error(atLine line terr)
         | InterfaceParallel(p1, expr, p2, line) ->
             match exprInfer tcenv expr s with
