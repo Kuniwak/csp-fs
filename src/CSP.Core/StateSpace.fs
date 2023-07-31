@@ -2,25 +2,29 @@ module CSP.Core.StateSpace
 
 open CSP.Core.CtorMap
 open CSP.Core.Env
+open CSP.Core.Event
 open CSP.Core.Proc
 open CSP.Core.ProcEval
 open CSP.Core.ProcEvalError
 open CSP.Core.ProcMap
 open CSP.Core.State
+open CSP.Core.Trans
 open CSP.Core.Univ
 open CSP.Core.Val
 open CSP.Core.Util
 
-type NamedConfig =
+type NamedSpace = Map<State, (ProcId * Val list) list>
+
+type NamedSpaceConfig =
     { UnivConfig: UnivConfig
       ProcEvalConfig: ProcEvalConfig }
 
 let namedSpace
-    (cfg: NamedConfig)
+    (cfg: NamedSpaceConfig)
     (cm: CtorMap)
     (pm: ProcMap<unit>)
     (genv: Env)
-    : Result<Map<State, (ProcId * Val list) list>, ProcEvalError> =
+    : Result<NamedSpace, ProcEvalError> =
     pm
     |> fold
         (fun mRes pn (xs, p) ->
@@ -45,3 +49,19 @@ let namedSpace
                         m
                         xs)))
         (Ok(Map.empty))
+
+let normedTrans
+    (cfg: TransConfig)
+    (pm: ProcMap<unit>)
+    (cm: CtorMap)
+    (genv: Env)
+    (ns: Map<State, (ProcId * Val list) list>)
+    (s: State)
+    : Result<(Event * State) list, ProcEvalError> =
+    trans cfg pm cm genv s
+    |> Result.map (
+        List.map (fun (ev, s) ->
+            match Map.tryFind s ns with
+            | Some(pvs) -> let pn, vs = List.head pvs in (ev, Unwind(pn, vs))
+            | None -> (ev, s))
+    )

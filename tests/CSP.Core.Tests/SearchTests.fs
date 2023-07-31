@@ -12,14 +12,14 @@ let bfs = bfs searchCfg
 let dfs_rec () =
     let next = mapNext (Map [ ("a", [ ((), "a") ]) ]) in
     let mutable visited = [] in
-    dfs (fun n _ -> visited <- visited @ [ n ]) next id "a"
+    dfs (fun n _ -> visited <- visited @ [ n ]) next "a"
     Assert.Equal<string list>([ "a" ], visited)
 
 [<Fact>]
 let bfs_rec () =
     let next = mapNext (Map [ ("a", [ ((), "a") ]) ]) in
     let mutable visited = [] in
-    bfs (fun n _ -> visited <- visited @ [ n ]) next id "a"
+    bfs (fun n _ -> visited <- visited @ [ n ]) next "a"
     Assert.Equal<string list>([ "a" ], visited)
 
 [<Fact>]
@@ -34,7 +34,7 @@ let dfs_order () =
         ) in
 
     let mutable visited = [] in
-    dfs (fun n _ -> visited <- visited @ [ n ]) next id "a"
+    dfs (fun n _ -> visited <- visited @ [ n ]) next "a"
     Assert.Equal<string list>([ "a"; "a-1"; "a-1-1"; "a-2" ], visited)
 
 [<Fact>]
@@ -49,5 +49,5 @@ let bfs_order () =
         ) in
 
     let mutable visited = [] in
-    bfs (fun n _ -> visited <- visited @ [ n ]) next id "a"
+    bfs (fun n _ -> visited <- visited @ [ n ]) next "a"
     Assert.Equal<string list>([ "a"; "a-1"; "a-2"; "a-1-1" ], visited)

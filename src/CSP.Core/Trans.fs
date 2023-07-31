@@ -128,8 +128,8 @@ let trans
             |> Result.map (
                 List.collect (fun (ev, s') ->
                     match ev with
-                    | Vis(v) when not (Set.contains v vs) -> [ (Vis(v), s') ] // Hide1
-                    | Vis(v) -> [ (Hid(v), s') ] // Hide2
+                    | Vis(v) when not (Set.contains v vs) -> [ (Vis(v), Hide(s', vs)) ] // Hide1
+                    | Vis(v) -> [ (Hid(v), Hide(s', vs)) ] // Hide2
                     | Tick -> [ (Tick, Omega) ] // Hide3
                     | _ -> [])
             )

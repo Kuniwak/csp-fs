@@ -343,7 +343,6 @@ let dfs (visit: Expr<'a> -> Unit) (expr: Expr<'a>) : Unit =
         searchCfgUnlimited
         (fun expr _ -> visit expr)
         (fun expr -> List.map (fun expr -> ((), expr)) (children expr))
-        id
         expr
 
 let bfs (visit: Expr<'a> -> Unit) (expr: Expr<'a>) : Unit =
@@ -351,7 +350,6 @@ let bfs (visit: Expr<'a> -> Unit) (expr: Expr<'a>) : Unit =
         searchCfgUnlimited
         (fun expr _ -> visit expr)
         (fun expr -> List.map (fun expr -> ((), expr)) (children expr))
-        id
         expr
 
 let rec fold (f: 'State -> Expr<'a> -> 'State) (s: 'State) (expr: Expr<'a>) =

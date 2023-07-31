@@ -11,7 +11,6 @@ let search
     (visit: 's -> ('e * 's) list -> Unit)
     (next: 's -> ('e * 's) list)
     (joinQueue: ('e * 's) list -> 's list -> 's list)
-    (norm: 's -> 's)
     (ns: 's list)
     (visited: Set<'s>)
     : Unit =
@@ -19,8 +18,6 @@ let search
         match ns with
         | [] -> ()
         | n :: ns' ->
-            let n = norm n in
-
             if Set.count visited < cfg.NodeMax && not (Set.contains n visited) then
                 let es = next n in
                 visit n es
@@ -30,8 +27,8 @@ let search
 
     search ns visited
 
-let dfs cfg visit next norm n =
-    search cfg visit next (fun ts rest -> (List.map snd ts) @ rest) norm [ n ] Set.empty
+let dfs cfg visit next n =
+    search cfg visit next (fun ts rest -> (List.map snd ts) @ rest) [ n ] Set.empty
 
-let bfs cfg visit next norm n =
-    search cfg visit next (fun ts rest -> rest @ (List.map snd ts)) norm [ n ] Set.empty
+let bfs cfg visit next n =
+    search cfg visit next (fun ts rest -> rest @ (List.map snd ts)) [ n ] Set.empty

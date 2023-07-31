@@ -1,26 +1,20 @@
 module CSP.Core.Tests.GraphTests
 
-open CSP.Core.ProcEvalError
-open CSP.Core.Univ
 open Xunit
-open CSP.Core
-open CSP.Core.Util
+open CSP.Model
+open CSP.Model.Examples
 open CSP.Core.ProcEval
 open CSP.Core.Trans
 open CSP.Core.Search
-open CSP.Core.TypeShorthand
-open CSP.Core.ExprShorthand
-open CSP.Core.ProcMap
-open CSP.Core.ProcShorthand
 open CSP.Core.Eval
 open CSP.Core.ValShorthand
+open CSP.Core.ProcEvalError
+open CSP.Core.Univ
 open CSP.Core.Visualization.DotLang
 
 let univCfg: UnivConfig = { NatMax = 5u; ListLenMax = 3u }
 
-let procEvalCfg: ProcEvalConfig =
-    { EvalConfig = { UnivConfig = univCfg }
-      MaxUnwind = 100 }
+let procEvalCfg: ProcEvalConfig = { EvalConfig = { UnivConfig = univCfg } }
 
 let dotCfg: DotConfig =
     { GraphConfig =
@@ -35,33 +29,17 @@ let dot = dot dotCfg
 
 [<Fact>]
 let abSkip () =
-    let tEvent = tUnion "event" [ ("a", []); ("b", []) ] in
-
-    let pm =
-        ResultEx.get
-            ProcMapError.format
-            (from
-                [ ("ABSkip", []), seq (unwind "ASkip" [] __LINE__) (unwind "BSkip" [] __LINE__) __LINE__
-                  ("ASkip", []), prefix (ctor "a" [] __LINE__) (skip __LINE__) __LINE__
-                  ("BSkip", []), prefix (ctor "b" [] __LINE__) (skip __LINE__) __LINE__ ]) in
-
-    let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tEvent ]) in
-    let genv = Env.empty in
-
-    match dot pm cm genv "ABSkip" [] with
+    match dot ABSkip.procMap ABSkip.ctorMap ABSkip.genv "ABSkip" [] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
         Assert.True(
             """digraph G {
   "Ω"
   "SKIP"
-  "(b -> SKIP env={})"
-  "(SKIP ; BSkip)"
-  "(ASkip ; BSkip)"
+  "ABSkip"
+
   "SKIP" -> "Ω" [label="✓"]
-  "(b -> SKIP env={})" -> "SKIP" [label="b"]
-  "(SKIP ; BSkip)" -> "(b -> SKIP env={})" [label="τ"]
-  "(ASkip ; BSkip)" -> "(SKIP ; BSkip)" [label="a"]
+  "ABSkip" -> "SKIP" [label="a"]
 }""" =
                 actual,
             actual
@@ -69,127 +47,104 @@ let abSkip () =
 
 [<Fact>]
 let parABC () =
-    let tEvent = tUnion "event" [ ("a", []); ("b", []); ("c", []); ("d", []) ] in
-
-    let pm =
-        ResultEx.get
-            ProcMapError.format
-            (from
-                [ (("ParABC", []),
-                   interleave
-                       (prefix (ctor "a" [] __LINE__) (skip __LINE__) __LINE__)
-                       (interleave
-                           (prefix (ctor "b" [] __LINE__) (skip __LINE__) __LINE__)
-                           (prefix (ctor "c" [] __LINE__) (skip __LINE__) __LINE__)
-                           __LINE__)
-                       __LINE__)
-                  (("P", []),
-                   seq (unwind "ParABC" [] __LINE__) (prefix (ctor "d" [] __LINE__) (skip __LINE__) __LINE__) __LINE__) ]) in
-
-    let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tEvent ]) in
-    let genv = Env.empty in
-
-    match dot pm cm genv "P" [] with
+    match dot ParABC.procMap ParABC.ctorMap ParABC.genv "P" [] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
         Assert.True(
             """digraph G {
   "Ω"
-  "SKIP"
-  "(d -> SKIP env={})"
-  "((Ω ⟦(() set).empty⟧ Ω env={}) ; (d -> SKIP env={}))"
-  "((Ω ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))"
-  "((SKIP ⟦(() set).empty⟧ Ω env={}) ; (d -> SKIP env={}))"
-  "((Ω ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))"
-  "((Ω ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))"
-  "((SKIP ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))"
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ Ω env={}) ; (d -> SKIP env={}))"
-  "((Ω ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))"
-  "((Ω ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))"
-  "((SKIP ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))"
-  "((Ω ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))"
-  "((SKIP ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))"
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))"
-  "((Ω ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))"
-  "((SKIP ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))"
-  "((Ω ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))"
-  "((SKIP ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))"
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))"
-  "((SKIP ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))"
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))"
-  "((Ω ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))"
-  "((SKIP ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))"
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))"
-  "((SKIP ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))"
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))"
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))"
-  "((SKIP ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))"
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))"
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))"
-  "(ParABC ; (d -> SKIP env={}))"
-  "SKIP" -> "Ω" [label="✓"]
-  "(d -> SKIP env={})" -> "SKIP" [label="d"]
-  "((Ω ⟦(() set).empty⟧ Ω env={}) ; (d -> SKIP env={}))" -> "(d -> SKIP env={})" [label="τ"]
-  "((Ω ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ Ω env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "((SKIP ⟦(() set).empty⟧ Ω env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ Ω env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "((Ω ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "((Ω ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "((SKIP ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ Ω env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "((SKIP ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ Ω env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ Ω env={}) ; (d -> SKIP env={}))" [label="a"]
-  "((Ω ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" [label="b"]
-  "((Ω ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "((Ω ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "((SKIP ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "((SKIP ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "((Ω ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="c"]
-  "((SKIP ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "((SKIP ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" -> "(((a -> SKIP env={}) ⟦(() set).empty⟧ Ω env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" [label="a"]
-  "((Ω ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="b"]
-  "((Ω ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "((SKIP ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" [label="b"]
-  "((SKIP ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "((Ω ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "((Ω ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="c"]
-  "((SKIP ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "((SKIP ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "((SKIP ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" -> "(((a -> SKIP env={}) ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" [label="a"]
-  "((SKIP ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="c"]
-  "((SKIP ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" -> "(((a -> SKIP env={}) ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="a"]
-  "((Ω ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" [label="b"]
-  "((Ω ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="c"]
-  "((SKIP ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="b"]
-  "((SKIP ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "((SKIP ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" -> "(((a -> SKIP env={}) ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" [label="b"]
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" [label="a"]
-  "((SKIP ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "((SKIP ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="c"]
-  "((SKIP ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" -> "(((a -> SKIP env={}) ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" -> "(((a -> SKIP env={}) ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="a"]
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" -> "(((a -> SKIP env={}) ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="c"]
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" [label="a"]
-  "((SKIP ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" [label="b"]
-  "((SKIP ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="c"]
-  "((SKIP ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" -> "((Ω ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" -> "(((a -> SKIP env={}) ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="b"]
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" -> "(((a -> SKIP env={}) ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ Ω env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="a"]
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" -> "(((a -> SKIP env={}) ⟦(() set).empty⟧ (Ω ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" [label="τ"]
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" -> "(((a -> SKIP env={}) ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="c"]
-  "(((a -> SKIP env={}) ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" [label="a"]
-  "(ParABC ; (d -> SKIP env={}))" -> "(((a -> SKIP env={}) ⟦(() set).empty⟧ (SKIP ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" [label="b"]
-  "(ParABC ; (d -> SKIP env={}))" -> "(((a -> SKIP env={}) ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ SKIP env={}) env={}) ; (d -> SKIP env={}))" [label="c"]
-  "(ParABC ; (d -> SKIP env={}))" -> "((SKIP ⟦(() set).empty⟧ ((b -> SKIP env={}) ⟦(() set).empty⟧ (c -> SKIP env={}) env={}) env={}) ; (d -> SKIP env={}))" [label="a"]
+  "(Ω ⟦{}⟧ Ω)"
+  "(SKIP ⟦{}⟧ Ω)"
+  "(Ω ⟦{}⟧ (Ω ⟦{}⟧ Ω))"
+  "((a → SKIP) ⟦{}⟧ Ω)"
+  "(SKIP ⟦{}⟧ (Ω ⟦{}⟧ Ω))"
+  "(Ω ⟦{}⟧ (SKIP ⟦{}⟧ Ω))"
+  "(Ω ⟦{}⟧ (Ω ⟦{}⟧ SKIP))"
+  "((a → SKIP) ⟦{}⟧ (Ω ⟦{}⟧ Ω))"
+  "(SKIP ⟦{}⟧ (SKIP ⟦{}⟧ Ω))"
+  "(SKIP ⟦{}⟧ (Ω ⟦{}⟧ SKIP))"
+  "(Ω ⟦{}⟧ ((b → SKIP) ⟦{}⟧ Ω))"
+  "(Ω ⟦{}⟧ (SKIP ⟦{}⟧ SKIP))"
+  "(Ω ⟦{}⟧ (Ω ⟦{}⟧ (c → SKIP)))"
+  "((a → SKIP) ⟦{}⟧ (SKIP ⟦{}⟧ Ω))"
+  "((a → SKIP) ⟦{}⟧ (Ω ⟦{}⟧ SKIP))"
+  "(SKIP ⟦{}⟧ ((b → SKIP) ⟦{}⟧ Ω))"
+  "(SKIP ⟦{}⟧ (SKIP ⟦{}⟧ SKIP))"
+  "(SKIP ⟦{}⟧ (Ω ⟦{}⟧ (c → SKIP)))"
+  "(Ω ⟦{}⟧ ((b → SKIP) ⟦{}⟧ SKIP))"
+  "(Ω ⟦{}⟧ (SKIP ⟦{}⟧ (c → SKIP)))"
+  "((a → SKIP) ⟦{}⟧ ((b → SKIP) ⟦{}⟧ Ω))"
+  "((a → SKIP) ⟦{}⟧ (SKIP ⟦{}⟧ SKIP))"
+  "((a → SKIP) ⟦{}⟧ (Ω ⟦{}⟧ (c → SKIP)))"
+  "(SKIP ⟦{}⟧ ((b → SKIP) ⟦{}⟧ SKIP))"
+  "(SKIP ⟦{}⟧ (SKIP ⟦{}⟧ (c → SKIP)))"
+  "(Ω ⟦{}⟧ ((b → SKIP) ⟦{}⟧ (c → SKIP)))"
+  "((a → SKIP) ⟦{}⟧ ((b → SKIP) ⟦{}⟧ SKIP))"
+  "((a → SKIP) ⟦{}⟧ (SKIP ⟦{}⟧ (c → SKIP)))"
+  "(SKIP ⟦{}⟧ ((b → SKIP) ⟦{}⟧ (c → SKIP)))"
+  "P"
+
+  "(Ω ⟦{}⟧ Ω)" -> "Ω" [label="✓"]
+  "(SKIP ⟦{}⟧ Ω)" -> "(Ω ⟦{}⟧ Ω)" [label="τ"]
+  "(Ω ⟦{}⟧ (Ω ⟦{}⟧ Ω))" -> "(Ω ⟦{}⟧ Ω)" [label="τ"]
+  "((a → SKIP) ⟦{}⟧ Ω)" -> "(SKIP ⟦{}⟧ Ω)" [label="a"]
+  "(SKIP ⟦{}⟧ (Ω ⟦{}⟧ Ω))" -> "(Ω ⟦{}⟧ (Ω ⟦{}⟧ Ω))" [label="τ"]
+  "(SKIP ⟦{}⟧ (Ω ⟦{}⟧ Ω))" -> "(SKIP ⟦{}⟧ Ω)" [label="τ"]
+  "(Ω ⟦{}⟧ (SKIP ⟦{}⟧ Ω))" -> "(Ω ⟦{}⟧ (Ω ⟦{}⟧ Ω))" [label="τ"]
+  "(Ω ⟦{}⟧ (Ω ⟦{}⟧ SKIP))" -> "(Ω ⟦{}⟧ (Ω ⟦{}⟧ Ω))" [label="τ"]
+  "((a → SKIP) ⟦{}⟧ (Ω ⟦{}⟧ Ω))" -> "(SKIP ⟦{}⟧ (Ω ⟦{}⟧ Ω))" [label="a"]
+  "((a → SKIP) ⟦{}⟧ (Ω ⟦{}⟧ Ω))" -> "((a → SKIP) ⟦{}⟧ Ω)" [label="τ"]
+  "(SKIP ⟦{}⟧ (SKIP ⟦{}⟧ Ω))" -> "(Ω ⟦{}⟧ (SKIP ⟦{}⟧ Ω))" [label="τ"]
+  "(SKIP ⟦{}⟧ (SKIP ⟦{}⟧ Ω))" -> "(SKIP ⟦{}⟧ (Ω ⟦{}⟧ Ω))" [label="τ"]
+  "(SKIP ⟦{}⟧ (Ω ⟦{}⟧ SKIP))" -> "(Ω ⟦{}⟧ (Ω ⟦{}⟧ SKIP))" [label="τ"]
+  "(SKIP ⟦{}⟧ (Ω ⟦{}⟧ SKIP))" -> "(SKIP ⟦{}⟧ (Ω ⟦{}⟧ Ω))" [label="τ"]
+  "(Ω ⟦{}⟧ ((b → SKIP) ⟦{}⟧ Ω))" -> "(Ω ⟦{}⟧ (SKIP ⟦{}⟧ Ω))" [label="b"]
+  "(Ω ⟦{}⟧ (SKIP ⟦{}⟧ SKIP))" -> "(Ω ⟦{}⟧ (Ω ⟦{}⟧ SKIP))" [label="τ"]
+  "(Ω ⟦{}⟧ (SKIP ⟦{}⟧ SKIP))" -> "(Ω ⟦{}⟧ (SKIP ⟦{}⟧ Ω))" [label="τ"]
+  "(Ω ⟦{}⟧ (Ω ⟦{}⟧ (c → SKIP)))" -> "(Ω ⟦{}⟧ (Ω ⟦{}⟧ SKIP))" [label="c"]
+  "((a → SKIP) ⟦{}⟧ (SKIP ⟦{}⟧ Ω))" -> "(SKIP ⟦{}⟧ (SKIP ⟦{}⟧ Ω))" [label="a"]
+  "((a → SKIP) ⟦{}⟧ (SKIP ⟦{}⟧ Ω))" -> "((a → SKIP) ⟦{}⟧ (Ω ⟦{}⟧ Ω))" [label="τ"]
+  "((a → SKIP) ⟦{}⟧ (Ω ⟦{}⟧ SKIP))" -> "(SKIP ⟦{}⟧ (Ω ⟦{}⟧ SKIP))" [label="a"]
+  "((a → SKIP) ⟦{}⟧ (Ω ⟦{}⟧ SKIP))" -> "((a → SKIP) ⟦{}⟧ (Ω ⟦{}⟧ Ω))" [label="τ"]
+  "(SKIP ⟦{}⟧ ((b → SKIP) ⟦{}⟧ Ω))" -> "(Ω ⟦{}⟧ ((b → SKIP) ⟦{}⟧ Ω))" [label="τ"]
+  "(SKIP ⟦{}⟧ ((b → SKIP) ⟦{}⟧ Ω))" -> "(SKIP ⟦{}⟧ (SKIP ⟦{}⟧ Ω))" [label="b"]
+  "(SKIP ⟦{}⟧ (SKIP ⟦{}⟧ SKIP))" -> "(Ω ⟦{}⟧ (SKIP ⟦{}⟧ SKIP))" [label="τ"]
+  "(SKIP ⟦{}⟧ (SKIP ⟦{}⟧ SKIP))" -> "(SKIP ⟦{}⟧ (Ω ⟦{}⟧ SKIP))" [label="τ"]
+  "(SKIP ⟦{}⟧ (SKIP ⟦{}⟧ SKIP))" -> "(SKIP ⟦{}⟧ (SKIP ⟦{}⟧ Ω))" [label="τ"]
+  "(SKIP ⟦{}⟧ (Ω ⟦{}⟧ (c → SKIP)))" -> "(Ω ⟦{}⟧ (Ω ⟦{}⟧ (c → SKIP)))" [label="τ"]
+  "(SKIP ⟦{}⟧ (Ω ⟦{}⟧ (c → SKIP)))" -> "(SKIP ⟦{}⟧ (Ω ⟦{}⟧ SKIP))" [label="c"]
+  "(Ω ⟦{}⟧ ((b → SKIP) ⟦{}⟧ SKIP))" -> "(Ω ⟦{}⟧ (SKIP ⟦{}⟧ SKIP))" [label="b"]
+  "(Ω ⟦{}⟧ ((b → SKIP) ⟦{}⟧ SKIP))" -> "(Ω ⟦{}⟧ ((b → SKIP) ⟦{}⟧ Ω))" [label="τ"]
+  "(Ω ⟦{}⟧ (SKIP ⟦{}⟧ (c → SKIP)))" -> "(Ω ⟦{}⟧ (Ω ⟦{}⟧ (c → SKIP)))" [label="τ"]
+  "(Ω ⟦{}⟧ (SKIP ⟦{}⟧ (c → SKIP)))" -> "(Ω ⟦{}⟧ (SKIP ⟦{}⟧ SKIP))" [label="c"]
+  "((a → SKIP) ⟦{}⟧ ((b → SKIP) ⟦{}⟧ Ω))" -> "(SKIP ⟦{}⟧ ((b → SKIP) ⟦{}⟧ Ω))" [label="a"]
+  "((a → SKIP) ⟦{}⟧ ((b → SKIP) ⟦{}⟧ Ω))" -> "((a → SKIP) ⟦{}⟧ (SKIP ⟦{}⟧ Ω))" [label="b"]
+  "((a → SKIP) ⟦{}⟧ (SKIP ⟦{}⟧ SKIP))" -> "(SKIP ⟦{}⟧ (SKIP ⟦{}⟧ SKIP))" [label="a"]
+  "((a → SKIP) ⟦{}⟧ (SKIP ⟦{}⟧ SKIP))" -> "((a → SKIP) ⟦{}⟧ (Ω ⟦{}⟧ SKIP))" [label="τ"]
+  "((a → SKIP) ⟦{}⟧ (SKIP ⟦{}⟧ SKIP))" -> "((a → SKIP) ⟦{}⟧ (SKIP ⟦{}⟧ Ω))" [label="τ"]
+  "((a → SKIP) ⟦{}⟧ (Ω ⟦{}⟧ (c → SKIP)))" -> "(SKIP ⟦{}⟧ (Ω ⟦{}⟧ (c → SKIP)))" [label="a"]
+  "((a → SKIP) ⟦{}⟧ (Ω ⟦{}⟧ (c → SKIP)))" -> "((a → SKIP) ⟦{}⟧ (Ω ⟦{}⟧ SKIP))" [label="c"]
+  "(SKIP ⟦{}⟧ ((b → SKIP) ⟦{}⟧ SKIP))" -> "(Ω ⟦{}⟧ ((b → SKIP) ⟦{}⟧ SKIP))" [label="τ"]
+  "(SKIP ⟦{}⟧ ((b → SKIP) ⟦{}⟧ SKIP))" -> "(SKIP ⟦{}⟧ (SKIP ⟦{}⟧ SKIP))" [label="b"]
+  "(SKIP ⟦{}⟧ ((b → SKIP) ⟦{}⟧ SKIP))" -> "(SKIP ⟦{}⟧ ((b → SKIP) ⟦{}⟧ Ω))" [label="τ"]
+  "(SKIP ⟦{}⟧ (SKIP ⟦{}⟧ (c → SKIP)))" -> "(Ω ⟦{}⟧ (SKIP ⟦{}⟧ (c → SKIP)))" [label="τ"]
+  "(SKIP ⟦{}⟧ (SKIP ⟦{}⟧ (c → SKIP)))" -> "(SKIP ⟦{}⟧ (Ω ⟦{}⟧ (c → SKIP)))" [label="τ"]
+  "(SKIP ⟦{}⟧ (SKIP ⟦{}⟧ (c → SKIP)))" -> "(SKIP ⟦{}⟧ (SKIP ⟦{}⟧ SKIP))" [label="c"]
+  "(Ω ⟦{}⟧ ((b → SKIP) ⟦{}⟧ (c → SKIP)))" -> "(Ω ⟦{}⟧ (SKIP ⟦{}⟧ (c → SKIP)))" [label="b"]
+  "(Ω ⟦{}⟧ ((b → SKIP) ⟦{}⟧ (c → SKIP)))" -> "(Ω ⟦{}⟧ ((b → SKIP) ⟦{}⟧ SKIP))" [label="c"]
+  "((a → SKIP) ⟦{}⟧ ((b → SKIP) ⟦{}⟧ SKIP))" -> "(SKIP ⟦{}⟧ ((b → SKIP) ⟦{}⟧ SKIP))" [label="a"]
+  "((a → SKIP) ⟦{}⟧ ((b → SKIP) ⟦{}⟧ SKIP))" -> "((a → SKIP) ⟦{}⟧ (SKIP ⟦{}⟧ SKIP))" [label="b"]
+  "((a → SKIP) ⟦{}⟧ ((b → SKIP) ⟦{}⟧ SKIP))" -> "((a → SKIP) ⟦{}⟧ ((b → SKIP) ⟦{}⟧ Ω))" [label="τ"]
+  "((a → SKIP) ⟦{}⟧ (SKIP ⟦{}⟧ (c → SKIP)))" -> "(SKIP ⟦{}⟧ (SKIP ⟦{}⟧ (c → SKIP)))" [label="a"]
+  "((a → SKIP) ⟦{}⟧ (SKIP ⟦{}⟧ (c → SKIP)))" -> "((a → SKIP) ⟦{}⟧ (Ω ⟦{}⟧ (c → SKIP)))" [label="τ"]
+  "((a → SKIP) ⟦{}⟧ (SKIP ⟦{}⟧ (c → SKIP)))" -> "((a → SKIP) ⟦{}⟧ (SKIP ⟦{}⟧ SKIP))" [label="c"]
+  "(SKIP ⟦{}⟧ ((b → SKIP) ⟦{}⟧ (c → SKIP)))" -> "(Ω ⟦{}⟧ ((b → SKIP) ⟦{}⟧ (c → SKIP)))" [label="τ"]
+  "(SKIP ⟦{}⟧ ((b → SKIP) ⟦{}⟧ (c → SKIP)))" -> "(SKIP ⟦{}⟧ (SKIP ⟦{}⟧ (c → SKIP)))" [label="b"]
+  "(SKIP ⟦{}⟧ ((b → SKIP) ⟦{}⟧ (c → SKIP)))" -> "(SKIP ⟦{}⟧ ((b → SKIP) ⟦{}⟧ SKIP))" [label="c"]
+  "P" -> "(SKIP ⟦{}⟧ ((b → SKIP) ⟦{}⟧ (c → SKIP)))" [label="a"]
+  "P" -> "((a → SKIP) ⟦{}⟧ (SKIP ⟦{}⟧ (c → SKIP)))" [label="b"]
+  "P" -> "((a → SKIP) ⟦{}⟧ ((b → SKIP) ⟦{}⟧ SKIP))" [label="c"]
 }""" =
                 actual,
             actual
@@ -197,31 +152,19 @@ let parABC () =
 
 [<Fact>]
 let rand2 () =
-    let pm =
-        ResultEx.get
-            ProcMapError.format
-            (from
-                [ (("P", []),
-                   intCh
-                       (prefix (litNat 1u __LINE__) (unwind "P" [] __LINE__) __LINE__)
-                       (prefix (litNat 2u __LINE__) (unwind "P" [] __LINE__) __LINE__)
-                       __LINE__) ]) in
-
-    let cm = CtorMap.empty
-    let genv = Env.empty in
-
-    match dot pm cm genv "P" [] with
+    match dot Rand2.procMap Rand2.ctorMap Rand2.genv "P" [] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
         Assert.True(
             """digraph G {
-  "(2 -> P env={})"
-  "(1 -> P env={})"
-  "((1 -> P env={}) ⨅ (2 -> P env={}))"
-  "(2 -> P env={})" -> "((1 -> P env={}) ⨅ (2 -> P env={}))" [label="2"]
-  "(1 -> P env={})" -> "((1 -> P env={}) ⨅ (2 -> P env={}))" [label="1"]
-  "((1 -> P env={}) ⨅ (2 -> P env={}))" -> "(1 -> P env={})" [label="τ"]
-  "((1 -> P env={}) ⨅ (2 -> P env={}))" -> "(2 -> P env={})" [label="τ"]
+  "(2 → P)"
+  "(1 → P)"
+  "P"
+
+  "(2 → P)" -> "P" [label="2"]
+  "(1 → P)" -> "P" [label="1"]
+  "P" -> "(1 → P)" [label="τ"]
+  "P" -> "(2 → P)" [label="τ"]
 }""" =
                 actual,
             actual
@@ -229,40 +172,23 @@ let rand2 () =
 
 [<Fact>]
 let abs () =
-    let tEvent = tUnion "event" [ ("a", []); ("b", []); ("s", []) ] in
-
-    let pm =
-        ResultEx.get
-            ProcMapError.format
-            (from
-                [ (("ABS", []),
-                   (extCh
-                       (intCh
-                           (prefix (ctor "a" [] __LINE__) (unwind "ABS" [] __LINE__) __LINE__)
-                           (prefix (ctor "b" [] __LINE__) (unwind "ABS" [] __LINE__) __LINE__)
-                           __LINE__)
-                       (prefix (ctor "s" [] __LINE__) (stop __LINE__) __LINE__)
-                       __LINE__)) ]) in
-
-    let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tEvent ])
-    let genv = Env.empty in
-
-    match dot pm cm genv "ABS" [] with
+    match dot ABS.procMap ABS.ctorMap ABS.genv "ABS" [] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
         Assert.True(
             """digraph G {
   "STOP"  [fillcolor=red, style=filled, fontcolor=white]
-  "((b -> ABS env={}) □ (s -> STOP env={}))"
-  "((a -> ABS env={}) □ (s -> STOP env={}))"
-  "(((a -> ABS env={}) ⨅ (b -> ABS env={})) □ (s -> STOP env={}))"
-  "((b -> ABS env={}) □ (s -> STOP env={}))" -> "(((a -> ABS env={}) ⨅ (b -> ABS env={})) □ (s -> STOP env={}))" [label="b"]
-  "((b -> ABS env={}) □ (s -> STOP env={}))" -> "STOP" [label="s"]
-  "((a -> ABS env={}) □ (s -> STOP env={}))" -> "(((a -> ABS env={}) ⨅ (b -> ABS env={})) □ (s -> STOP env={}))" [label="a"]
-  "((a -> ABS env={}) □ (s -> STOP env={}))" -> "STOP" [label="s"]
-  "(((a -> ABS env={}) ⨅ (b -> ABS env={})) □ (s -> STOP env={}))" -> "((a -> ABS env={}) □ (s -> STOP env={}))" [label="τ"]
-  "(((a -> ABS env={}) ⨅ (b -> ABS env={})) □ (s -> STOP env={}))" -> "((b -> ABS env={}) □ (s -> STOP env={}))" [label="τ"]
-  "(((a -> ABS env={}) ⨅ (b -> ABS env={})) □ (s -> STOP env={}))" -> "STOP" [label="s"]
+  "((b → ABS) □ (s → STOP))"
+  "((a → ABS) □ (s → STOP))"
+  "ABS"
+
+  "((b → ABS) □ (s → STOP))" -> "ABS" [label="b"]
+  "((b → ABS) □ (s → STOP))" -> "STOP" [label="s"]
+  "((a → ABS) □ (s → STOP))" -> "ABS" [label="a"]
+  "((a → ABS) □ (s → STOP))" -> "STOP" [label="s"]
+  "ABS" -> "((a → ABS) □ (s → STOP))" [label="τ"]
+  "ABS" -> "((b → ABS) □ (s → STOP))" [label="τ"]
+  "ABS" -> "STOP" [label="s"]
 }""" =
                 actual,
             actual
@@ -270,48 +196,22 @@ let abs () =
 
 [<Fact>]
 let lr () =
-    let tEvent = tUnion "event" [ ("blue", []); ("red", []); ("sync", []) ] in
-
-    let pm =
-        ResultEx.get
-            ProcMapError.format
-            (from
-                [ (("LR", []),
-                   (interfaceParallel
-                       (unwind "Left" [] __LINE__)
-                       (setInsert (ctor "sync" [] __LINE__) (litEmpty (tSet tEvent) __LINE__) __LINE__)
-                       (unwind "Right" [] __LINE__))
-                       __LINE__)
-                  (("Left", []),
-                   prefix
-                       (ctor "blue" [] __LINE__)
-                       (prefix (ctor "sync" [] __LINE__) (unwind "Left" [] __LINE__) __LINE__)
-                       __LINE__)
-                  (("Right", []),
-                   prefix
-                       (ctor "red" [] __LINE__)
-                       (prefix (ctor "sync" [] __LINE__) (unwind "Right" [] __LINE__) __LINE__)
-                       __LINE__) ]) in
-
-    let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tEvent ])
-
-    let genv = Env.empty in
-
-    match dot pm cm genv "LR" [] with
+    match dot LR.procMap LR.ctorMap LR.genv "LR" [] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
         Assert.True(
             """digraph G {
-  "((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={})"
-  "(Left ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={})"
-  "((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ Right env={})"
-  "(Left ⟦(Set.insert sync (event set).empty)⟧ Right env={})"
-  "((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={})" -> "(Left ⟦(Set.insert sync (event set).empty)⟧ Right env={})" [label="sync"]
-  "(Left ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={})" -> "((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={})" [label="blue"]
-  "((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ Right env={})" -> "((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={})" [label="red"]
-  "(Left ⟦(Set.insert sync (event set).empty)⟧ Right env={})" -> "((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ Right env={})" [label="blue"]
-  "(Left ⟦(Set.insert sync (event set).empty)⟧ Right env={})" -> "(Left ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={})" [label="red"]
+  "((sync → Left) ⟦{sync}⟧ (sync → Right))"
+  "(Left ⟦{sync}⟧ (sync → Right))"
+  "((sync → Left) ⟦{sync}⟧ Right)"
+  "LR"
+
+  "((sync → Left) ⟦{sync}⟧ (sync → Right))" -> "LR" [label="sync"]
+  "(Left ⟦{sync}⟧ (sync → Right))" -> "((sync → Left) ⟦{sync}⟧ (sync → Right))" [label="blue"]
+  "((sync → Left) ⟦{sync}⟧ Right)" -> "((sync → Left) ⟦{sync}⟧ (sync → Right))" [label="red"]
+  "LR" -> "((sync → Left) ⟦{sync}⟧ Right)" [label="blue"]
+  "LR" -> "(Left ⟦{sync}⟧ (sync → Right))" [label="red"]
 }""" =
                 actual,
             actual
@@ -319,66 +219,26 @@ let lr () =
 
 [<Fact>]
 let coinToss () =
-    let tEvent =
-        tUnion "event" [ ("toss", []); ("heads", []); ("tails", []); ("right", []); ("left", []) ] in
-
-    let pm =
-        ResultEx.get
-            ProcMapError.format
-            (from
-                [ (("Coin", []), prefix (ctor "toss" [] __LINE__) (unwind "Coin'" [] __LINE__) __LINE__)
-                  (("Coin'", []),
-                   intCh
-                       (prefix (ctor "heads" [] __LINE__) (unwind "Coin" [] __LINE__) __LINE__)
-                       (prefix (ctor "tails" [] __LINE__) (unwind "Coin" [] __LINE__) __LINE__)
-                       __LINE__)
-                  (("Man", []), prefix (ctor "toss" [] __LINE__) (unwind "Man'" [] __LINE__) __LINE__)
-                  (("Man'", []),
-                   extCh
-                       (prefix
-                           (ctor "heads" [] __LINE__)
-                           (prefix (ctor "left" [] __LINE__) (unwind "Man" [] __LINE__) __LINE__)
-                           __LINE__)
-                       (prefix
-                           (ctor "tails" [] __LINE__)
-                           (prefix (ctor "right" [] __LINE__) (unwind "Man" [] __LINE__) __LINE__)
-                           __LINE__)
-                       __LINE__)
-                  (("CoinToss", []),
-                   interfaceParallel
-                       (unwind "Coin" [] __LINE__)
-                       (setInsert
-                           (ctor "toss" [] __LINE__)
-                           (setInsert
-                               (ctor "heads" [] __LINE__)
-                               (setInsert (ctor "tails" [] __LINE__) (litEmpty (tSet tEvent) __LINE__) __LINE__)
-                               __LINE__)
-                           __LINE__)
-                       (unwind "Man" [] __LINE__)
-                       __LINE__) ])
-
-    let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tEvent ])
-    let genv = Env.empty in
-
-    match dot pm cm genv "CoinToss" [] with
+    match dot CoinToss.procMap CoinToss.ctorMap CoinToss.genv "CoinToss" [] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
         Assert.True(
             """digraph G {
-  "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ (left -> Man env={}) env={})"
-  "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ (right -> Man env={}) env={})"
-  "((heads -> Coin env={}) ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})"
-  "((tails -> Coin env={}) ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})"
-  "(Coin' ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})"
-  "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man env={})"
-  "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ (left -> Man env={}) env={})" -> "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man env={})" [label="left"]
-  "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ (right -> Man env={}) env={})" -> "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man env={})" [label="right"]
-  "((heads -> Coin env={}) ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})" -> "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ (left -> Man env={}) env={})" [label="heads"]
-  "((tails -> Coin env={}) ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})" -> "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ (right -> Man env={}) env={})" [label="tails"]
-  "(Coin' ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})" -> "((tails -> Coin env={}) ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})" [label="τ"]
-  "(Coin' ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})" -> "((heads -> Coin env={}) ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})" [label="τ"]
-  "(Coin ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man env={})" -> "(Coin' ⟦(Set.insert toss (Set.insert heads (Set.insert tails (event set).empty)))⟧ Man' env={})" [label="toss"]
+  "(Coin ⟦{heads, tails, toss}⟧ (right → Man))"
+  "(Coin ⟦{heads, tails, toss}⟧ (left → Man))"
+  "((tails → Coin) ⟦{heads, tails, toss}⟧ Man')"
+  "((heads → Coin) ⟦{heads, tails, toss}⟧ Man')"
+  "(Coin' ⟦{heads, tails, toss}⟧ Man')"
+  "CoinToss"
+
+  "(Coin ⟦{heads, tails, toss}⟧ (right → Man))" -> "CoinToss" [label="right"]
+  "(Coin ⟦{heads, tails, toss}⟧ (left → Man))" -> "CoinToss" [label="left"]
+  "((tails → Coin) ⟦{heads, tails, toss}⟧ Man')" -> "(Coin ⟦{heads, tails, toss}⟧ (right → Man))" [label="tails"]
+  "((heads → Coin) ⟦{heads, tails, toss}⟧ Man')" -> "(Coin ⟦{heads, tails, toss}⟧ (left → Man))" [label="heads"]
+  "(Coin' ⟦{heads, tails, toss}⟧ Man')" -> "((heads → Coin) ⟦{heads, tails, toss}⟧ Man')" [label="τ"]
+  "(Coin' ⟦{heads, tails, toss}⟧ Man')" -> "((tails → Coin) ⟦{heads, tails, toss}⟧ Man')" [label="τ"]
+  "CoinToss" -> "(Coin' ⟦{heads, tails, toss}⟧ Man')" [label="toss"]
 }""" =
                 actual,
             actual
@@ -386,50 +246,22 @@ let coinToss () =
 
 [<Fact>]
 let lrh () =
-    let tEvent = tUnion "event" [ ("blue", []); ("red", []); ("sync", []) ] in
-
-    let pm =
-        ResultEx.get
-            ProcMapError.format
-            (from
-                [ (("LRH", []),
-                   hide
-                       (interfaceParallel
-                           (unwind "Left" [] __LINE__)
-                           (setInsert (ctor "sync" [] __LINE__) (litEmpty (tSet tEvent) __LINE__) __LINE__)
-                           (unwind "Right" [] __LINE__)
-                           __LINE__)
-                       (setInsert (ctor "sync" [] __LINE__) (litEmpty (tSet tEvent) __LINE__) __LINE__)
-                       __LINE__)
-                  (("Left", []),
-                   prefix
-                       (ctor "blue" [] __LINE__)
-                       (prefix (ctor "sync" [] __LINE__) (unwind "Left" [] __LINE__) __LINE__)
-                       __LINE__)
-                  (("Right", []),
-                   prefix
-                       (ctor "red" [] __LINE__)
-                       (prefix (ctor "sync" [] __LINE__) (unwind "Right" [] __LINE__) __LINE__)
-                       __LINE__) ]) in
-
-    let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tEvent ])
-    let genv = Env.empty in
-
-    match dot pm cm genv "LRH" [] with
+    match dot LRH.procMap LRH.ctorMap LRH.genv "LRH" [] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
         Assert.True(
             """digraph G {
-  "(((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync (event set).empty) env={})"
-  "((Left ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync (event set).empty) env={})"
-  "(((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ Right env={}) \\ (Set.insert sync (event set).empty) env={})"
-  "((Left ⟦(Set.insert sync (event set).empty)⟧ Right env={}) \\ (Set.insert sync (event set).empty) env={})"
-  "(((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync (event set).empty) env={})" -> "((Left ⟦(Set.insert sync (event set).empty)⟧ Right env={}) \\ (Set.insert sync (event set).empty) env={})" [label="τ (sync)"]
-  "((Left ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync (event set).empty) env={})" -> "(((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync (event set).empty) env={})" [label="blue"]
-  "(((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ Right env={}) \\ (Set.insert sync (event set).empty) env={})" -> "(((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync (event set).empty) env={})" [label="red"]
-  "((Left ⟦(Set.insert sync (event set).empty)⟧ Right env={}) \\ (Set.insert sync (event set).empty) env={})" -> "(((sync -> Left env={}) ⟦(Set.insert sync (event set).empty)⟧ Right env={}) \\ (Set.insert sync (event set).empty) env={})" [label="blue"]
-  "((Left ⟦(Set.insert sync (event set).empty)⟧ Right env={}) \\ (Set.insert sync (event set).empty) env={})" -> "((Left ⟦(Set.insert sync (event set).empty)⟧ (sync -> Right env={}) env={}) \\ (Set.insert sync (event set).empty) env={})" [label="red"]
+  "(((sync → Left) ⟦{sync}⟧ (sync → Right)) \\ {sync})"
+  "((Left ⟦{sync}⟧ (sync → Right)) \\ {sync})"
+  "(((sync → Left) ⟦{sync}⟧ Right) \\ {sync})"
+  "LRH"
+
+  "(((sync → Left) ⟦{sync}⟧ (sync → Right)) \\ {sync})" -> "LRH" [label="τ (sync)"]
+  "((Left ⟦{sync}⟧ (sync → Right)) \\ {sync})" -> "(((sync → Left) ⟦{sync}⟧ (sync → Right)) \\ {sync})" [label="blue"]
+  "(((sync → Left) ⟦{sync}⟧ Right) \\ {sync})" -> "(((sync → Left) ⟦{sync}⟧ (sync → Right)) \\ {sync})" [label="red"]
+  "LRH" -> "(((sync → Left) ⟦{sync}⟧ Right) \\ {sync})" [label="blue"]
+  "LRH" -> "((Left ⟦{sync}⟧ (sync → Right)) \\ {sync})" [label="red"]
 }""" =
                 actual,
             actual
@@ -437,32 +269,18 @@ let lrh () =
 
 [<Fact>]
 let hide3 () =
-    let tEvent = tUnion "event" [ ("a", []) ] in
-
-    let pm =
-        ResultEx.get
-            ProcMapError.format
-            (from
-                [ ("P", []),
-                  hide
-                      (prefix (ctor "a" [] __LINE__) (skip __LINE__) __LINE__)
-                      (setInsert (ctor "a" [] __LINE__) (litEmpty (tSet tEvent) __LINE__) __LINE__)
-                      __LINE__ ]) in
-
-    let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tEvent ])
-    let genv = Env.empty in
-
-    match dot pm cm genv "P" [] with
+    match dot Hide3.procMap Hide3.ctorMap Hide3.genv "P" [] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
         Assert.True(
             """digraph G {
   "Ω"
-  "(SKIP \\ (Set.insert a (event set).empty) env={})"
-  "((a -> SKIP env={}) \\ (Set.insert a (event set).empty) env={})"
-  "(SKIP \\ (Set.insert a (event set).empty) env={})" -> "Ω" [label="✓"]
-  "((a -> SKIP env={}) \\ (Set.insert a (event set).empty) env={})" -> "(SKIP \\ (Set.insert a (event set).empty) env={})" [label="τ (a)"]
+  "(SKIP \\ {a})"
+  "P"
+
+  "(SKIP \\ {a})" -> "Ω" [label="✓"]
+  "P" -> "(SKIP \\ {a})" [label="τ (a)"]
 }""" =
                 actual,
             actual
@@ -470,61 +288,35 @@ let hide3 () =
 
 [<Fact>]
 let count () =
-    let tEvent = tUnion "event" [ ("push", []); ("reset", []) ] in
-
-    let pm =
-        ResultEx.get
-            ProcMapError.format
-            (from
-                [ (("COUNT", [ ("n", tNat) ]),
-                   extCh
-                       (guard
-                           (less tNat (varRef "n" __LINE__) (litNat 10u __LINE__) __LINE__)
-                           (prefix
-                               (ctor "push" [] __LINE__)
-                               (unwind
-                                   "COUNT"
-                                   [ plus tNat (varRef "n" __LINE__) (litNat 1u __LINE__) __LINE__ ]
-                                   __LINE__)
-                               __LINE__)
-                           __LINE__)
-                       (guard
-                           (eq tNat (varRef "n" __LINE__) (litNat 10u __LINE__) __LINE__)
-                           (prefix (ctor "reset" [] __LINE__) (unwind "COUNT" [ litNat 0u __LINE__ ] __LINE__) __LINE__)
-                           __LINE__)
-                       __LINE__) ]) in
-
-    let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tEvent ])
-    let genv = Env.empty in
-
-    match dot pm cm genv "COUNT" [ vNat 0u ] with
+    match dot Count.procMap Count.ctorMap Count.genv "COUNT" [ vNat 0u ] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
         Assert.True(
             """digraph G {
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=10} env={n=10}) else STOP) env={n=10}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=10} env={n=10}) else STOP) env={n=10}))"
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=9} env={n=9}) else STOP) env={n=9}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=9} env={n=9}) else STOP) env={n=9}))"
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=8} env={n=8}) else STOP) env={n=8}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=8} env={n=8}) else STOP) env={n=8}))"
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=7} env={n=7}) else STOP) env={n=7}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=7} env={n=7}) else STOP) env={n=7}))"
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=6} env={n=6}) else STOP) env={n=6}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=6} env={n=6}) else STOP) env={n=6}))"
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=5} env={n=5}) else STOP) env={n=5}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=5} env={n=5}) else STOP) env={n=5}))"
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=4} env={n=4}) else STOP) env={n=4}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=4} env={n=4}) else STOP) env={n=4}))"
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=3} env={n=3}) else STOP) env={n=3}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=3} env={n=3}) else STOP) env={n=3}))"
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=2} env={n=2}) else STOP) env={n=2}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=2} env={n=2}) else STOP) env={n=2}))"
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=1} env={n=1}) else STOP) env={n=1}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=1} env={n=1}) else STOP) env={n=1}))"
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=0} env={n=0}) else STOP) env={n=0}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=0} env={n=0}) else STOP) env={n=0}))"
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=10} env={n=10}) else STOP) env={n=10}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=10} env={n=10}) else STOP) env={n=10}))" -> "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=0} env={n=0}) else STOP) env={n=0}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=0} env={n=0}) else STOP) env={n=0}))" [label="reset"]
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=9} env={n=9}) else STOP) env={n=9}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=9} env={n=9}) else STOP) env={n=9}))" -> "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=10} env={n=10}) else STOP) env={n=10}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=10} env={n=10}) else STOP) env={n=10}))" [label="push"]
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=8} env={n=8}) else STOP) env={n=8}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=8} env={n=8}) else STOP) env={n=8}))" -> "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=9} env={n=9}) else STOP) env={n=9}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=9} env={n=9}) else STOP) env={n=9}))" [label="push"]
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=7} env={n=7}) else STOP) env={n=7}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=7} env={n=7}) else STOP) env={n=7}))" -> "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=8} env={n=8}) else STOP) env={n=8}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=8} env={n=8}) else STOP) env={n=8}))" [label="push"]
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=6} env={n=6}) else STOP) env={n=6}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=6} env={n=6}) else STOP) env={n=6}))" -> "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=7} env={n=7}) else STOP) env={n=7}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=7} env={n=7}) else STOP) env={n=7}))" [label="push"]
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=5} env={n=5}) else STOP) env={n=5}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=5} env={n=5}) else STOP) env={n=5}))" -> "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=6} env={n=6}) else STOP) env={n=6}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=6} env={n=6}) else STOP) env={n=6}))" [label="push"]
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=4} env={n=4}) else STOP) env={n=4}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=4} env={n=4}) else STOP) env={n=4}))" -> "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=5} env={n=5}) else STOP) env={n=5}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=5} env={n=5}) else STOP) env={n=5}))" [label="push"]
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=3} env={n=3}) else STOP) env={n=3}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=3} env={n=3}) else STOP) env={n=3}))" -> "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=4} env={n=4}) else STOP) env={n=4}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=4} env={n=4}) else STOP) env={n=4}))" [label="push"]
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=2} env={n=2}) else STOP) env={n=2}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=2} env={n=2}) else STOP) env={n=2}))" -> "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=3} env={n=3}) else STOP) env={n=3}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=3} env={n=3}) else STOP) env={n=3}))" [label="push"]
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=1} env={n=1}) else STOP) env={n=1}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=1} env={n=1}) else STOP) env={n=1}))" -> "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=2} env={n=2}) else STOP) env={n=2}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=2} env={n=2}) else STOP) env={n=2}))" [label="push"]
-  "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=0} env={n=0}) else STOP) env={n=0}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=0} env={n=0}) else STOP) env={n=0}))" -> "((if (nat.less n 10) then (push -> COUNT (nat.plus n 1) env={n=1} env={n=1}) else STOP) env={n=1}) □ (if (nat.equal n 10) then (reset -> COUNT 0 env={n=1} env={n=1}) else STOP) env={n=1}))" [label="push"]
+  "(COUNT 10)"
+  "(COUNT 9)"
+  "(COUNT 8)"
+  "(COUNT 7)"
+  "(COUNT 6)"
+  "(COUNT 5)"
+  "(COUNT 4)"
+  "(COUNT 3)"
+  "(COUNT 2)"
+  "(COUNT 1)"
+  "(COUNT 0)"
+
+  "(COUNT 10)" -> "(COUNT 0)" [label="reset"]
+  "(COUNT 9)" -> "(COUNT 10)" [label="push"]
+  "(COUNT 8)" -> "(COUNT 9)" [label="push"]
+  "(COUNT 7)" -> "(COUNT 8)" [label="push"]
+  "(COUNT 6)" -> "(COUNT 7)" [label="push"]
+  "(COUNT 5)" -> "(COUNT 6)" [label="push"]
+  "(COUNT 4)" -> "(COUNT 5)" [label="push"]
+  "(COUNT 3)" -> "(COUNT 4)" [label="push"]
+  "(COUNT 2)" -> "(COUNT 3)" [label="push"]
+  "(COUNT 1)" -> "(COUNT 2)" [label="push"]
+  "(COUNT 0)" -> "(COUNT 1)" [label="push"]
 }""" =
                 actual,
             actual
@@ -532,66 +324,16 @@ let count () =
 
 [<Fact>]
 let roVarSys1 () =
-    let evs =
-        setInsert
-            (litNat 0u __LINE__)
-            (setInsert
-                (litNat 1u __LINE__)
-                (setInsert
-                    (litNat 2u __LINE__)
-                    (setInsert
-                        (litNat 3u __LINE__)
-                        (setInsert
-                            (litNat 4u __LINE__)
-                            (setInsert (litNat 5u __LINE__) (litEmpty (tSet tNat) __LINE__) __LINE__)
-                            __LINE__)
-                        __LINE__)
-                    __LINE__)
-                __LINE__)
-            __LINE__
-
-    let pm =
-        ResultEx.get
-            ProcMapError.format
-            (from
-                [ (("ROVarSys1", []),
-                   interfaceParallel
-                       (unwind "ROVar" [ litNat 0u __LINE__ ] __LINE__)
-                       evs
-                       (interfaceParallel
-                           (unwind "Reader1" [] __LINE__)
-                           evs
-                           (interfaceParallel (unwind "Reader2" [] __LINE__) evs (unwind "Reader3" [] __LINE__) __LINE__)
-                           __LINE__)
-                       __LINE__)
-                  (("ROVar", [ ("n", tNat) ]),
-                   prefix
-                       (varRef "n" __LINE__)
-                       (unwind
-                           "ROVar"
-                           [ ifExpr
-                                 (less tNat (varRef "n" __LINE__) (litNat 4u __LINE__) __LINE__)
-                                 (plus tNat (varRef "n" __LINE__) (litNat 1u __LINE__) __LINE__)
-                                 (litNat 0u __LINE__)
-                                 __LINE__ ]
-                           __LINE__)
-                       __LINE__)
-                  (("Reader1", []), prefixRecv evs "n" (stop __LINE__) __LINE__)
-                  (("Reader2", []), prefixRecv evs "n" (stop __LINE__) __LINE__)
-                  (("Reader3", []), prefixRecv evs "n" (stop __LINE__) __LINE__) ]) in
-
-    let cm = CtorMap.empty
-    let genv = Env.empty in
-
-    match dot pm cm genv "ROVarSys1" [] with
+    match dot ROVarSys1.procMap ROVarSys1.ctorMap ROVarSys1.genv "ROVarSys1" [] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
         Assert.True(
             """digraph G {
-  "(ROVar (if (nat.less n 4) then (nat.plus n 1) else 0) env={n=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ STOP env={}) env={}) env={})"  [fillcolor=red, style=filled, fontcolor=white]
-  "(ROVar 0 env={} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader2 ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ Reader3 env={}) env={}) env={})"
-  "(ROVar 0 env={} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader2 ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (nat.less n 4) then (nat.plus n 1) else 0) env={n=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ STOP env={}) env={}) env={})" [label="0"]
+  "((ROVar 1) ⟦{0, 1, 2, 3, 4, 5}⟧ (STOP ⟦{0, 1, 2, 3, 4, 5}⟧ (STOP ⟦{0, 1, 2, 3, 4, 5}⟧ STOP)))"  [fillcolor=red, style=filled, fontcolor=white]
+  "ROVarSys1"
+
+  "ROVarSys1" -> "((ROVar 1) ⟦{0, 1, 2, 3, 4, 5}⟧ (STOP ⟦{0, 1, 2, 3, 4, 5}⟧ (STOP ⟦{0, 1, 2, 3, 4, 5}⟧ STOP)))" [label="0"]
 }""" =
                 actual,
             actual
@@ -599,82 +341,33 @@ let roVarSys1 () =
 
 [<Fact>]
 let roVarSys2 () =
-    let evs =
-        setInsert
-            (litNat 0u __LINE__)
-            (setInsert
-                (litNat 1u __LINE__)
-                (setInsert
-                    (litNat 2u __LINE__)
-                    (setInsert
-                        (litNat 3u __LINE__)
-                        (setInsert
-                            (litNat 4u __LINE__)
-                            (setInsert (litNat 5u __LINE__) (litEmpty (tSet tNat) __LINE__) __LINE__)
-                            __LINE__)
-                        __LINE__)
-                    __LINE__)
-                __LINE__)
-            __LINE__
-
-    let pm =
-        ResultEx.get
-            ProcMapError.format
-            (from
-                [ (("ROVarSys2", []),
-                   (interfaceParallel
-                       (unwind "ROVar" [ litNat 0u __LINE__ ] __LINE__)
-                       evs
-                       (interleave
-                           (unwind "Reader1" [] __LINE__)
-                           (interleave (unwind "Reader2" [] __LINE__) (unwind "Reader3" [] __LINE__) __LINE__)
-                           __LINE__)
-                       __LINE__))
-                  (("ROVar", [ ("x", tNat) ]),
-                   (prefix
-                       (varRef "x" __LINE__)
-                       (unwind
-                           "ROVar"
-                           [ ifExpr
-                                 (less tNat (varRef "x" __LINE__) (litNat 4u __LINE__) __LINE__)
-                                 (plus tNat (varRef "x" __LINE__) (litNat 1u __LINE__) __LINE__)
-                                 (litNat 0u __LINE__)
-                                 __LINE__ ]
-                           __LINE__)
-                       __LINE__))
-                  (("Reader1", []), prefixRecv evs "x" (stop __LINE__) __LINE__)
-                  (("Reader2", []), prefixRecv evs "x" (stop __LINE__) __LINE__)
-                  (("Reader3", []), prefixRecv evs "x" (stop __LINE__) __LINE__) ]) in
-
-    let cm = CtorMap.empty
-    let genv = Env.empty in
-
-    match dot pm cm genv "ROVarSys2" [] with
+    match dot ROVarSys2.procMap ROVarSys2.ctorMap ROVarSys2.genv "ROVarSys2" [] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
         Assert.True(
             """digraph G {
-  "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=2} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (STOP ⟦(() set).empty⟧ STOP env={}) env={}) env={})"  [fillcolor=red, style=filled, fontcolor=white]
-  "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=1} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ STOP env={}) env={}) env={})"
-  "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=1} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (STOP ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})"
-  "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=1} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (STOP ⟦(() set).empty⟧ STOP env={}) env={}) env={})"
-  "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})"
-  "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ STOP env={}) env={}) env={})"
-  "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (STOP ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})"
-  "(ROVar 0 env={} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})"
-  "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=1} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ STOP env={}) env={}) env={})" -> "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=2} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (STOP ⟦(() set).empty⟧ STOP env={}) env={}) env={})" [label="2"]
-  "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=1} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (STOP ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=2} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (STOP ⟦(() set).empty⟧ STOP env={}) env={}) env={})" [label="2"]
-  "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=1} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (STOP ⟦(() set).empty⟧ STOP env={}) env={}) env={})" -> "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=2} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (STOP ⟦(() set).empty⟧ STOP env={}) env={}) env={})" [label="2"]
-  "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=1} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (STOP ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})" [label="1"]
-  "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=1} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ STOP env={}) env={}) env={})" [label="1"]
-  "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ STOP env={}) env={}) env={})" -> "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=1} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (STOP ⟦(() set).empty⟧ STOP env={}) env={}) env={})" [label="1"]
-  "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ STOP env={}) env={}) env={})" -> "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=1} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ STOP env={}) env={}) env={})" [label="1"]
-  "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (STOP ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=1} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (STOP ⟦(() set).empty⟧ STOP env={}) env={}) env={})" [label="1"]
-  "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (STOP ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=1} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (STOP ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})" [label="1"]
-  "(ROVar 0 env={} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (STOP ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})" [label="0"]
-  "(ROVar 0 env={} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ STOP env={}) env={}) env={})" [label="0"]
-  "(ROVar 0 env={} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (Reader1 ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})" -> "(ROVar (if (nat.less x 4) then (nat.plus x 1) else 0) env={x=0} ⟦(Set.insert 0 (Set.insert 1 (Set.insert 2 (Set.insert 3 (Set.insert 4 (Set.insert 5 (nat set).empty))))))⟧ (STOP ⟦(() set).empty⟧ (Reader2 ⟦(() set).empty⟧ Reader3 env={}) env={}) env={})" [label="0"]
+  "((ROVar 3) ⟦{0, 1, 2, 3, 4, 5}⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ STOP)))"  [fillcolor=red, style=filled, fontcolor=white]
+  "((ROVar 2) ⟦{0, 1, 2, 3, 4, 5}⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ STOP)))"
+  "((ROVar 2) ⟦{0, 1, 2, 3, 4, 5}⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ STOP)))"
+  "((ROVar 2) ⟦{0, 1, 2, 3, 4, 5}⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ Reader3)))"
+  "((ROVar 1) ⟦{0, 1, 2, 3, 4, 5}⟧ (Reader1 ⟦{}⟧ (Reader2 ⟦{}⟧ STOP)))"
+  "((ROVar 1) ⟦{0, 1, 2, 3, 4, 5}⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ Reader3)))"
+  "((ROVar 1) ⟦{0, 1, 2, 3, 4, 5}⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ Reader3)))"
+  "ROVarSys2"
+
+  "((ROVar 2) ⟦{0, 1, 2, 3, 4, 5}⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ STOP)))" -> "((ROVar 3) ⟦{0, 1, 2, 3, 4, 5}⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ STOP)))" [label="2"]
+  "((ROVar 2) ⟦{0, 1, 2, 3, 4, 5}⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ STOP)))" -> "((ROVar 3) ⟦{0, 1, 2, 3, 4, 5}⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ STOP)))" [label="2"]
+  "((ROVar 2) ⟦{0, 1, 2, 3, 4, 5}⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ Reader3)))" -> "((ROVar 3) ⟦{0, 1, 2, 3, 4, 5}⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ STOP)))" [label="2"]
+  "((ROVar 1) ⟦{0, 1, 2, 3, 4, 5}⟧ (Reader1 ⟦{}⟧ (Reader2 ⟦{}⟧ STOP)))" -> "((ROVar 2) ⟦{0, 1, 2, 3, 4, 5}⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ STOP)))" [label="1"]
+  "((ROVar 1) ⟦{0, 1, 2, 3, 4, 5}⟧ (Reader1 ⟦{}⟧ (Reader2 ⟦{}⟧ STOP)))" -> "((ROVar 2) ⟦{0, 1, 2, 3, 4, 5}⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ STOP)))" [label="1"]
+  "((ROVar 1) ⟦{0, 1, 2, 3, 4, 5}⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ Reader3)))" -> "((ROVar 2) ⟦{0, 1, 2, 3, 4, 5}⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ Reader3)))" [label="1"]
+  "((ROVar 1) ⟦{0, 1, 2, 3, 4, 5}⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ Reader3)))" -> "((ROVar 2) ⟦{0, 1, 2, 3, 4, 5}⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ STOP)))" [label="1"]
+  "((ROVar 1) ⟦{0, 1, 2, 3, 4, 5}⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ Reader3)))" -> "((ROVar 2) ⟦{0, 1, 2, 3, 4, 5}⟧ (STOP ⟦{}⟧ (STOP ⟦{}⟧ Reader3)))" [label="1"]
+  "((ROVar 1) ⟦{0, 1, 2, 3, 4, 5}⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ Reader3)))" -> "((ROVar 2) ⟦{0, 1, 2, 3, 4, 5}⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ STOP)))" [label="1"]
+  "ROVarSys2" -> "((ROVar 1) ⟦{0, 1, 2, 3, 4, 5}⟧ (STOP ⟦{}⟧ (Reader2 ⟦{}⟧ Reader3)))" [label="0"]
+  "ROVarSys2" -> "((ROVar 1) ⟦{0, 1, 2, 3, 4, 5}⟧ (Reader1 ⟦{}⟧ (STOP ⟦{}⟧ Reader3)))" [label="0"]
+  "ROVarSys2" -> "((ROVar 1) ⟦{0, 1, 2, 3, 4, 5}⟧ (Reader1 ⟦{}⟧ (Reader2 ⟦{}⟧ STOP)))" [label="0"]
 }""" =
                 actual,
             actual

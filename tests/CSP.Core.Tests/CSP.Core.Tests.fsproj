@@ -12,6 +12,7 @@
     <ItemGroup>
         <Compile Include="SearchTests.fs" />
         <Compile Include="UnivTest.fs" />
+        <Compile Include="StateSpaceTest.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
 
@@ -31,6 +32,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\CSP.Core\CSP.Core.fsproj" />
+        <ProjectReference Include="..\..\src\CSP.Model.Examples\CSP.Model.Examples.fsproj" />
         <ProjectReference Include="..\CSP.Core.TestUtil\CSP.Core.TestUtil.fsproj" />
     </ItemGroup>
 

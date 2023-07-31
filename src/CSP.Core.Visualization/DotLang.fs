@@ -20,7 +20,7 @@ type GraphConfig =
     { TransConfig: TransConfig
       ProcEvalConfig: ProcEvalConfig
       SearchConfig: SearchConfig
-      NamedConfig: NamedConfig }
+      NamedConfig: NamedSpaceConfig }
 
 
 let graph
@@ -35,20 +35,16 @@ let graph
     let mutable es: (State * Event * State) list = [] in
 
     namedSpace cfg.NamedConfig cm pm genv
-    |> Result.map (fun namedSpace ->
+    |> Result.map (fun ns ->
         bfs
             cfg.SearchConfig
             (fun s es' ->
                 ss <- (s, List.length es') :: ss
                 es <- (List.map (fun (e, s') -> (s, e, s')) es') @ es)
             (fun s ->
-                match trans cfg.TransConfig pm cm genv s with
+                match normedTrans cfg.TransConfig pm cm genv ns s with
                 | Error(err) -> [ (ErrorEvent, ErrorState(ProcEvalError.format err)) ]
                 | Ok(ts) -> ts)
-            (fun s ->
-                match Map.tryFind s namedSpace with
-                | Some(xs) -> let pn, vs = List.head xs in Unwind(pn, vs)
-                | None -> s)
             (Unwind(pn, vs))
 
         (ss, es))

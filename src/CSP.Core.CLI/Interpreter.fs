@@ -24,13 +24,12 @@ type InterpreterConfig =
     { TransConfig: TransConfig
       ProcEvalConfig: ProcEvalConfig }
 
-let interpreterConfig natMax listLenMax maxUnwinding =
+let interpreterConfig natMax listLenMax =
     let procEvalConfig =
         { EvalConfig =
             { UnivConfig =
                 { NatMax = natMax
-                  ListLenMax = listLenMax } }
-          MaxUnwind = maxUnwinding }
+                  ListLenMax = listLenMax } } }
 
     { TransConfig = { ProcEvalConfig = procEvalConfig }
       ProcEvalConfig = procEvalConfig }
@@ -69,8 +68,7 @@ let start (cfg: InterpreterConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env)
                 match List.tryItem i hist with
                 | None -> printfn $"index out of range: {i}"
                 | Some(s', _) -> s <- s'
-            | Some 'h' ->
-                Seq.iteri (fun i (s', ev) -> printfn $"  b {i}: {format s'} -> {Event.format ev}") hist
+            | Some 'h' -> Seq.iteri (fun i (s', ev) -> printfn $"  b {i}: {format s'} -> {Event.format ev}") hist
             | Some 'q' -> exit 0
             | _ -> printfn $"%s{usage}"
         | Error(err) ->
@@ -88,7 +86,6 @@ let start (cfg: InterpreterConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env)
                 match List.tryItem i hist with
                 | None -> printfn $"index out of range: {i}"
                 | Some(s', _) -> s <- s'
-            | Some 'h' ->
-                Seq.iteri (fun i (s', ev) -> printfn $"  b {i}: {format s'} -> {Event.format ev}") hist
+            | Some 'h' -> Seq.iteri (fun i (s', ev) -> printfn $"  b {i}: {format s'} -> {Event.format ev}") hist
             | Some 'q' -> exit 0
             | _ -> printfn $"%s{usage}"

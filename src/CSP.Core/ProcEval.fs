@@ -9,9 +9,7 @@ open CSP.Core.State
 open CSP.Core.Val
 open CSP.Core.Util
 
-type ProcEvalConfig =
-    { EvalConfig: EvalConfig
-      MaxUnwind: int }
+type ProcEvalConfig = { EvalConfig: EvalConfig }
 
 let eval
     (cfg: ProcEvalConfig)

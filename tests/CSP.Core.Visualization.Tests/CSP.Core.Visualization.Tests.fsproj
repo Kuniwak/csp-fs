@@ -29,6 +29,7 @@
     <ItemGroup>
       <ProjectReference Include="..\..\src\CSP.Core.Visualization\CSP.Core.Visualization.fsproj" />
       <ProjectReference Include="..\..\src\CSP.Core\CSP.Core.fsproj" />
+      <ProjectReference Include="..\..\src\CSP.Model.Examples\CSP.Model.Examples.fsproj" />
     </ItemGroup>
 
 </Project>

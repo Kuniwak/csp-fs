@@ -107,10 +107,10 @@ let children (p: Proc<'a>) : Proc<'a> list =
     | Guard(_, p, _) -> [ p ]
 
 let dfs (visit: Proc<'a> -> Unit) (p: Proc<'a>) : Unit =
-    Search.dfs searchCfgUnlimited (fun p _ -> visit p) (fun p -> List.map (fun p -> ((), p)) (children p)) id p
+    Search.dfs searchCfgUnlimited (fun p _ -> visit p) (fun p -> List.map (fun p -> ((), p)) (children p)) p
 
 let bfs (visit: Proc<'a> -> Unit) (p: Proc<'a>) : Unit =
-    Search.bfs searchCfgUnlimited (fun p _ -> visit p) (fun p -> List.map (fun p -> ((), p)) (children p)) id p
+    Search.bfs searchCfgUnlimited (fun p _ -> visit p) (fun p -> List.map (fun p -> ((), p)) (children p)) p
 
 let rec fold (f: 'State -> Proc<'a> -> 'State) (s: 'State) (p: Proc<'a>) =
     let ps = children p in f (List.fold (fold f) s ps) p
