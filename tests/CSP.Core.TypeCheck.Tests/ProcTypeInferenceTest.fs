@@ -22,7 +22,7 @@ let procTestCasesOk: obj[] list =
     [ [| { Proc = unwind "Foo" [] __LINE__
            Expected = []
            Line = __LINE__ } |]
-      [| { Proc = unwind "Foo" [ litUnit __LINE__ ] __LINE__
+      [| { Proc = unwind "Bar" [ litUnit __LINE__ ] __LINE__
            Expected = [ tUnit ]
            Line = __LINE__ } |]
       [| { Proc = stop __LINE__
@@ -57,14 +57,13 @@ let procTestCasesOk: obj[] list =
       [| { Proc = ``if`` (varRef "GLOBAL" __LINE__) (stop __LINE__) (stop __LINE__) __LINE__
            Expected = [ tBool ]
            Line = __LINE__ } |]
-      [| { Proc =
-             ``match`` (ctor "Some" [ litUnit __LINE__ ] __LINE__) [ ((Some "Some", [ "x" ]), stop __LINE__) ] __LINE__
+      [| { Proc = ``match`` (ctor "Some" [ litUnit __LINE__ ] __LINE__) [ (("Some", [ "x" ]), stop __LINE__) ] __LINE__
            Expected = [ tUnion "option" [ ("Some", [ tUnit ]); ("None", []) ] ]
            Line = __LINE__ } |]
       [| { Proc =
              ``match``
                  (ctor "Some" [ varRef "GLOBAL" __LINE__ ] __LINE__)
-                 [ ((Some "Some", [ "x" ]), stop __LINE__) ]
+                 [ (("Some", [ "x" ]), stop __LINE__) ]
                  __LINE__
            Expected = [ tUnion "option" [ ("Some", [ tBool ]); ("None", []) ] ]
            Line = __LINE__ } |]
@@ -89,7 +88,11 @@ let inferProcOk (tc: ProcTestCaseOk) =
     let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tOption; tFoo ]) in
     let tcenv = TypeCstrEnv.from [ ("GLOBAL", tcBool) ] in
 
-    match postProcess (infer cm tcenv tc.Proc init) with
+    let pm =
+        ProcMap.from [ (("Foo", []), stop __LINE__); (("Bar", [ ("x", tUnit) ]), stop __LINE__) ]
+        |> ResultEx.get ProcMapError.format
+
+    match postProcess (infer pm cm tcenv tc.Proc init) with
     | Ok(p, s) ->
         let sep = ", "
 

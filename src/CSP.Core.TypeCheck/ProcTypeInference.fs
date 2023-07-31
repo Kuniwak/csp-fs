@@ -2,6 +2,7 @@ module CSP.Core.ProcTypeInference
 
 open CSP.Core.CtorMap
 open CSP.Core.Proc
+open CSP.Core.ProcMap
 open CSP.Core.Type
 open CSP.Core.TypeCstrEnv
 open CSP.Core.TypeCstr
@@ -11,25 +12,43 @@ open CSP.Core.TypeCstrUnification
 open CSP.Core.ExprTypeInference
 open CSP.Core.Util
 
-let infer (cm: CtorMap) (tcenv: TypeCstrEnv) (p: Proc<unit>) (s: State) : Result<Proc<TypeCstr> * State, TypeError> =
+let infer
+    (pm: ProcMap<unit>)
+    (cm: CtorMap)
+    (tcenv: TypeCstrEnv)
+    (p: Proc<unit>)
+    (s: State)
+    : Result<Proc<TypeCstr> * State, TypeError> =
     let exprInfer = infer cm in
 
     let rec procInfer tcenv p s =
 
         match p with
         | Unwind(pn, exprs, line) ->
-            let exprsRes =
-                List.foldBack
-                    (fun expr accRes ->
-                        accRes
-                        |> Result.bind (fun (exprs, s) ->
-                            exprInfer tcenv expr s |> Result.map (fun (expr, s) -> (expr :: exprs, s))))
-                    exprs
-                    (Ok([], s))
+            match ProcMap.tryFind pn pm with
+            | None -> Error(atLine line (NoSuchProcess(pn)))
+            | Some(vars, _) ->
+                let ts = vars |> List.map snd in
+                let tcs, s = generalizeList ts s in
 
-            match exprsRes with
-            | Ok(exprs, s) -> Ok(Unwind(pn, exprs, line), s)
-            | Error terr -> Error(atLine line terr)
+                if List.length vars = List.length exprs then
+                    let exprsRes =
+                        List.foldBack
+                            (fun (expr, tc) accRes ->
+                                accRes
+                                |> Result.bind (fun (exprs, s) ->
+                                    exprInfer tcenv expr s
+                                    |> Result.bind (fun (expr, s) ->
+                                        unify s tc (Expr.get expr)
+                                        |> Result.map (fun (_, s) -> (expr :: exprs, s)))))
+                            (List.zip exprs tcs)
+                            (Ok([], s))
+
+                    match exprsRes with
+                    | Ok(exprs, s) -> Ok(Unwind(pn, exprs, line), s)
+                    | Error terr -> Error(atLine line terr)
+                else
+                    Error(atLine line (ArgumentsLengthMismatch(pn, vars, exprs)))
         | Stop(line) -> Ok(Stop(line), s)
         | Skip(line) -> Ok(Skip(line), s)
         | Prefix(expr, p, line) ->

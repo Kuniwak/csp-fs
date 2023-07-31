@@ -39,7 +39,7 @@ let typeCheck (cm: CtorMap) (genv: Env) (pm: ProcMap<unit>) : TypeError option =
 
                         let tcenv = bindAll xs tcenv in
 
-                        match infer cm tcenv p s with
+                        match infer pm cm tcenv p s with
                         | Error(err) -> Error(At(err, $"process `{pn}`"))
                         | Ok(_, s) -> Ok(s)))
                 (Ok(s))

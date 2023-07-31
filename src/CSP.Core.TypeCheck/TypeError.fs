@@ -1,7 +1,9 @@
 module CSP.Core.TypeError
 
 open CSP.Core.Ctor
+open CSP.Core.Expr
 open CSP.Core.LineNum
+open CSP.Core.Proc
 open CSP.Core.TypeCstr
 open CSP.Core.TypeEnvError
 open CSP.Core.Var
@@ -20,6 +22,8 @@ type TypeError =
     | Recursion of UncertainVarId * TypeCstrUncertainVar.VarMap
     | NotExhausted of Set<Ctor>
     | TypeEnvError of TypeEnvError
+    | NoSuchProcess of ProcId
+    | ArgumentsLengthMismatch of ProcId * (Var * Type) list * Expr<unit> list
 
 let atLine (line: LineNum) (err: TypeError) : TypeError = At(err, $"line %s{line}")
 
@@ -49,25 +53,31 @@ let format (terr: TypeError) : string =
             $"not exhausted match: {{%s{missing}}}"
         | DefaultClauseArgumentsLenMustBe1(vars) ->
             let s =
-                String.concat
-                    ","
-                    (List.map
-                        (fun varOpt ->
-                            match varOpt with
-                            | Some var -> Var.format var
-                            | None -> "_")
-                        vars) in
+                vars
+                |> Seq.map (fun varOpt ->
+                    match varOpt with
+                    | Some var -> Var.format var
+                    | None -> "_")
+                |> String.concat " " in
 
-            $"length of arguments for default clause must be 1, but got: [%s{s}]"
+            $"length of arguments for default clause must be 1, but got: %s{s}"
         | Recursion(u, m) ->
             let s =
-                String.concat
-                    "\n"
-                    (List.map
-                        (fun (u, t) -> $"  %s{TypeCstr.format (TCUncertain u)} -> %s{TypeCstr.format t}")
-                        (Map.toList m.Map)) in
+                m.Map
+                |> Map.toSeq
+                |> Seq.map (fun (u, t) -> $"  %s{TypeCstr.format (TCUncertain u)} -> %s{TypeCstr.format t}")
+                |> String.concat "\n" in
 
             $"type recursion: %s{TypeCstr.format (TCUncertain u)} in\n%s{s}"
         | TypeEnvError(err) -> TypeEnvError.format err
+        | NoSuchProcess(pn) -> $"no such process: %s{pn}"
+        | ArgumentsLengthMismatch(pn, vars, exprs) ->
+            let s1 =
+                vars
+                |> List.map (fun (var, t) -> $" (%s{Var.format var}: {Type.format true t})")
+                |> String.concat "" in
+
+            let s2 = exprs |> List.map (Expr.format noAnnotation) |> String.concat " " in
+            $"arguments length mismatch: (%s{pn}%s{s1}) vs (%s{s2})"
 
     $"""type error: {format terr}"""

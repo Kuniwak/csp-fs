@@ -17,14 +17,15 @@ let ``if`` expr pThen pElse line = If(expr, pThen, pElse, line)
 let ``match`` expr procMap line =
     Match(
         expr,
-        Map
-            [ for (ctorOpt, vars), p in procMap ->
-                  (Option.map Ctor ctorOpt, (List.map (fun var -> if var = "_" then None else Some(Var var)) vars, p)) ],
+        procMap
+        |> Seq.map (fun ((ctor, vars), p) ->
+            ((if ctor = "_" then None else Some(Ctor ctor)),
+             (vars |> List.map (fun var -> (if var = "_" then None else Some(Var var))), p)))
+        |> Map,
         line
     )
 
-let interfaceParallel p1 expr p2 line =
-    InterfaceParallel(p1, expr, p2, line)
+let interfaceParallel p1 expr p2 line = InterfaceParallel(p1, expr, p2, line)
 
 let interleave p1 p2 line = Interleave(p1, p2, line)
 let hide p expr line = Hide(p, expr, line)
