@@ -1,6 +1,7 @@
 ﻿open CSP.Core
 open CSP.Core.ProcEval
 open CSP.Core.Univ
+open CSP.Core.ValShorthand
 open CSP.Core.Visualization.DotLang
 open CSP.Model.GHApp
 
@@ -16,6 +17,6 @@ let dotCfg: DotConfig =
             { UnivConfig = univCfg
               ProcEvalConfig = procEvalCfg } } }
 
-match dot dotCfg procMap ctorMap genv "GHAuth" [] with
+match dot dotCfg procMap ctorMap genv "GHStar" [ vSet [] ] with
 | Ok(s) -> printfn $"%s{s}"
 | Error(err) -> printfn $"%s{ProcEvalError.format err}"
