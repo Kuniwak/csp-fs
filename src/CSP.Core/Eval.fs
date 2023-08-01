@@ -206,6 +206,14 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                 | Error err -> Error(atLine line err)
             | Ok(v) -> Error(atLine line (TypeMismatch(v, tList (tVar 0u))))
             | Error err -> Error(atLine line err)
+        | ListContains(exprElem, exprList, _, line) ->
+            match eval env exprList with
+            | Ok(VList vs) ->
+                match eval env exprElem with
+                | Ok(v) -> Ok(VBool(List.contains v vs))
+                | Error err -> Error(atLine line err)
+            | Ok(v) -> Error(atLine line (TypeMismatch(v, tList (tVar 0u))))
+            | Error err -> Error(atLine line err)
         | SetRange(e1, e2, _, line) ->
             match eval env e1 with
             | Ok(VNat n1) ->

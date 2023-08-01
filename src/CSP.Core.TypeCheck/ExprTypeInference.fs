@@ -417,6 +417,15 @@ let infer
                     match unify s tcList (TCList tcElem) with
                     | Error terr -> Error(atLine line terr)
                     | Ok(tcList, s) -> Ok(ListCons(exprElem, exprList, tcList, line), s)
+        | ListContains(exprElem, exprList, _, line) ->
+            infer s tcenv exprElem
+            |> Result.bind (fun (exprElem, s) ->
+                infer s tcenv exprList
+                |> Result.map (fun (exprList, s) -> (exprElem, exprList, s)))
+            |> Result.bind (fun (exprElem, exprList, s) ->
+                unify s (get exprList) (TCList(get exprElem))
+                |> Result.map (fun (_, s) -> ListCons(exprElem, exprList, TCBool, line), s))
+            |> Result.mapError (atLine line)
         | ListNth(exprList, exprIdx, _, line) ->
             match infer s tcenv exprList with
             | Error terr -> Error(atLine line terr)

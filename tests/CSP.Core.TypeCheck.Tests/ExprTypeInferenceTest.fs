@@ -41,28 +41,28 @@ let exprTestCasesOk: obj[] list =
       [| { Expr =
              matchExpr
                  (ctor "Some" [ litUnit __LINE__ ] __LINE__)
-                 [ (Some("Some"), [ "x" ], litTrue __LINE__)
-                   (Some("None"), [], (litFalse __LINE__)) ]
+                 [ (("Some", [ "x" ]), litTrue __LINE__)
+                   (("None", []), (litFalse __LINE__)) ]
                  __LINE__
            Expected = tBool } |]
       [| { Expr =
              matchExpr
                  (ctor "Some" [ litUnit __LINE__ ] __LINE__)
-                 [ (Some("Some"), [ "x" ], ctor "Some" [ varRef "x" __LINE__ ] __LINE__)
-                   (None, [ "x" ], varRef "x" __LINE__) ]
+                 [ (("Some", [ "x" ]), ctor "Some" [ varRef "x" __LINE__ ] __LINE__)
+                   (("_", [ "x" ]), varRef "x" __LINE__) ]
                  __LINE__
            Expected = tUnion "option" [ ("Some", [ tUnit ]); ("None", []) ] } |]
       [| { Expr =
              matchExpr
                  (ctor "Some" [ litUnit __LINE__ ] __LINE__)
-                 [ (Some "Some", [ "x" ], ctor "Some" [ varRef "x" __LINE__ ] __LINE__)
-                   (None, [ "x" ], varRef "x" __LINE__) ]
+                 [ (("Some", [ "x" ]), ctor "Some" [ varRef "x" __LINE__ ] __LINE__)
+                   (("_", [ "x" ]), varRef "x" __LINE__) ]
                  __LINE__
            Expected = tUnion "option" [ ("Some", [ tUnit ]); ("None", []) ] } |]
       [| { Expr =
              matchExpr
                  (ctor "Some" [ litUnit __LINE__ ] __LINE__)
-                 [ (Some "Some", [ "_" ], litFalse __LINE__); (None, [ "_" ], litTrue __LINE__) ]
+                 [ (("Some", [ "_" ]), litFalse __LINE__); (("_", [ "_" ]), litTrue __LINE__) ]
                  __LINE__
            Expected = tBool } |]
       [| { Expr = varRef "GLOBAL" __LINE__
@@ -132,8 +132,8 @@ let exprTestCasesOk: obj[] list =
       [| { Expr =
              matchExpr
                  (ctor "Some" [ litTrue __LINE__ ] __LINE__)
-                 [ (Some("Some"), [ "x" ], boolNot (varRef "x" __LINE__) __LINE__)
-                   (Some("None"), [], litTrue __LINE__) ]
+                 [ (("Some", [ "x" ]), boolNot (varRef "x" __LINE__) __LINE__)
+                   (("None", []), litTrue __LINE__) ]
                  __LINE__
            Expected = tBool } |] ]
 
@@ -185,27 +185,27 @@ let exprTestCasesError: obj[] list =
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
       [| { Expr = ifExpr (litTrue __LINE__) (litUnit __LINE__) (litFalse __LINE__) __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
-      [| { Expr = matchExpr (litUnit __LINE__) [ (None, [], (litTrue __LINE__)) ] __LINE__
+      [| { Expr = matchExpr (litUnit __LINE__) [ (("_", []), (litTrue __LINE__)) ] __LINE__
            Expected = NoCtors } |]
       [| { Expr =
              matchExpr
                  (ctor "Some" [ (litUnit __LINE__) ] __LINE__)
-                 [ (Some("Some"), [ "_" ], (litTrue __LINE__))
-                   (Some("None"), [], (litUnit __LINE__)) ]
+                 [ (("Some", [ "_" ]), (litTrue __LINE__))
+                   (("None", []), (litUnit __LINE__)) ]
                  __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
       [| { Expr =
              matchExpr
                  (ctor "Some" [ (litUnit __LINE__) ] __LINE__)
-                 [ (Some("Some"), [ "_" ], (litTrue __LINE__))
-                   (None, [ "_" ], (litUnit __LINE__)) ]
+                 [ (("Some", [ "_" ]), (litTrue __LINE__))
+                   (("_", [ "_" ]), (litUnit __LINE__)) ]
                  __LINE__
            Expected = TypeMismatch(Set [ tcBool; tcUnit ]) } |]
       [| { Expr =
              matchExpr
                  (ctor "Some" [ (litUnit __LINE__) ] __LINE__)
-                 [ (Some("Some"), [ "x" ], varRef "x" __LINE__)
-                   (None, [ "_" ], (litTrue __LINE__)) ]
+                 [ (("Some", [ "x" ]), varRef "x" __LINE__)
+                   (("_", [ "_" ]), (litTrue __LINE__)) ]
                  __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
       [| { Expr = matchExpr (ctor "Foo" [] __LINE__) [] __LINE__
@@ -213,7 +213,7 @@ let exprTestCasesError: obj[] list =
       [| { Expr =
              matchExpr
                  (ctor "Some" [ (litUnit __LINE__) ] __LINE__)
-                 [ (Some "None", [], litUnit __LINE__); (None, [ "x"; "y" ], litUnit __LINE__) ]
+                 [ (("None", []), litUnit __LINE__); (("_", [ "x"; "y" ]), litUnit __LINE__) ]
                  __LINE__
            Expected = DefaultClauseArgumentsLenMustBe1([ Some(Var "x"); Some(Var "y") ]) } |]
       [| { Expr = varRef "undefined" __LINE__
@@ -305,22 +305,22 @@ let exprTestCasesError: obj[] list =
       [| { Expr =
              matchExpr
                  (ctor "Some" [ (litUnit __LINE__) ] __LINE__)
-                 [ (Some("Some"), [ "x" ], boolNot (varRef "x" __LINE__) __LINE__)
-                   (Some("None"), [], (litTrue __LINE__)) ]
+                 [ (("Some", [ "x" ]), boolNot (varRef "x" __LINE__) __LINE__)
+                   (("None", []), (litTrue __LINE__)) ]
                  __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
       [| { Expr =
              matchExpr
                  (ctor "Some" [ (litUnit __LINE__) ] __LINE__)
-                 [ (Some("Some"), [ "x" ], litFalse __LINE__) ]
+                 [ (("Some", [ "x" ]), litFalse __LINE__) ]
                  __LINE__
            Expected = NotExhausted(Set[Ctor "None"]) } |]
       [| { Expr =
              matchExpr
                  (ctor "Some" [ (litUnit __LINE__) ] __LINE__)
-                 [ (Some("Some"), [ "x" ], litFalse __LINE__)
-                   (Some("None"), [], litFalse __LINE__)
-                   (Some("Foo"), [], litFalse __LINE__) ]
+                 [ (("Some", [ "x" ]), litFalse __LINE__)
+                   (("None", []), litFalse __LINE__)
+                   (("Foo", []), litFalse __LINE__) ]
                  __LINE__
            Expected = UnionNameMismatch("option", "foo") } |] ]
 

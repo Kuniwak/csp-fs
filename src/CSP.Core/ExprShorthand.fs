@@ -17,8 +17,9 @@ let matchExpr exprUnion exprMap line =
     Match(
         exprUnion,
         Map
-            [ for ctorOpt, vars, expr in exprMap ->
-                  (Option.map Ctor ctorOpt, (List.map (fun v -> if v = "_" then None else Some(Var v)) vars, expr)) ],
+            [ for (ctor, vars), expr in exprMap ->
+                  ((if ctor = "_" then None else Some(Ctor ctor)),
+                   (vars |> List.map (fun v -> if v = "_" then None else Some(Var v)), expr)) ],
         (),
         line
     )
@@ -48,6 +49,9 @@ let tupleFst expr line = TupleFst(expr, (), line)
 let tupleSnd expr line = TupleSnd(expr, (), line)
 
 let listCons exprElem exprList line = ListCons(exprElem, exprList, (), line)
+
+let listContains exprElem exprList line =
+    ListContains(exprElem, exprList, (), line)
 
 let listNth expr exprIdx line = ListNth(expr, exprIdx, (), line)
 

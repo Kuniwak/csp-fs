@@ -34,6 +34,7 @@ type Expr<'a> =
     | ListNth of Expr<'a> * Expr<'a> * 'a * LineNum
     | BoolNot of Expr<'a> * 'a * LineNum
     | ListCons of Expr<'a> * Expr<'a> * 'a * LineNum
+    | ListContains of Expr<'a> * Expr<'a> * 'a * LineNum
     | SetRange of Expr<'a> * Expr<'a> * 'a * LineNum
     | SetInsert of Expr<'a> * Expr<'a> * 'a * LineNum
     | SetRemove of Expr<'a> * Expr<'a> * 'a * LineNum
@@ -181,6 +182,12 @@ let format (fmt: string -> 'a -> string) (expr: Expr<'a>) : string =
 {render indent1}%s{format indent2 e1}
 {render indent1}%s{format indent2 e2})"""
                 x
+        | ListContains(e1, e2, x, _) ->
+            fmt
+                $"""(List.contains
+{render indent1}%s{format indent2 e1}
+{render indent1}%s{format indent2 e2})"""
+                x
         | TupleFst(e, x, _) ->
             fmt
                 $"""(fst
@@ -260,6 +267,7 @@ let line (expr: Expr<'a>) : LineNum =
     | Exists(_, _, _, _, _, line) -> line
     | Tuple(_, _, _, line) -> line
     | ListCons(_, _, _, line) -> line
+    | ListContains(_, _, _, line) -> line
     | TupleFst(_, _, line) -> line
     | TupleSnd(_, _, line) -> line
     | ListNth(_, _, _, line) -> line
@@ -295,6 +303,7 @@ let get (expr: Expr<'a>) : 'a =
     | TupleFst(_, x, _) -> x
     | TupleSnd(_, x, _) -> x
     | ListCons(_, _, x, _) -> x
+    | ListContains(_, _, x, _) -> x
     | ListNth(_, _, x, _) -> x
     | SetRange(_, _, x, _) -> x
     | SetInsert(_, _, x, _) -> x
@@ -326,6 +335,7 @@ let children (expr: Expr<'a>) : Expr<'a> list =
     | Filter(_, _, _, expr, _, _) -> [ expr ]
     | Exists(_, _, _, expr, _, _) -> [ expr ]
     | ListCons(expr1, expr2, _, _) -> [ expr1; expr2 ]
+    | ListContains(expr1, expr2, _, _) -> [ expr1; expr2 ]
     | TupleFst(expr, _, _) -> [ expr ]
     | TupleSnd(expr, _, _) -> [ expr ]
     | ListNth(expr1, expr2, _, _) -> [ expr1; expr2 ]
@@ -394,6 +404,7 @@ let map (f: Expr<'a> -> 'b) (expr: Expr<'a>) : Expr<'b> =
             Exists(t, var, mapType exprCond, mapType exprEnum, f expr, line)
         | Tuple(expr1, expr2, _, line) -> Tuple(mapType expr1, mapType expr2, f expr, line)
         | ListCons(exprElem, exprList, _, line) -> ListCons(mapType exprElem, mapType exprList, f expr, line)
+        | ListContains(exprElem, exprList, _, line) -> ListContains(mapType exprElem, mapType exprList, f expr, line)
         | TupleFst(exprList, _, line) -> TupleFst(mapType exprList, f expr, line)
         | TupleSnd(exprList, _, line) -> TupleFst(mapType exprList, f expr, line)
         | ListNth(exprList, exprIdx, _, line) -> ListNth(mapType exprList, mapType exprIdx, f expr, line)
