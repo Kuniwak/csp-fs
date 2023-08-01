@@ -1,6 +1,5 @@
 module CSP.Core.ProcMapTypeInference
 
-open CSP.Core.TypeCstr
 open CSP.Core.Env
 open CSP.Core.TypeError
 open CSP.Core.CtorMap
