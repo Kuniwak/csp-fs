@@ -13,10 +13,8 @@ let rec ofList (xs: 'a list) (l: uint) : 'a list list =
 let rec ofMap (ks: 'k list) (vs: 'v list) : Map<'k, 'v> list =
     if List.isEmpty ks || List.isEmpty vs then
         failwith $"must not be empty: %s{nameof ofMap}"
-        
+
     let kvs =
-        List.collect
-            (fun ks -> List.map (List.zip ks) (ofList vs (Checked.uint32 (List.length ks))))
-            (ListEx.power ks) in
+        List.collect (fun ks -> List.map (List.zip ks) (ofList vs (Checked.uint32 (List.length ks)))) (ListEx.power ks) in
 
     List.map Map kvs

@@ -14,11 +14,12 @@ let zipLongest (xs: 'a list) (ys: 'b list) : ('a option * 'b option) list =
 let cmp (fmt: 'a -> string) (xs: 'a list) (ys: 'a list) : string =
     String.concat
         "\n"
-        ("Expected\tActual"::(List.map
-            (fun p ->
-                match p with
-                | Some x, Some y -> $"{fmt x}\t{fmt y}"
-                | Some x, None -> $"{fmt x}\t-"
-                | None, Some y -> $"-\t{fmt y}"
-                | None, None -> "-\t-")
-            (zipLongest xs ys)))
+        ("Expected\tActual"
+         :: (List.map
+             (fun p ->
+                 match p with
+                 | Some x, Some y -> $"{fmt x}\t{fmt y}"
+                 | Some x, None -> $"{fmt x}\t-"
+                 | None, Some y -> $"-\t{fmt y}"
+                 | None, None -> "-\t-")
+             (zipLongest xs ys)))

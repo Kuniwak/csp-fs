@@ -19,7 +19,7 @@ let fold (f: 'State -> Var -> Val -> 'State) (s: 'State) (env: Env) =
 let bind1 (var: Var) (v: Val) (env: Env) : Env =
     match env with
     | Env env -> Env(Map.add var v env)
-    
+
 let bindAll (xs: (Var * Val) seq) (env: Env) : Env =
     Seq.fold (fun env (var, v) -> bind1 var v env) env xs
 
@@ -44,10 +44,7 @@ let valOf (var: Var) (env: Env) : Result<Val, EnvError> =
 
 let localVars (env: Env) (genv: Env) : (Var * Val) seq =
     match env, genv with
-    | Env env, Env genv ->
-        env
-        |> Map.filter (fun var _ -> not (Map.containsKey var genv))
-        |> Map.toSeq
+    | Env env, Env genv -> env |> Map.filter (fun var _ -> not (Map.containsKey var genv)) |> Map.toSeq
 
 let format (genv: Env) (env: Env) : string =
     localVars env genv

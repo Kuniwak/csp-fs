@@ -6,11 +6,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="TestUtil.fs" />
+        <Compile Include="TestUtil.fs"/>
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="FSharpPlus" Version="1.4.1" />
+        <PackageReference Include="FSharpPlus" Version="1.4.1"/>
     </ItemGroup>
 
 </Project>

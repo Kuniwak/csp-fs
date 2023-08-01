@@ -57,6 +57,7 @@ let infer
                                             unify s tc (get expr) |> Result.map (fun (_, s) -> expr :: exprs, s))))
                                 (List.zip tcs exprs)
                                 (Ok([], s)) in
+
                         exprsRes
                         |> Result.map (fun (exprs, s) -> (Union(ctor, exprs, t, line), s))
                         |> Result.mapError (atLine line)

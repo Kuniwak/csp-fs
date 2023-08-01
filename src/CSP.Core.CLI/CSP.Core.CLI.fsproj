@@ -7,15 +7,15 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="Interpreter.fs" />
+        <Compile Include="Interpreter.fs"/>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\CSP.Core\CSP.Core.fsproj" />
+        <ProjectReference Include="..\CSP.Core\CSP.Core.fsproj"/>
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="FSharpPlus" Version="1.4.1" />
+        <PackageReference Include="FSharpPlus" Version="1.4.1"/>
     </ItemGroup>
 
 </Project>

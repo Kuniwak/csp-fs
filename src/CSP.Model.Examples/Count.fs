@@ -7,7 +7,7 @@ open CSP.Core.ExprShorthand
 open CSP.Core.TypeShorthand
 open CSP.Core.Util
 
-let tEvent = tUnion "event" [ ("push", []); ("reset", []) ] in
+let tEvent = tUnion "event" [ ("push", []); ("reset", []) ]
 
 let procMap =
     ResultEx.get
@@ -19,17 +19,14 @@ let procMap =
                        (less tNat (varRef "n" __LINE__) (litNat 10u __LINE__) __LINE__)
                        (prefix
                            (ctor "push" [] __LINE__)
-                           (unwind
-                               "COUNT"
-                               [ plus tNat (varRef "n" __LINE__) (litNat 1u __LINE__) __LINE__ ]
-                               __LINE__)
+                           (unwind "COUNT" [ plus tNat (varRef "n" __LINE__) (litNat 1u __LINE__) __LINE__ ] __LINE__)
                            __LINE__)
                        __LINE__)
                    (guard
                        (eq tNat (varRef "n" __LINE__) (litNat 10u __LINE__) __LINE__)
                        (prefix (ctor "reset" [] __LINE__) (unwind "COUNT" [ litNat 0u __LINE__ ] __LINE__) __LINE__)
                        __LINE__)
-                   __LINE__) ]) in
+                   __LINE__) ])
 
 let ctorMap = ResultEx.get CtorMapError.format (CtorMap.from [ tEvent ])
-let genv = Env.empty in
+let genv = Env.empty

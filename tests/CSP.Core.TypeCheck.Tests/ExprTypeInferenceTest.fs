@@ -41,8 +41,7 @@ let exprTestCasesOk: obj[] list =
       [| { Expr =
              matchExpr
                  (ctor "Some" [ litUnit __LINE__ ] __LINE__)
-                 [ (("Some", [ "x" ]), litTrue __LINE__)
-                   (("None", []), (litFalse __LINE__)) ]
+                 [ (("Some", [ "x" ]), litTrue __LINE__); (("None", []), (litFalse __LINE__)) ]
                  __LINE__
            Expected = tBool } |]
       [| { Expr =
@@ -190,8 +189,7 @@ let exprTestCasesError: obj[] list =
       [| { Expr =
              matchExpr
                  (ctor "Some" [ (litUnit __LINE__) ] __LINE__)
-                 [ (("Some", [ "_" ]), (litTrue __LINE__))
-                   (("None", []), (litUnit __LINE__)) ]
+                 [ (("Some", [ "_" ]), (litTrue __LINE__)); (("None", []), (litUnit __LINE__)) ]
                  __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
       [| { Expr =
@@ -310,10 +308,7 @@ let exprTestCasesError: obj[] list =
                  __LINE__
            Expected = TypeMismatch(Set [ tcUnit; tcBool ]) } |]
       [| { Expr =
-             matchExpr
-                 (ctor "Some" [ (litUnit __LINE__) ] __LINE__)
-                 [ (("Some", [ "x" ]), litFalse __LINE__) ]
-                 __LINE__
+             matchExpr (ctor "Some" [ (litUnit __LINE__) ] __LINE__) [ (("Some", [ "x" ]), litFalse __LINE__) ] __LINE__
            Expected = NotExhausted(Set[Ctor "None"]) } |]
       [| { Expr =
              matchExpr

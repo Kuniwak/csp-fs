@@ -7,13 +7,13 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="Program.fs" />
+        <Compile Include="Program.fs"/>
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\CSP.Core.Visualization\CSP.Core.Visualization.fsproj" />
-        <ProjectReference Include="..\CSP.Core\CSP.Core.fsproj" />
-        <ProjectReference Include="..\CSP.Model.GHApp\CSP.Model.GHApp.fsproj" />
+        <ProjectReference Include="..\CSP.Core.Visualization\CSP.Core.Visualization.fsproj"/>
+        <ProjectReference Include="..\CSP.Core\CSP.Core.fsproj"/>
+        <ProjectReference Include="..\CSP.Model.GHApp\CSP.Model.GHApp.fsproj"/>
     </ItemGroup>
 
 </Project>

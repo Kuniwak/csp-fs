@@ -6,11 +6,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="GHApp.fs" />
+        <Compile Include="GHApp.fs"/>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\CSP.Core\CSP.Core.fsproj" />
+        <ProjectReference Include="..\CSP.Core\CSP.Core.fsproj"/>
     </ItemGroup>
 
 </Project>

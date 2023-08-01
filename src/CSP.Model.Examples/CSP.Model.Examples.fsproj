@@ -6,22 +6,22 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="ABSkip.fs" />
-        <Compile Include="Rand2.fs" />
-        <Compile Include="ABS.fs" />
-        <Compile Include="ParABC.fs" />
-        <Compile Include="LR.fs" />
-        <Compile Include="LRH.fs" />
-        <Compile Include="Count.fs" />
-        <Compile Include="ROVarSys1.fs" />
-        <Compile Include="ROVarSys2.fs" />
-        <Compile Include="CoinToss.fs" />
-        <Compile Include="Hide3.fs" />
+        <Compile Include="ABSkip.fs"/>
+        <Compile Include="Rand2.fs"/>
+        <Compile Include="ABS.fs"/>
+        <Compile Include="ParABC.fs"/>
+        <Compile Include="LR.fs"/>
+        <Compile Include="LRH.fs"/>
+        <Compile Include="Count.fs"/>
+        <Compile Include="ROVarSys1.fs"/>
+        <Compile Include="ROVarSys2.fs"/>
+        <Compile Include="CoinToss.fs"/>
+        <Compile Include="Hide3.fs"/>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\CSP.Core.Util\CSP.Core.Util.fsproj" />
-      <ProjectReference Include="..\CSP.Core\CSP.Core.fsproj" />
+        <ProjectReference Include="..\CSP.Core.Util\CSP.Core.Util.fsproj"/>
+        <ProjectReference Include="..\CSP.Core\CSP.Core.fsproj"/>
     </ItemGroup>
 
 </Project>

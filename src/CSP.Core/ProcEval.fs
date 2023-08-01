@@ -11,12 +11,7 @@ open CSP.Core.Util
 
 type ProcEvalConfig = { EvalConfig: EvalConfig }
 
-let eval
-    (cfg: ProcEvalConfig)
-    (cm: CtorMap)
-    (env: Env)
-    (p: Proc<unit>)
-    : Result<State, ProcEvalError> =
+let eval (cfg: ProcEvalConfig) (cm: CtorMap) (env: Env) (p: Proc<unit>) : Result<State, ProcEvalError> =
     let exprEval env expr =
         Result.mapError ExprError (eval cfg.EvalConfig cm env expr)
 

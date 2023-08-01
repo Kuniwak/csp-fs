@@ -8,7 +8,7 @@ type Event =
     | Tau
     | Tick
     | ErrorEvent
-    
+
 let format (ev: Event) : string =
     match ev with
     | Vis ev' -> format ev'

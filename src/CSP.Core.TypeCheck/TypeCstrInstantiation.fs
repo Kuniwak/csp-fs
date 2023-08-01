@@ -9,7 +9,7 @@ let rec instantiate (tc: TypeCstr) : Type.Type =
     | TCUncertain(UncertainVarId u) -> tVar u
     | TCBool -> tBool
     | TCNat -> tNat
-    | TCTuple(tcL, tcR) -> tTuple2(instantiate tcL)(instantiate tcR)
+    | TCTuple(tcL, tcR) -> tTuple2 (instantiate tcL) (instantiate tcR)
     | TCUnion(un, cm) -> tUnionM un (Map.map (fun _ -> List.map instantiate) cm)
     | TCSet(tc) -> tSet (instantiate tc)
     | TCList(tc) -> tList (instantiate tc)

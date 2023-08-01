@@ -6,12 +6,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="ResultEx.fs" />
-        <Compile Include="Range.fs" />
-        <Compile Include="ListEx.fs" />
-        <Compile Include="MapEx.fs" />
-        <Compile Include="Univ.fs" />
-        <Compile Include="StringEx.fs" />
+        <Compile Include="ResultEx.fs"/>
+        <Compile Include="Range.fs"/>
+        <Compile Include="ListEx.fs"/>
+        <Compile Include="MapEx.fs"/>
+        <Compile Include="Univ.fs"/>
+        <Compile Include="StringEx.fs"/>
     </ItemGroup>
 
 </Project>

@@ -18,4 +18,3 @@ let rec typeCheck (t: Type) (v: Val) : bool =
         | Some ts -> List.length ts = List.length vs && List.forall2 typeCheck ts vs
         | None -> false
     | _, _ -> false
-

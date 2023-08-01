@@ -14,4 +14,4 @@ let rec format (err: EnvError) : string =
         let s = String.concat "/" (List.map Var.format vars) in
         $"unbound variable: %s{Var.format var} (available: %s{s})"
 
-let atLine (line: LineNum) (err: EnvError): EnvError = At(err, $"line %s{line}")
+let atLine (line: LineNum) (err: EnvError) : EnvError = At(err, $"line %s{line}")

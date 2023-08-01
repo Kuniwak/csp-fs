@@ -8,6 +8,4 @@ open CSP.Core.ProcMapTypeInference
 let typeCheckGHApp () =
     match typeCheck ctorMap genv procMap with
     | None -> ()
-    | Some(terr) ->
-        Assert.Fail(TypeError.format terr)
-    
+    | Some(terr) -> Assert.Fail(TypeError.format terr)
