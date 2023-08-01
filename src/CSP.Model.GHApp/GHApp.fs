@@ -10,7 +10,12 @@ open CSP.Core.ValShorthand
 open CSP.Core.ProcMap
 
 let tEvent =
-    tUnion "event" [ ("EvLoginBtn", []); ("EvLogoutBtn", []); ("EvSearchBtn", []) ]
+    tUnion
+        "event"
+        [ ("EvLoginBtn", [])
+          ("EvLogoutBtn", [])
+          ("EvSearchBtn", [])
+          ("EvMoreBtn", []) ]
 
 let tPat = tUnion "pat" [ ("Pat1", []); ("Pat2", []); ("PatEmpty", []) ]
 
@@ -45,12 +50,15 @@ let tDispSearchError =
 let tChAuthReq = tUnion "tChAuthReq" [ ("ChAuthReq", [ tPat ]) ]
 
 let tChAuthRes =
-    tUnion "tChAuthRes" [ ("ChAuthRes", [ tEither tGHAuthError (tOption tUser) ]) ]
+    tUnion "tChAuthRes" [ ("ChAuthResError", [ tGHAuthError ]); ("ChAuthResOk", [ tOption tUser ]) ]
 
 let tChSearchReq = tUnion "tChSearchReq" [ ("ChSearchReq", [ tQuery; tNat ]) ]
 
 let tChSearchRes =
-    tUnion "tChSearchRes" [ ("ChSearchRes", [ tEither tGHSearchError (tTuple2 (tList tRepo) tBool) ]) ]
+    tUnion
+        "tChSearchRes"
+        [ ("ChSearchResError", [ tGHSearchError ])
+          ("ChSearchResOk", [ (tList tRepo); tBool ]) ]
 
 
 let tChChkStarReq = tUnion "tChChkStarReq" [ ("ChChkStarReq", [ tRepo; tPat ]) ]
@@ -81,7 +89,8 @@ let tChDispLogin = tUnion "tChDispLogin" [ ("ChDispLogin", [ tDispLogin ]) ]
 let tChDispSearch =
     tUnion
         "tChDispSearch"
-        [ ("ChDispSearch", [ (tEither tDispSearchError (tTuple3 (tList tRepo) (tMap tRepo (tOption tBool)) tBool)) ]) ]
+        [ ("ChDispSearchError", [])
+          ("ChDispSearchOk", [ tList tRepo; tMap tRepo (tOption tBool); tBool ]) ]
 
 let tPage = tList tRepo
 let tPages = tList tPage
@@ -367,7 +376,7 @@ let procMap =
                       "GHUnstarRecv2"
                       [ varRef "repo" __LINE__; varRef "user" __LINE__; varRef "starRel" __LINE__ ]
                       __LINE__)
-                 (("None", []), unwind "GHUnstarWillFail" [varRef "starRel" __LINE__] __LINE__) ]
+                 (("None", []), unwind "GHUnstarWillFail" [ varRef "starRel" __LINE__ ] __LINE__) ]
                __LINE__)
 
           (("GHUnstarRecv2", [ ("repo", tRepo); ("user", tUser); ("starRel", tStarRel) ]),
@@ -445,17 +454,13 @@ let procMap =
                "res"
                (``match``
                    (varRef "res" __LINE__)
-                   [ (("ChAuthRes", [ "res" ]),
-                      ``match``
-                          (varRef "res" __LINE__)
-                          [ (("Left", [ "_" ]), unwind "AppDialogAuthError" [ varRef "pat" __LINE__ ] __LINE__)
-                            (("Right", [ "userOpt" ]),
-                             ``match``
-                                 (varRef "userOpt" __LINE__)
-                                 [ (("Some", [ "_" ]), unwind "AppRecvAuth" [ varRef "pat" __LINE__ ] __LINE__)
-                                   (("None", []), unwind "AppDialogAuthFailed" [] __LINE__) ]
-                                 __LINE__) ]
-                          __LINE__) ]
+                   [ (("ChAuthResError", [ "_" ]), (unwind "AppDialogAuthError" [ varRef "pat" __LINE__ ] __LINE__))
+                     (("ChAuthResOk", [ "userOpt" ]),
+                      (``match``
+                          (varRef "userOpt" __LINE__)
+                          [ (("Some", [ "_" ]), unwind "AppRecvAuth" [ varRef "pat" __LINE__ ] __LINE__)
+                            (("None", []), unwind "AppDialogAuthFailed" [] __LINE__) ]
+                          __LINE__)) ]
                    __LINE__)
                __LINE__))
 
@@ -477,7 +482,7 @@ let procMap =
                (unwind "AppDispSearch" [ varRef "p" __LINE__; ctor "QueryEmpty" [] __LINE__ ] __LINE__)
                __LINE__)
 
-          (("AppDispSearch", [ ("p", tPat); ("q", tQuery) ]),
+          (("AppDispSearch", [ ("q", tQuery); ("p", tPat) ]),
            extCh
                (prefix
                    (ctor "EvLogoutBtn" [] __LINE__)
@@ -490,19 +495,114 @@ let procMap =
                        (``match``
                            (varRef "ch" __LINE__)
                            [ (("ChSearchField", [ "q" ]),
-                              unwind "AppDispSearch" [ varRef "p" __LINE__; varRef "q" __LINE__ ] __LINE__) ]
+                              unwind "AppDispSearch" [ varRef "q" __LINE__; varRef "p" __LINE__ ] __LINE__) ]
                            __LINE__)
                        __LINE__)
                    (guard
                        (boolNot (eq tQuery (varRef "q" __LINE__) (ctor "QueryEmpty" [] __LINE__) __LINE__) __LINE__)
                        (prefix
                            (ctor "EvSearchBtn" [] __LINE__)
-                           (unwind "AppDidPressSearchBtn" [ varRef "q" __LINE__ ] __LINE__)
+                           (unwind "AppDidPressSearchBtn" [ varRef "q" __LINE__; varRef "p" __LINE__ ] __LINE__)
                            __LINE__)
                        __LINE__)
                    __LINE__)
                __LINE__)
-          (("AppDidPressSearchBtn", [ ("q", tQuery) ]), stop __LINE__) ] // TOOD: impl
+          (("AppDidPressSearchBtn", [ ("q", tQuery); ("p", tPat) ]),
+           prefix
+               (ctor "ChSearchReq" [ varRef "q" __LINE__; litNat 0u __LINE__ ] __LINE__)
+               (unwind "AppReqSearch" [ varRef "q" __LINE__; varRef "p" __LINE__ ] __LINE__)
+               __LINE__)
+          (("AppReqSearch", [ ("q", tQuery); ("p", tPat) ]),
+           prefixRecv
+               (univ tChSearchRes __LINE__)
+               "ch"
+               (``match``
+                   (varRef "ch" __LINE__)
+                   [ (("ChSearchResError", [ "_" ]),
+                      unwind "AppDialogSearchError" [ varRef "q" __LINE__; varRef "p" __LINE__ ] __LINE__)
+                     (("ChSearchResOk", [ "repos"; "hasMore" ]),
+                      unwind
+                          "ARecvSearch"
+                          [ varRef "repos" __LINE__; varRef "hasMore" __LINE__; varRef "p" __LINE__ ]
+                          __LINE__) ]
+                   __LINE__)
+               __LINE__)
+          (("AppDialogSearchError", [ ("q", tQuery); ("p", tPat) ]),
+           prefix
+               (ctor "ChDispSearchError" [] __LINE__)
+               (unwind "AppDispSearch" [ varRef "q" __LINE__; varRef "p" __LINE__ ] __LINE__)
+               __LINE__)
+          (("AppRecvSearch", [ ("repos", tList tRepo); ("hasMore", tBool); ("p", tPat) ]),
+           prefix
+               (ctor
+                   "ChDispSearchOk"
+                   [ varRef "repos" __LINE__
+                     varRef "hasMore" __LINE__
+                     litEmpty (tMap tRepo (tOption tBool)) __LINE__ ]
+                   __LINE__)
+               (unwind
+                   "AppDispSearchResult"
+                   [ varRef "repos" __LINE__
+                     varRef "hasMore" __LINE__
+                     litEmpty (tMap tRepo (tOption tBool)) __LINE__
+                     litNat 0u __LINE__
+                     varRef "p" __LINE__ ]
+                   __LINE__)
+               __LINE__)
+          (("AppDispSearchResult",
+            [ ("repos", tRepo)
+              ("hasMore", tBool)
+              ("starMap", tMap tRepo (tOption tBool))
+              ("page", tNat)
+              ("p", tPat) ]),
+           extCh
+               (prefix
+                   (ctor "EvMoreBtn" [] __LINE__)
+                   (unwind
+                       "AppDispPressMoreBtn"
+                       [ varRef "repos" __LINE__
+                         varRef "hasMore" __LINE__
+                         varRef "starMap" __LINE__
+                         varRef "page" __LINE__
+                         varRef "p" __LINE__ ]
+                       __LINE__)
+                   __LINE__)
+               (prefixRecv
+                   (filter
+                       (tSet tChChkStarBtn)
+                       "ch"
+                       (matchExpr
+                           (varRef "ch" __LINE__)
+                           [ (("ChChkStarBtn", [ "repo" ]),
+                              listContains (varRef "repo" __LINE__) (varRef "repos" __LINE__) __LINE__) ]
+                           __LINE__)
+                       (univ tChChkStarBtn __LINE__)
+                       __LINE__)
+                   ""
+                   (unwind
+                       "AppDisPressChkStar"
+                       [ varRef "repos" __LINE__
+                         varRef "hasMore" __LINE__
+                         varRef "starMap" __LINE__
+                         varRef "page" __LINE__
+                         varRef "p" __LINE__ ]
+                       __LINE__)
+                   __LINE__)
+               __LINE__)
+          (("AppDispPressMoreBtn",
+            [ ("repos", tRepo)
+              ("hasMore", tBool)
+              ("starMap", tMap tRepo (tOption tBool))
+              ("page", tNat)
+              ("p", tPat) ]),
+           stop __LINE__) // TODO: impl
+          (("AppDispPressChkStar",
+            [ ("repos", tRepo)
+              ("hasMore", tBool)
+              ("starMap", tMap tRepo (tOption tBool))
+              ("page", tNat)
+              ("p", tPat) ]),
+           stop __LINE__) ] // TODO: impl
     |> ResultEx.get ProcMapError.format
 
 
