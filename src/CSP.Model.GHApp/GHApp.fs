@@ -90,7 +90,7 @@ let tChDispSearch =
     tUnion
         "tChDispSearch"
         [ ("ChDispSearchError", [])
-          ("ChDispSearchOk", [ tList tRepo; tMap tRepo (tOption tBool); tBool ]) ]
+          ("ChDispSearchOk", [ tList tRepo; tBool; tMap tRepo (tOption tBool) ]) ]
 
 let tPage = tList tRepo
 let tPages = tList tPage
@@ -153,16 +153,13 @@ let procMap =
 
           (("GHAuthWillFail", [ ("p", tPat) ]),
            prefix
-               (ctor "ChAuthRes" [ (ctor "Left" [ ctor "GHAuthError" [] __LINE__ ] __LINE__) ] __LINE__)
+               (ctor "ChAuthResError" [ ctor "GHAuthError" [] __LINE__ ] __LINE__)
                (unwind "GHAuth" [] __LINE__)
                __LINE__)
 
           (("GHAuthWillResp", [ ("p", tPat) ]),
            (prefix
-               (ctor
-                   "ChAuthRes"
-                   [ (ctor "Right" [ mapFindOpt (varRef "p" __LINE__) (varRef "PAT_REL" __LINE__) __LINE__ ] __LINE__) ]
-                   __LINE__)
+               (ctor "ChAuthResOk" [ mapFindOpt (varRef "p" __LINE__) (varRef "PAT_REL" __LINE__) __LINE__ ] __LINE__)
                (unwind "GHAuth" [] __LINE__))
                __LINE__)
 
@@ -185,53 +182,51 @@ let procMap =
 
           (("GHSearchWillFail", []),
            prefix
-               (ctor "ChSearchRes" [ ctor "Left" [ ctor "GHSearchError" [] __LINE__ ] __LINE__ ] __LINE__)
+               (ctor "ChSearchResError" [ ctor "GHSearchError" [] __LINE__ ] __LINE__)
                (unwind "GHSearch" [] __LINE__)
                __LINE__)
 
           (("GHSearchWillResp", [ ("q", tQuery); ("i", tNat) ]),
-           prefix
-               (ctor
-                   "ChSearchRes"
-                   [ ctor
-                         "Right"
-                         [ ifExpr
-                               (eq tQuery (varRef "q" __LINE__) (ctor "Query1" [] __LINE__) __LINE__)
-                               // Query hit.
-                               (tuple2
-                                   // Page to return.
-                                   (ifExpr
-                                       // i < (List.length p1) + 1
-                                       (less
-                                           tNat
-                                           (varRef "i" __LINE__)
-                                           (plus
-                                               tNat
-                                               (size tPages (varRef "PAGES1" __LINE__) __LINE__)
-                                               (litNat 1u __LINE__)
-                                               __LINE__)
-                                           __LINE__)
-                                       // Return requested page.
-                                       // PAGES ! (i-1)
-                                       (listNth
-                                           (varRef "PAGES1" __LINE__)
-                                           (minus tNat (varRef "i" __LINE__) (litNat 1u __LINE__) __LINE__)
-                                           __LINE__)
-                                       // Index out of range.
-                                       (litEmpty tPage __LINE__)
-                                       __LINE__)
-                                   (less
-                                       tNat
-                                       (minus tNat (varRef "i" __LINE__) (litNat 1u __LINE__) __LINE__)
-                                       (size tPages (varRef "PAGES1" __LINE__) __LINE__)
-                                       __LINE__)
-                                   __LINE__)
-                               // Otherwise.
-                               (tuple2 (litEmpty (tList tRepo) __LINE__) (litFalse __LINE__) __LINE__)
-                               __LINE__ ]
-                         __LINE__ ]
+           ``if``
+               (eq tQuery (varRef "q" __LINE__) (ctor "Query1" [] __LINE__) __LINE__)
+               // Query hit.
+               (prefix
+                   (ctor
+                       "ChSearchResOk"
+                       [
+                         // Page to return.
+                         (ifExpr
+                             // i < (List.length p1) + 1
+                             (less
+                                 tNat
+                                 (varRef "i" __LINE__)
+                                 (plus
+                                     tNat
+                                     (size tPages (varRef "PAGES1" __LINE__) __LINE__)
+                                     (litNat 1u __LINE__)
+                                     __LINE__)
+                                 __LINE__)
+                             // Return requested page.
+                             (listNth
+                                 (varRef "PAGES1" __LINE__)
+                                 (minus tNat (varRef "i" __LINE__) (litNat 1u __LINE__) __LINE__)
+                                 __LINE__)
+                             // Index out of range.
+                             (litEmpty tPage __LINE__)
+                             __LINE__)
+                         (less
+                             tNat
+                             (minus tNat (varRef "i" __LINE__) (litNat 1u __LINE__) __LINE__)
+                             (size tPages (varRef "PAGES1" __LINE__) __LINE__)
+                             __LINE__) ]
+                       __LINE__)
+                   (unwind "GHSearch" [] __LINE__)
                    __LINE__)
-               (unwind "GHSearch" [] __LINE__)
+               // Otherwise.
+               (prefix
+                   (ctor "ChSearchResOk" [ (litEmpty (tList tRepo) __LINE__); (litFalse __LINE__) ] __LINE__)
+                   (unwind "GHSearch" [] __LINE__)
+                   __LINE__)
                __LINE__)
 
           (("GHStar", [ ("starRel", tStarRel) ]),
@@ -419,7 +414,7 @@ let procMap =
            ``match``
                (varRef "pOpt" __LINE__)
                [ (("Some", [ "p" ]),
-                  unwind "AppDispSearch" [ varRef "p" __LINE__; ctor "QueryEmpty" [] __LINE__ ] __LINE__)
+                  unwind "AppDispSearch" [ ctor "QueryEmpty" [] __LINE__; varRef "p" __LINE__ ] __LINE__)
                  (("None", []), unwind "AppDispLogin" [ ctor "PatEmpty" [] __LINE__ ] __LINE__) ]
                __LINE__)
 
@@ -479,7 +474,7 @@ let procMap =
           (("AppRecvAuth", [ ("p", tPat) ]),
            prefix
                (ctor "ChDispLogin" [ ctor "AppAuthSuccess" [] __LINE__ ] __LINE__)
-               (unwind "AppDispSearch" [ varRef "p" __LINE__; ctor "QueryEmpty" [] __LINE__ ] __LINE__)
+               (unwind "AppDispSearch" [ ctor "QueryEmpty" [] __LINE__; varRef "p" __LINE__ ] __LINE__)
                __LINE__)
 
           (("AppDispSearch", [ ("q", tQuery); ("p", tPat) ]),
@@ -522,16 +517,18 @@ let procMap =
                       unwind "AppDialogSearchError" [ varRef "q" __LINE__; varRef "p" __LINE__ ] __LINE__)
                      (("ChSearchResOk", [ "repos"; "hasMore" ]),
                       unwind
-                          "ARecvSearch"
+                          "AppRecvSearch"
                           [ varRef "repos" __LINE__; varRef "hasMore" __LINE__; varRef "p" __LINE__ ]
                           __LINE__) ]
                    __LINE__)
                __LINE__)
+
           (("AppDialogSearchError", [ ("q", tQuery); ("p", tPat) ]),
            prefix
                (ctor "ChDispSearchError" [] __LINE__)
                (unwind "AppDispSearch" [ varRef "q" __LINE__; varRef "p" __LINE__ ] __LINE__)
                __LINE__)
+
           (("AppRecvSearch", [ ("repos", tList tRepo); ("hasMore", tBool); ("p", tPat) ]),
            prefix
                (ctor
@@ -549,8 +546,9 @@ let procMap =
                      varRef "p" __LINE__ ]
                    __LINE__)
                __LINE__)
+
           (("AppDispSearchResult",
-            [ ("repos", tRepo)
+            [ ("repos", tList tRepo)
               ("hasMore", tBool)
               ("starMap", tMap tRepo (tOption tBool))
               ("page", tNat)
@@ -580,7 +578,7 @@ let procMap =
                        __LINE__)
                    ""
                    (unwind
-                       "AppDisPressChkStar"
+                       "AppDidPressChkStar"
                        [ varRef "repos" __LINE__
                          varRef "hasMore" __LINE__
                          varRef "starMap" __LINE__
@@ -590,14 +588,14 @@ let procMap =
                    __LINE__)
                __LINE__)
           (("AppDispPressMoreBtn",
-            [ ("repos", tRepo)
+            [ ("repos", tList tRepo)
               ("hasMore", tBool)
               ("starMap", tMap tRepo (tOption tBool))
               ("page", tNat)
               ("p", tPat) ]),
            stop __LINE__) // TODO: impl
-          (("AppDispPressChkStar",
-            [ ("repos", tRepo)
+          (("AppDidPressChkStar",
+            [ ("repos", tList tRepo)
               ("hasMore", tBool)
               ("starMap", tMap tRepo (tOption tBool))
               ("page", tNat)
