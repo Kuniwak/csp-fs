@@ -20,6 +20,7 @@ let infer
     (s: State)
     : Result<Proc<TypeCstr> * State, TypeError> =
     let exprInfer = infer cm in
+    let atArgPos i err = At(err, $"argument at %d{i}")
 
     let rec procInfer tcenv p s =
 
@@ -34,14 +35,14 @@ let infer
                 if List.length vars = List.length exprs then
                     let exprsRes =
                         List.foldBack
-                            (fun (expr, tc) accRes ->
+                            (fun (i, expr, tc) accRes ->
                                 accRes
                                 |> Result.bind (fun (exprs, s) ->
                                     exprInfer tcenv expr s
                                     |> Result.bind (fun (expr, s) ->
-                                        unify s tc (Expr.get expr)
-                                        |> Result.map (fun (_, s) -> (expr :: exprs, s)))))
-                            (List.zip exprs tcs)
+                                        unify s tc (Expr.get expr) |> Result.map (fun (_, s) -> (expr :: exprs, s)))
+                                    |> Result.mapError (atArgPos i)))
+                            (List.mapi (fun i (expr, tc) -> (i, expr, tc)) (List.zip exprs tcs))
                             (Ok([], s))
 
                     match exprsRes with

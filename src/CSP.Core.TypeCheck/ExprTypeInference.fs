@@ -32,7 +32,7 @@ let infer
                 let tc, _ = generalize t s in Error(atLine line (TypeNotDerived(tc, ClassEmpty.name)))
         | Union(ctor, exprs, _, line) ->
             match Map.tryFind ctor cm with
-            | None -> Error(NoSuchCtor ctor)
+            | None -> Error(atLine line (NoSuchCtor ctor))
             | Some(un, cm) ->
                 match Map.tryFind ctor cm with
                 | None -> Error(NoSuchCtor ctor)
@@ -57,8 +57,9 @@ let infer
                                             unify s tc (get expr) |> Result.map (fun (_, s) -> expr :: exprs, s))))
                                 (List.zip tcs exprs)
                                 (Ok([], s)) in
-
-                        Result.map (fun (exprs, s) -> (Union(ctor, exprs, t, line), s)) exprsRes
+                        exprsRes
+                        |> Result.map (fun (exprs, s) -> (Union(ctor, exprs, t, line), s))
+                        |> Result.mapError (atLine line)
                     else
                         Error(AssociatedValuesLenMismatch(ctor, Set [ List.length exprs; List.length ts ]))
 
