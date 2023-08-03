@@ -1,6 +1,7 @@
 module CSP.Core.Eval
 
 open CSP.Core
+open CSP.Core.UnionMap
 open CSP.Core.Util
 open CSP.Core.Ctor
 open CSP.Core.CtorMap
@@ -15,7 +16,20 @@ open CSP.Core.ValTypeCheck
 type EvalConfig = { UnivConfig: UnivConfig }
 let evalConfig cfg = { UnivConfig = cfg }
 
-let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Val, EvalError> =
+let eval (cfg: EvalConfig) (um: UnionMap) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Val, EvalError> =
+    let univ = univ cfg.UnivConfig um in
+    let typeCheck = typeCheck um cm in
+
+    let tryGetUnion v =
+        match v with
+        | VUnion(ctor, vals) -> Ok(ctor, vals)
+        | _ -> Error(ValNotUnion(v)) in
+
+    let tryGetMap v =
+        match v with
+        | VMap(m) -> Ok(m)
+        | _ -> Error(ValNotMap(v)) in
+
     let rec eval env expr =
         match expr with
         | LitUnit _ -> Ok(VUnit)
@@ -27,34 +41,29 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
                 Ok(ClassEmpty.empty t)
             else
                 Error(atLine line (TypeNotDerived(t, ClassEmpty.name)))
-        | VarRef(var, _, line) -> Result.mapError (fun err -> atLine line (EnvError err)) (valOf var env)
+        | VarRef(var, _, line) -> valOf var env |> Result.mapError EnvError |> Result.mapError (atLine line)
         | Tuple(expr1, expr2, _, line) ->
-            Result.mapError
-                (atLine line)
-                (Result.bind (fun v1 -> Result.map (fun v2 -> VTuple(v1, v2)) (eval env expr2)) (eval env expr1))
-
+            (expr1, expr2)
+            |> ResultEx.bind2 (eval env) (eval env)
+            |> Result.map VTuple
+            |> Result.mapError (atLine line)
         | Union(ctor, exprs, _, line) ->
-            match Map.tryFind ctor cm with
-            | Some(_, cm') ->
-                match Map.tryFind ctor cm' with
-                | Some ts when List.length ts = List.length exprs ->
-                    let vsRes =
-                        List.foldBack
-                            (fun expr vsRes ->
-                                match vsRes, eval env expr with
-                                | Ok(vs), Ok(v) -> Ok(v :: vs)
-                                | Error(err), _ -> Error err
-                                | _, Error(err) -> Error err)
-                            exprs
-                            (Ok([]))
-
-                    match vsRes with
-                    | Ok(vs) -> Ok(VUnion(ctor, vs))
-                    | Error(err) -> Error(atLine line err)
-
-                | Some ts -> Error(atLine line (UnionValuesLenMismatch(ctor, List.length exprs, List.length ts)))
-                | None -> Error(atLine line (NoSuchCtor ctor))
-            | None -> Error(atLine line (NoSuchCtor ctor))
+            tryFindAssocLen ctor um cm
+            |> Result.mapError CtorMapError
+            |> Result.bind (fun len ->
+                if List.length exprs = len then
+                    List.foldBack
+                        (fun expr vsRes ->
+                            match vsRes, eval env expr with
+                            | Ok(vs), Ok(v) -> Ok(v :: vs)
+                            | Error(err), _ -> Error err
+                            | _, Error(err) -> Error err)
+                        exprs
+                        (Ok([]))
+                    |> Result.map (fun vs -> VUnion(ctor, vs))
+                else
+                    Error(UnionValuesLenMismatch(ctor, len, List.length exprs)))
+            |> Result.mapError (atLine line)
         | If(e1, e2, e3, _, line) ->
             match eval env e1 with
             | Ok(VBool true) -> Result.mapError (fun err -> atLine line err) (eval env e2)
@@ -62,23 +71,23 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
             | Ok(v) -> Error(atLine line (ValNotBool v))
             | Error err -> Error(atLine line err)
         | Match(exprUnion, exprMap, _, line) ->
-            match eval env exprUnion with
-            | Ok(VUnion(ctor, vs)) ->
+            eval env exprUnion
+            |> Result.bind tryGetUnion
+            |> Result.bind (fun (ctor, vs) ->
                 match Map.tryFind (Some ctor) exprMap with
                 | Some(varOpts, e1) ->
                     if List.length varOpts = List.length vs then
-                        let env = bindAllOpts (List.zip varOpts vs) env in Result.mapError (atLine line) (eval env e1)
+                        let env = bindAllOpts (List.zip varOpts vs) env in eval env e1
                     else
-                        Error(atLine line (UnionValuesLenMismatch(ctor, List.length varOpts, List.length vs)))
+                        Error(UnionValuesLenMismatch(ctor, List.length varOpts, List.length vs))
                 | None ->
                     match Map.tryFind None exprMap with
                     | Some(varOpts, e2) ->
                         match List.length varOpts with
                         | 1 -> let env = bind1Opt (List.head varOpts) (VUnion(ctor, vs)) env in eval env e2
-                        | _ -> Error(atLine line (DefaultClauseArgumentLenMustBe1 varOpts))
-                    | None -> Error(atLine line (NoClauseMatched ctor))
-            | Ok(v) -> Error(atLine line (ValNotUnion v))
-            | Error err -> Error(atLine line err)
+                        | _ -> Error(DefaultClauseArgumentLenMustBe1 varOpts)
+                    | None -> Error(NoClauseMatched ctor))
+            |> Result.mapError (atLine line)
         | Eq(t, e1, e2, _, line) ->
             if ClassEq.derivedBy t then
                 match eval env e1 with
@@ -376,30 +385,21 @@ let eval (cfg: EvalConfig) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Va
             else
                 Error(atLine line (TypeNotDerived(t, ClassEnum.name)))
         | MapAdd(exprKey, exprVal, exprMap, _, line) ->
-            match eval env exprKey with
-            | Ok(vK) ->
-                match eval env exprVal with
-                | Ok(vV) ->
-                    match eval env exprMap with
-                    | Ok(VMap m) -> Ok(VMap(Map.add vK vV m))
-                    | Ok(v) -> Error(atLine line (TypeMismatch(v, tMap (tVar 0u) (tVar 1u))))
-                    | Error err -> Error(atLine line err)
-                | Error err -> Error(atLine line err)
-            | Error err -> Error(atLine line err)
+            (exprKey, exprVal, exprMap)
+            |> ResultEx.bind3 (eval env) (eval env) ((Result.bind tryGetMap) << (eval env))
+            |> Result.map (fun (vK, vV, m) -> VMap(Map.add vK vV m))
+            |> Result.mapError (atLine line)
         | MapFindOpt(exprKey, exprMap, _, line) ->
-            match eval env exprKey with
-            | Ok(vK) ->
-                match eval env exprMap with
-                | Ok(VMap m) ->
-                    match Map.tryFind vK m with
-                    | Some v -> Ok(VUnion(Ctor "Some", [ v ]))
-                    | None -> Ok(VUnion(Ctor "None", []))
-                | Ok(v) -> Error(atLine line (TypeMismatch(v, tMap (tVar 0u) (tVar 1u))))
-                | Error err -> Error(atLine line err)
-            | Error err -> Error(atLine line err)
+            (exprKey, exprMap)
+            |> ResultEx.bind2 (eval env) ((Result.bind tryGetMap) << (eval env))
+            |> Result.map (fun (vK, m) ->
+                match Map.tryFind vK m with
+                | Some v -> VUnion(Ctor "Some", [ v ])
+                | None -> VUnion(Ctor "None", []))
+            |> Result.mapError (atLine line)
         | Univ(t, _, line) ->
-            match univ cfg.UnivConfig t with
-            | Ok vs -> Ok(VSet(Set.ofList vs))
-            | Error err -> Error(atLine line (UnivError err))
+            univ t
+            |> Result.map (Set.ofList >> VSet)
+            |> Result.mapError (UnivError >> (atLine line))
 
     eval env expr

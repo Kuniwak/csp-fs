@@ -44,11 +44,9 @@ type Expr<'a> =
     | Univ of Type * 'a * LineNum
 
 let noAnnotation (s: string) (_: 'a) : string = s
-let typeAnnotation (s: string) (t: Type) : string = $"(%s{s}::%s{Type.format false t})"
+let typeAnnotation (s: string) (t: Type) : string = $"(%s{s}::%s{Type.format t})"
 
 let format (fmt: string -> 'a -> string) (expr: Expr<'a>) : string =
-    let typeFormat = Type.format true
-
     let rec format indent expr =
         let indent1 = indent + 1u in
         let indent2 = indent + 2u in
@@ -59,7 +57,7 @@ let format (fmt: string -> 'a -> string) (expr: Expr<'a>) : string =
         | LitTrue(x, _) -> fmt "true" x
         | LitFalse(x, _) -> fmt "false" x
         | LitNat(n, x, _) -> fmt $"%d{n}" x
-        | LitEmpty(t, x, _) -> fmt $"%s{typeFormat t}.empty" x
+        | LitEmpty(t, x, _) -> fmt $"%s{Type.format t}.empty" x
         | Union(ctor, exprs, x, _) ->
             match List.length exprs with
             | 0 -> fmt (Ctor.format ctor) x
@@ -127,45 +125,45 @@ let format (fmt: string -> 'a -> string) (expr: Expr<'a>) : string =
         | BoolNot(expr, x, _) -> fmt $"""(not %s{format indent2 expr})""" x
         | Eq(t, expr1, expr2, x, _) ->
             fmt
-                $"""(%s{typeFormat t}.equal
+                $"""(%s{Type.format t}.equal
 {render indent1}%s{format indent2 expr1}
 {render indent1}%s{format indent2 expr2})"""
                 x
         | Less(t, expr1, expr2, x, _) ->
             fmt
-                $"""(%s{typeFormat t}.less
+                $"""(%s{Type.format t}.less
 {render indent1}%s{format indent2 expr1}
 {render indent1}%s{format indent2 expr2})"""
                 x
         | Plus(t, expr1, expr2, x, _) ->
             fmt
-                $"""(%s{typeFormat t}.plus
+                $"""(%s{Type.format t}.plus
 {render indent1}%s{format indent2 expr1}
 {render indent1}%s{format indent2 expr2})"""
                 x
         | Minus(t, expr1, expr2, x, _) ->
             fmt
-                $"""(%s{typeFormat t}.minus
+                $"""(%s{Type.format t}.minus
 {render indent1}%s{format indent2 expr1}
 {render indent1}%s{format indent2 expr2})"""
                 x
         | Times(t, expr1, expr2, x, _) ->
             fmt
-                $"""(%s{typeFormat t}.times
+                $"""(%s{Type.format t}.times
 {render indent1}%s{format indent2 expr1}
 {render indent1}%s{format indent2 expr2})"""
                 x
-        | Size(t, expr, x, _) -> fmt $"""(%s{typeFormat t}.count %s{format indent2 expr})""" x
+        | Size(t, expr, x, _) -> fmt $"""(%s{Type.format t}.count %s{format indent2 expr})""" x
         | Exists(t, var, expr1, expr2, x, _) ->
             fmt
-                $"""(%s{typeFormat t}.exists
+                $"""(%s{Type.format t}.exists
 {render indent1}(fun %s{Var.format var} ->
 {render indent2}%s{format indent3 expr1})
 {render indent1}%s{format indent2 expr2})"""
                 x
         | Filter(t, var, expr1, expr2, x, _) ->
             fmt
-                $"(%s{typeFormat t}.filter
+                $"(%s{Type.format t}.filter
 {render indent1}(fun %s{Var.format var} ->
 {render indent2}%s{format indent3 expr1})
 {render indent1}%s{format indent2 expr2})"
@@ -241,7 +239,7 @@ let format (fmt: string -> 'a -> string) (expr: Expr<'a>) : string =
 {render indent1}%s{format indent2 e1}
 {render indent1}%s{format indent2 e2})"""
                 x
-        | Univ(t, x, _) -> fmt $"(univ::%s{typeFormat t})" x
+        | Univ(t, x, _) -> fmt $"(univ::%s{Type.format t})" x
 
     format 0u expr
 

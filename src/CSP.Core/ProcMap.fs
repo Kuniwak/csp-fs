@@ -3,6 +3,7 @@ module CSP.Core.ProcMap
 open CSP.Core.Proc
 open CSP.Core.ProcMapError
 open CSP.Core.Type
+open CSP.Core.Expr
 open CSP.Core.Var
 
 type ProcMap<'a> = ProcMap of Map<ProcId, (Var * Type) list * Proc<'a>>
@@ -35,7 +36,25 @@ let formatIds (pm: ProcMap<'a>) : string =
         |> Map.toSeq
         |> Seq.map (fun (n, (vars, _)) -> let s = String.concat "" (List.map (format << fst) vars) in $"  %s{n}%s{s}")
         |> String.concat "\n"
+        
+let toList (pm: ProcMap<'a>): (ProcId * ((Var * Type) list * Proc<'a>)) list =
+    match pm with
+    | ProcMap pm -> Map.toList pm
 
 let procIds (pm: ProcMap<'a>) : Set<ProcId> =
     match pm with
     | ProcMap m -> Map.fold (fun keys key _ -> Set.add key keys) Set.empty m
+
+let formatEntry (x: ProcId * ((Var * Type) list * Proc<unit>)) : string =
+    let pn, (vars, p) = x in
+
+    let vars =
+        vars
+        |> List.map (fun (var, t) -> $"(%s{format var}: %s{Type.format false t})")
+        |> String.concat " "
+
+    $"%s{pn} %s{vars} = %s{Proc.format noAnnotation p}"
+
+let format (pm: ProcMap<unit>) : string =
+    match pm with
+    | ProcMap pm -> pm |> Map.toSeq |> Seq.map formatEntry |> String.concat "\n\n"

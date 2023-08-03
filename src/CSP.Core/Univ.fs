@@ -1,5 +1,6 @@
 module CSP.Core.Univ
 
+open CSP.Core.UnionMap
 open CSP.Core.Util
 open CSP.Core.UnivError
 open CSP.Core.Type
@@ -12,7 +13,7 @@ let univConfig natMax listLenMax : UnivConfig =
     { NatMax = natMax
       ListLenMax = listLenMax }
 
-let univ (cfg: UnivConfig) (t: Type) : Result<Val list, UnivError> =
+let univ (cfg: UnivConfig) (um: UnionMap) (t: Type) : Result<Val list, UnivError> =
     let rec univ t =
         match t with
         | TUnit _ -> Ok([ VUnit ])
@@ -34,14 +35,17 @@ let univ (cfg: UnivConfig) (t: Type) : Result<Val list, UnivError> =
         | TMap(tk, tv) ->
             Result.bind (fun ks -> Result.map (fun vs -> List.map VMap (Univ.ofMap ks vs)) (univ tv)) (univ tk)
 
-        | TUnion(_, cm) ->
-            cm
-            |> Map.toList
-            |> ResultEx.bindAll (fun (ctor, ts) ->
-                ts
-                |> ResultEx.bindAll univ
-                |> Result.map ListEx.cartesian
-                |> Result.map (List.map (fun vs -> VUnion(ctor, vs))))
-            |> Result.map List.concat
+        | TUnion(un, tm) ->
+            instantiateCtorMap un tm um
+            |> Result.mapError UnionMapError
+            |> Result.bind (fun cm ->
+                cm
+                |> Map.toList
+                |> ResultEx.bindAll (fun (ctor, ts) ->
+                    ts
+                    |> ResultEx.bindAll univ
+                    |> Result.map ListEx.cartesian
+                    |> Result.map (List.map (fun vs -> VUnion(ctor, vs))))
+                |> Result.map List.concat)
 
     univ t

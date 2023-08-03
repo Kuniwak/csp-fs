@@ -1,6 +1,7 @@
 module CSP.Core.EvalError
 
 open CSP.Core.Ctor
+open CSP.Core.CtorMapError
 open CSP.Core.EnvError
 open CSP.Core.Expr
 open CSP.Core.LineNum
@@ -23,7 +24,7 @@ type EvalError =
     | UnivError of UnivError
     | EnvError of EnvError
     | UnionValuesLenMismatch of Ctor * int * int
-    | NoSuchCtor of Ctor
+    | CtorMapError of CtorMapError
     | Thrown of UserDefinedErrorMessage
     | NoClauseMatched of Ctor
     | DefaultClauseArgumentLenMustBe1 of Var option list
@@ -31,15 +32,13 @@ type EvalError =
 let atLine (line: LineNum) (err: EvalError) : EvalError = At(err, $"line %s{line}")
 
 let format (err: EvalError) : string =
-    let typeFormat = Type.format true
-
     let rec format err =
         match err with
         | At(err, hint) -> $"%s{format err}\n\tat %s{hint}"
-        | TypeNotDerived(t, cls) -> $"%s{typeFormat t} not derived %s{cls}"
+        | TypeNotDerived(t, cls) -> $"%s{Type.format t} not derived %s{cls}"
         | ValNotBool v -> $"value is not a bool: %s{Val.format v}"
         | ValNotUnion v -> $"value is not an union: %s{Val.format v}"
-        | TypeMismatch(v, t) -> $"value {Val.format v} is not a {typeFormat t}"
+        | TypeMismatch(v, t) -> $"value {Val.format v} is not a {Type.format t}"
         | ValNotTuple v -> $"not tuple: %s{Val.format v}"
         | TupleIndexOutOfRange(v, n) -> $"tuple index out of range: %s{Val.format v} at %d{n}"
         | ListIndexOutOfRange(v, n) -> $"list index out of range: %s{Val.format v} at %d{n}"
@@ -48,7 +47,7 @@ let format (err: EvalError) : string =
         | EnvError err -> EnvError.format err
         | UnionValuesLenMismatch(ctor, actual, expected) ->
             $"unexpected length of associated values: want %d{expected}, got %d{actual} at %s{Ctor.format ctor}"
-        | NoSuchCtor ctor -> $"no such constructor: %s{Ctor.format ctor}"
+        | CtorMapError err -> CtorMapError.format err
         | Thrown msg -> $"thrown: %s{msg}"
         | NoClauseMatched ctor -> $"no clause matched: %s{Ctor.format ctor}"
         | DefaultClauseArgumentLenMustBe1 vars ->
