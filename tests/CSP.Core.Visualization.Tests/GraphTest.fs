@@ -1,5 +1,7 @@
 module CSP.Core.Tests.GraphTests
 
+open CSP.Core
+open CSP.Core.Util
 open Xunit
 open CSP.Model
 open CSP.Model.Examples
@@ -25,11 +27,15 @@ let dotCfg: DotConfig =
             { ProcEvalConfig = procEvalCfg
               UnivConfig = univCfg } } }
 
-let dot = dot dotCfg
+let dot pm um =
+    um
+    |> CtorMap.from
+    |> ResultEx.get CtorMapError.format
+    |> dot dotCfg pm um
 
 [<Fact>]
 let abSkip () =
-    match dot ABSkip.procMap ABSkip.ctorMap ABSkip.genv "ABSkip" [] with
+    match dot ABSkip.procMap ABSkip.unionMap ABSkip.genv "ABSkip" [] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
         Assert.True(
@@ -47,7 +53,7 @@ let abSkip () =
 
 [<Fact>]
 let parABC () =
-    match dot ParABC.procMap ParABC.ctorMap ParABC.genv "P" [] with
+    match dot ParABC.procMap ParABC.unionMap ParABC.genv "P" [] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
@@ -152,7 +158,7 @@ let parABC () =
 
 [<Fact>]
 let rand2 () =
-    match dot Rand2.procMap Rand2.ctorMap Rand2.genv "P" [] with
+    match dot Rand2.procMap Rand2.unionMap Rand2.genv "P" [] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
         Assert.True(
@@ -172,7 +178,7 @@ let rand2 () =
 
 [<Fact>]
 let abs () =
-    match dot ABS.procMap ABS.ctorMap ABS.genv "ABS" [] with
+    match dot ABS.procMap ABS.unionMap ABS.genv "ABS" [] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
         Assert.True(
@@ -196,7 +202,7 @@ let abs () =
 
 [<Fact>]
 let lr () =
-    match dot LR.procMap LR.ctorMap LR.genv "LR" [] with
+    match dot LR.procMap LR.unionMap LR.genv "LR" [] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
@@ -219,7 +225,7 @@ let lr () =
 
 [<Fact>]
 let coinToss () =
-    match dot CoinToss.procMap CoinToss.ctorMap CoinToss.genv "CoinToss" [] with
+    match dot CoinToss.procMap CoinToss.unionMap CoinToss.genv "CoinToss" [] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
@@ -246,7 +252,7 @@ let coinToss () =
 
 [<Fact>]
 let lrh () =
-    match dot LRH.procMap LRH.ctorMap LRH.genv "LRH" [] with
+    match dot LRH.procMap LRH.unionMap LRH.genv "LRH" [] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
@@ -269,7 +275,7 @@ let lrh () =
 
 [<Fact>]
 let hide3 () =
-    match dot Hide3.procMap Hide3.ctorMap Hide3.genv "P" [] with
+    match dot Hide3.procMap Hide3.unionMap Hide3.genv "P" [] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
@@ -288,7 +294,7 @@ let hide3 () =
 
 [<Fact>]
 let count () =
-    match dot Count.procMap Count.ctorMap Count.genv "COUNT" [ vNat 0u ] with
+    match dot Count.procMap Count.unionMap Count.genv "COUNT" [ vNat 0u ] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
@@ -324,7 +330,7 @@ let count () =
 
 [<Fact>]
 let roVarSys1 () =
-    match dot ROVarSys1.procMap ROVarSys1.ctorMap ROVarSys1.genv "ROVarSys1" [] with
+    match dot ROVarSys1.procMap ROVarSys1.unionMap ROVarSys1.genv "ROVarSys1" [] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
@@ -341,7 +347,7 @@ let roVarSys1 () =
 
 [<Fact>]
 let roVarSys2 () =
-    match dot ROVarSys2.procMap ROVarSys2.ctorMap ROVarSys2.genv "ROVarSys2" [] with
+    match dot ROVarSys2.procMap ROVarSys2.unionMap ROVarSys2.genv "ROVarSys2" [] with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 

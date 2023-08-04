@@ -7,15 +7,17 @@ open CSP.Core.ExprShorthand
 open CSP.Core.TypeShorthand
 open CSP.Core.Util
 
-let tEvent = tUnion "event" [ ("a", []); ("b", []) ]
+let tEvent = tUnion "event" Map.empty
 
+let unionMap =
+    UnionMap.from [ (([], "event"), [ ("a", []); ("b", []) ]) ]
+    |> ResultEx.get UnionMapError.format
+    
 let procMap =
-    ResultEx.get
-        ProcMapError.format
-        (from
-            [ ("ABSkip", []), seq (unwind "ASkip" [] __LINE__) (unwind "BSkip" [] __LINE__) __LINE__
-              ("ASkip", []), prefix (ctor "a" [] __LINE__) (skip __LINE__) __LINE__
-              ("BSkip", []), prefix (ctor "b" [] __LINE__) (skip __LINE__) __LINE__ ])
+    from
+        [ ("ABSkip", []), seq (unwind "ASkip" [] __LINE__) (unwind "BSkip" [] __LINE__) __LINE__
+          ("ASkip", []), prefix (ctor "a" [] __LINE__) (skip __LINE__) __LINE__
+          ("BSkip", []), prefix (ctor "b" [] __LINE__) (skip __LINE__) __LINE__ ]
+    |> ResultEx.get ProcMapError.format
 
-let ctorMap = ResultEx.get CtorMapError.format (CtorMap.from [ tEvent ])
 let genv = Env.empty

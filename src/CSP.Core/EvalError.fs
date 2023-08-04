@@ -14,12 +14,9 @@ open CSP.Core.Var
 type EvalError =
     | At of EvalError * string
     | TypeNotDerived of Type * TypeClassName
-    | ValNotBool of Val
     | ValNotUnion of Val
-    | ValNotTuple of Val
     | TypeMismatch of Val * Type
-    | TupleIndexOutOfRange of Val * uint
-    | ListIndexOutOfRange of Val * uint
+    | ListIndexOutOfRange of Val list * uint
     | RangeLowerGreaterThanUpper of uint * uint
     | UnivError of UnivError
     | EnvError of EnvError
@@ -36,12 +33,11 @@ let format (err: EvalError) : string =
         match err with
         | At(err, hint) -> $"%s{format err}\n\tat %s{hint}"
         | TypeNotDerived(t, cls) -> $"%s{Type.format t} not derived %s{cls}"
-        | ValNotBool v -> $"value is not a bool: %s{Val.format v}"
         | ValNotUnion v -> $"value is not an union: %s{Val.format v}"
         | TypeMismatch(v, t) -> $"value {Val.format v} is not a {Type.format t}"
-        | ValNotTuple v -> $"not tuple: %s{Val.format v}"
-        | TupleIndexOutOfRange(v, n) -> $"tuple index out of range: %s{Val.format v} at %d{n}"
-        | ListIndexOutOfRange(v, n) -> $"list index out of range: %s{Val.format v} at %d{n}"
+        | ListIndexOutOfRange(vs, n) ->
+            let s = vs |> Seq.map Val.format |> String.concat ", " in
+            $"list index out of range: [%s{s}] at %d{n}"
         | RangeLowerGreaterThanUpper(n1, n2) -> $"lower of range is greater than upper: %d{n1} > %d{n2}"
         | UnivError err -> UnivError.format err
         | EnvError err -> EnvError.format err

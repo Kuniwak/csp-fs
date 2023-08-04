@@ -8,6 +8,7 @@ open CSP.Core.ProcEval
 open CSP.Core.ProcEvalError
 open CSP.Core.ProcMap
 open CSP.Core.State
+open CSP.Core.UnionMap
 open CSP.Core.ValTypeCheck
 open CSP.Core.Util
 
@@ -16,11 +17,13 @@ type TransConfig = { ProcEvalConfig: ProcEvalConfig }
 let trans
     (cfg: TransConfig)
     (pm: ProcMap<unit>)
+    (um: UnionMap)
     (cm: CtorMap)
     (genv: Env)
     (s: State)
     : Result<(Event * State) list, ProcEvalError> =
-    let eval = eval cfg.ProcEvalConfig cm in
+    let eval = eval cfg.ProcEvalConfig um cm in
+    let typeCheck t v = if typeCheck um cm t v then Ok(v) else Error(ExprError(TypeMismatch(v, t)))
 
     let rec trans visited s =
         match s with
@@ -37,11 +40,7 @@ let trans
 
                         if List.length xs = List.length vs then
                             List.zip (List.map snd xs) vs
-                            |> ResultEx.bindAll (fun (t, v) ->
-                                if typeCheck t v then
-                                    Ok(())
-                                else
-                                    Error(ExprError(TypeMismatch(v, t))))
+                            |> ResultEx.bindAll (fun (t, v) -> typeCheck t v)
                             |> Result.bind (fun _ ->
                                 let env = bindAll (List.zip vars vs) genv in
                                 eval env p |> Result.bind (trans (Set.add (pn, vs) visited)))

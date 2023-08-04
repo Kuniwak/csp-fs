@@ -17,4 +17,4 @@ let empty (t: Type) : Val =
     | TSet _ -> VSet(Set.empty)
     | TList _ -> VList(List.empty)
     | TMap _ -> VMap(Map.empty)
-    | _ -> failwith $"cannot make empty: {format true t}"
+    | _ -> failwith $"cannot make empty: {format t}"

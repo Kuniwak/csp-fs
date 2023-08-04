@@ -1,11 +1,30 @@
 module CSP.Core.UnionMap
 
 open CSP.Core.Ctor
-open CSP.Core.CtorMap
 open CSP.Core.Type
 open CSP.Core.UnionMapError
+open CSP.Core.Util
 
 type UnionMap = UnionMap of Map<UnionName, TVarId list * Map<Ctor, Type list>>
+
+let builtin =
+    UnionMap(
+        Map
+            [ ("option", ([ 0u ], Map [ (Ctor "Some", [ TVar 0u ]); (Ctor "None", []) ]))
+              ("either", ([ 0u; 1u ], Map [ (Ctor "Left", [ TVar 0u ]); (Ctor "Right", [ TVar 1u ]) ])) ]
+    )
+
+let toSeq (um: UnionMap) : (UnionName * (TVarId list * Map<Ctor, Type list>)) seq =
+    match um with
+    | UnionMap um -> Map.toSeq um
+
+let from (xs: ((TVarId list * UnionName) * (string * Type list) seq) seq) : Result<UnionMap, UnionMapError> =
+    xs
+    |> Seq.map (fun ((tVars, un), cm) -> (un, (tVars, Map(Seq.map (fun (ctor, ts) -> (Ctor ctor, ts)) cm))))
+    |> Seq.append (toSeq builtin)
+    |> MapEx.tryFrom
+    |> Result.map UnionMap
+    |> Result.mapError DuplicatedUnionName
 
 let tryFind (un: UnionName) (um: UnionMap) : Result<TVarId list * Map<Ctor, Type list>, UnionMapError> =
     match um with
@@ -21,7 +40,11 @@ let tryFindAssocLen (un: UnionName) (ctor: Ctor) (um: UnionMap) : Result<int, Un
         | None -> Error(NoSuchCtor ctor)
         | Some(ts) -> Ok(List.length ts))
 
-let instantiateCtorMap (un: UnionName) (tm: Map<TVarId, Type>) (um: UnionMap) : Result<Map<Ctor, Type list>, UnionMapError> =
+let instantiateCtorMap
+    (un: UnionName)
+    (tm: Map<TVarId, Type>)
+    (um: UnionMap)
+    : Result<Map<Ctor, Type list>, UnionMapError> =
     tryFind un um
     |> Result.map (fun (tVars, cm) ->
         Map.fold
@@ -33,4 +56,6 @@ let instantiateCtorMap (un: UnionName) (tm: Map<TVarId, Type>) (um: UnionMap) : 
             Map.empty
             cm)
 
-let empty: UnionMap = UnionMap Map.empty
+let fold (f: 'State -> UnionName -> TVarId list * Map<Ctor, Type list> -> 'State) (s: 'State) (um: UnionMap) : 'State =
+    match um with
+    | UnionMap um -> Map.fold f s um

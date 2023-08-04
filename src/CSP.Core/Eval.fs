@@ -18,17 +18,47 @@ let evalConfig cfg = { UnivConfig = cfg }
 
 let eval (cfg: EvalConfig) (um: UnionMap) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Val, EvalError> =
     let univ = univ cfg.UnivConfig um in
-    let typeCheck = typeCheck um cm in
+
+    let typeCheck t v =
+        if typeCheck um cm t v then
+            Ok(v)
+        else
+            Error(TypeMismatch(v, t)) in
 
     let tryGetUnion v =
         match v with
-        | VUnion(ctor, vals) -> Ok(ctor, vals)
+        | VUnion(ctor, vs) -> Ok(ctor, vs)
         | _ -> Error(ValNotUnion(v)) in
+
+    let tryGetBool v =
+        match v with
+        | VBool(b) -> Ok(b)
+        | _ -> Error(TypeMismatch(v, tBool))
+
+    let tryGetNat v =
+        match v with
+        | VNat(n) -> Ok(n)
+        | _ -> Error(TypeMismatch(v, tNat))
+
+    let tryGetTuple v =
+        match v with
+        | VTuple(vL, vR) -> Ok(vL, vR)
+        | _ -> Error(TypeMismatch(v, tTuple2 (tVar 0u) (tVar 1u))) in
+
+    let tryGetSet v =
+        match v with
+        | VSet(vs) -> Ok(vs)
+        | _ -> Error(TypeMismatch(v, tList (tVar 0u))) in
+
+    let tryGetList v =
+        match v with
+        | VList(vs) -> Ok(vs)
+        | _ -> Error(TypeMismatch(v, tList (tVar 0u))) in
 
     let tryGetMap v =
         match v with
         | VMap(m) -> Ok(m)
-        | _ -> Error(ValNotMap(v)) in
+        | _ -> Error(TypeMismatch(v, tMap (tVar 0u) (tVar 1u))) in
 
     let rec eval env expr =
         match expr with
@@ -40,7 +70,8 @@ let eval (cfg: EvalConfig) (um: UnionMap) (cm: CtorMap) (env: Env) (expr: Expr<'
             if ClassEmpty.derivedBy t then
                 Ok(ClassEmpty.empty t)
             else
-                Error(atLine line (TypeNotDerived(t, ClassEmpty.name)))
+                Error(TypeNotDerived(t, ClassEmpty.name))
+            |> Result.mapError (atLine line)
         | VarRef(var, _, line) -> valOf var env |> Result.mapError EnvError |> Result.mapError (atLine line)
         | Tuple(expr1, expr2, _, line) ->
             (expr1, expr2)
@@ -65,11 +96,10 @@ let eval (cfg: EvalConfig) (um: UnionMap) (cm: CtorMap) (env: Env) (expr: Expr<'
                     Error(UnionValuesLenMismatch(ctor, len, List.length exprs)))
             |> Result.mapError (atLine line)
         | If(e1, e2, e3, _, line) ->
-            match eval env e1 with
-            | Ok(VBool true) -> Result.mapError (fun err -> atLine line err) (eval env e2)
-            | Ok(VBool false) -> Result.mapError (fun err -> atLine line err) (eval env e3)
-            | Ok(v) -> Error(atLine line (ValNotBool v))
-            | Error err -> Error(atLine line err)
+            eval env e1
+            |> Result.bind tryGetBool
+            |> Result.bind (fun b -> if b then eval env e2 else eval env e3)
+            |> Result.mapError (atLine line)
         | Match(exprUnion, exprMap, _, line) ->
             eval env exprUnion
             |> Result.bind tryGetUnion
@@ -88,302 +118,185 @@ let eval (cfg: EvalConfig) (um: UnionMap) (cm: CtorMap) (env: Env) (expr: Expr<'
                         | _ -> Error(DefaultClauseArgumentLenMustBe1 varOpts)
                     | None -> Error(NoClauseMatched ctor))
             |> Result.mapError (atLine line)
-        | Eq(t, e1, e2, _, line) ->
-            if ClassEq.derivedBy t then
-                match eval env e1 with
-                | Error err -> Error(atLine line err)
-                | Ok(v1) ->
-                    if typeCheck t v1 then
-                        match eval env e2 with
-                        | Error err -> Error(atLine line err)
-                        | Ok(v2) ->
-                            if typeCheck t v2 then
-                                Ok(VBool(ClassEq.eq v1 v2))
-                            else
-                                Error(atLine line (TypeMismatch(v2, t)))
-                    else
-                        Error(atLine line (TypeMismatch(v1, t)))
+        | Eq(t, expr1, expr2, _, line) ->
+            if ClassEq.derivedBy um t then
+                (expr1, expr2)
+                |> ResultEx.bind2 (Result.bind (typeCheck t) << eval env) (Result.bind (typeCheck t) << eval env)
+                |> Result.map (fun (v1, v2) -> ClassEq.eq v1 v2)
             else
-                Error(atLine line (TypeNotDerived(t, ClassEq.name)))
-        | Less(t, e1, e2, _, line) ->
+                Error(TypeNotDerived(t, ClassEq.name))
+            |> Result.mapError (atLine line)
+        | Less(t, expr1, expr2, _, line) ->
             if ClassOrd.derivedBy t then
-                match eval env e1 with
-                | Error err -> Error(atLine line err)
-                | Ok(v1) ->
-                    if typeCheck t v1 then
-                        match eval env e2 with
-                        | Error err -> Error(atLine line err)
-                        | Ok(v2) ->
-                            if typeCheck t v2 then
-                                Ok(VBool(ClassOrd.less v1 v2))
-                            else
-                                Error(atLine line (TypeMismatch(v2, t)))
-                    else
-                        Error(atLine line (TypeMismatch(v1, t)))
+                (expr1, expr2)
+                |> ResultEx.bind2 (Result.bind (typeCheck t) << eval env) (Result.bind (typeCheck t) << eval env)
+                |> Result.map (fun (v1, v2) -> ClassOrd.less v1 v2)
             else
-                Error(atLine line (TypeNotDerived(t, ClassOrd.name)))
+                Error(TypeNotDerived(t, ClassOrd.name))
+            |> Result.mapError (atLine line)
         | Size(t, expr, _, line) ->
             if ClassSize.derivedBy t then
-                match eval env expr with
-                | Ok v -> Ok(VNat(ClassSize.size v))
-                | Error err -> Error(atLine line err)
+                eval env expr
+                |> Result.bind (typeCheck t)
+                |> Result.map (VNat << ClassSize.size)
             else
-                Error(atLine line (TypeNotDerived(t, ClassSize.name)))
+                Error(TypeNotDerived(t, ClassSize.name))
+            |> Result.mapError (atLine line)
         | BoolNot(e, _, line) ->
-            match eval env e with
-            | Ok(VBool b) -> Ok(VBool(not b))
-            | Ok(v) -> Error(atLine line (TypeMismatch(v, tBool)))
-            | Error err -> Error(atLine line err)
-        | Plus(t, e1, e2, _, line) ->
+            eval env e
+            |> Result.bind tryGetBool
+            |> Result.map (VBool << not)
+            |> Result.mapError (atLine line)
+        | Plus(t, expr1, expr2, _, line) ->
             if ClassPlus.derivedBy t then
-                match eval env e1 with
-                | Ok v1 ->
-                    if typeCheck t v1 then
-                        match eval env e2 with
-                        | Ok v2 ->
-                            if typeCheck t v2 then
-                                Ok(ClassPlus.plus v1 v2)
-                            else
-                                Error(TypeMismatch(v2, t))
-                        | Error err -> Error(atLine line err)
-                    else
-                        Error(TypeMismatch(v1, t))
-                | Error err -> Error(atLine line err)
+                (expr1, expr2)
+                |> ResultEx.bind2 (Result.bind (typeCheck t) << eval env) (Result.bind (typeCheck t) << eval env)
+                |> Result.map (fun (v1, v2) -> ClassPlus.plus v1 v2)
             else
-                Error(atLine line (TypeNotDerived(t, ClassPlus.name)))
-        | Times(t, e1, e2, _, line) ->
+                Error(TypeNotDerived(t, ClassPlus.name))
+            |> Result.mapError (atLine line)
+        | Times(t, expr1, expr2, _, line) ->
             if ClassTimes.derivedBy t then
-                match eval env e1 with
-                | Ok v1 ->
-                    if typeCheck t v1 then
-                        match eval env e2 with
-                        | Ok v2 ->
-                            if typeCheck t v2 then
-                                Ok(ClassTimes.times v1 v2)
-                            else
-                                Error(TypeMismatch(v2, t))
-                        | Error err -> Error(atLine line err)
-                    else
-                        Error(TypeMismatch(v1, t))
-                | Error err -> Error(atLine line err)
+                (expr1, expr2)
+                |> ResultEx.bind2 (Result.bind (typeCheck t) << eval env) (Result.bind (typeCheck t) << eval env)
+                |> Result.map (fun (v1, v2) -> ClassTimes.times v1 v2)
             else
-                Error(atLine line (TypeNotDerived(t, ClassTimes.name)))
-        | Minus(t, e1, e2, _, line) ->
+                Error(TypeNotDerived(t, ClassTimes.name))
+            |> Result.mapError (atLine line)
+        | Minus(t, expr1, expr2, _, line) ->
             if ClassMinus.derivedBy t then
-                match eval env e1 with
-                | Ok v1 ->
-                    if typeCheck t v1 then
-                        match eval env e2 with
-                        | Ok v2 ->
-                            if typeCheck t v2 then
-                                Ok(ClassMinus.minus v1 v2)
-                            else
-                                Error(TypeMismatch(v2, t))
-                        | Error err -> Error(atLine line err)
-                    else
-                        Error(TypeMismatch(v1, t))
-                | Error err -> Error(atLine line err)
+                (expr1, expr2)
+                |> ResultEx.bind2 (Result.bind (typeCheck t) << eval env) (Result.bind (typeCheck t) << eval env)
+                |> Result.map (fun (v1, v2) -> ClassMinus.minus v1 v2)
             else
-                Error(atLine line (TypeNotDerived(t, ClassMinus.name)))
+                Error(TypeNotDerived(t, ClassMinus.name))
+            |> Result.mapError (atLine line)
         | TupleFst(expr, _, line) ->
-            match eval env expr with
-            | Ok(VTuple(vL, _)) -> Ok(vL)
-            | Ok(v) -> Error(atLine line (ValNotTuple(v)))
-            | Error err -> Error(atLine line err)
+            eval env expr
+            |> Result.bind tryGetTuple
+            |> Result.map fst
+            |> Result.mapError (atLine line)
         | TupleSnd(expr, _, line) ->
-            match eval env expr with
-            | Ok(VTuple(_, vR)) -> Ok(vR)
-            | Ok(v) -> Error(atLine line (ValNotTuple(v)))
-            | Error err -> Error(atLine line err)
+            eval env expr
+            |> Result.bind tryGetTuple
+            |> Result.map snd
+            |> Result.mapError (atLine line)
         | ListNth(exprList, exprIdx, _, line) ->
-            match eval env exprList with
-            | Ok(VList vs) ->
-                match eval env exprIdx with
-                | Ok(VNat idx) ->
-                    match List.tryItem (Checked.int idx) vs with
-                    | Some v -> Ok v
-                    | None -> Error(atLine line (ListIndexOutOfRange(VList vs, idx)))
-                | Ok(v) -> Error(atLine line (TypeMismatch(v, tNat)))
-                | Error err -> Error(atLine line err)
-            | Ok(v) -> Error(atLine line (TypeMismatch(v, tList (tVar 0u))))
-            | Error err -> Error(atLine line err)
+            (exprList, exprIdx)
+            |> ResultEx.bind2 (Result.bind tryGetList << eval env) (Result.bind tryGetNat << eval env)
+            |> Result.bind (fun (vs, idx) ->
+                match List.tryItem (Checked.int idx) vs with
+                | Some v -> Ok(v)
+                | None -> Error(ListIndexOutOfRange(vs, idx)))
+            |> Result.mapError (atLine line)
         | ListCons(exprElem, exprList, _, line) ->
-            match eval env exprList with
-            | Ok(VList vs) ->
-                match eval env exprElem with
-                | Ok(v) -> Ok(VList(v :: vs))
-                | Error err -> Error(atLine line err)
-            | Ok(v) -> Error(atLine line (TypeMismatch(v, tList (tVar 0u))))
-            | Error err -> Error(atLine line err)
+            (exprList, exprElem)
+            |> ResultEx.bind2 (Result.bind tryGetList << eval env) (eval env)
+            |> Result.map (fun (vs, v) -> VList(v :: vs))
+            |> Result.mapError (atLine line)
         | ListContains(exprElem, exprList, _, line) ->
-            match eval env exprList with
-            | Ok(VList vs) ->
-                match eval env exprElem with
-                | Ok(v) -> Ok(VBool(List.contains v vs))
-                | Error err -> Error(atLine line err)
-            | Ok(v) -> Error(atLine line (TypeMismatch(v, tList (tVar 0u))))
-            | Error err -> Error(atLine line err)
-        | SetRange(e1, e2, _, line) ->
-            match eval env e1 with
-            | Ok(VNat n1) ->
-                match eval env e2 with
-                | Ok(VNat n2) -> Ok(VSet(Set.map VNat (Range.ofSet n1 n2)))
-                | Ok(v) -> Error(atLine line (TypeMismatch(v, tNat)))
-                | Error err -> Error(atLine line err)
-            | Ok(v) -> Error(atLine line (TypeMismatch(v, tNat)))
-            | Error err -> Error(atLine line err)
+            (exprList, exprElem)
+            |> ResultEx.bind2 (Result.bind tryGetList << eval env) (eval env)
+            |> Result.map (fun (vs, v) -> VBool(List.contains v vs))
+            |> Result.mapError (atLine line)
+        | SetRange(expr1, expr2, _, line) ->
+            (expr1, expr2)
+            |> ResultEx.bind2 (Result.bind tryGetNat << eval env) (Result.bind tryGetNat << eval env)
+            |> Result.map (fun (n1, n2) -> VSet(Set.map VNat (Range.ofSet n1 n2)))
+            |> Result.mapError (atLine line)
         | SetInsert(exprElem, exprSet, _, line) ->
-            match eval env exprSet with
-            | Ok(VSet s) ->
-                match eval env exprElem with
-                | Ok(v) -> Ok(VSet(Set.add v s))
-                | Error err -> Error(atLine line err)
-            | Ok(v) -> Error(atLine line (TypeMismatch(v, tSet (tVar 0u))))
-            | Error err -> Error(atLine line err)
+            (exprElem, exprSet)
+            |> ResultEx.bind2 (eval env) (Result.bind tryGetSet << eval env)
+            |> Result.map (fun (v, s) -> Set.add v s)
+            |> Result.map VSet
+            |> Result.mapError (atLine line)
         | SetRemove(exprElem, exprSet, _, line) ->
-            match eval env exprSet with
-            | Ok(VSet s) ->
-                match eval env exprElem with
-                | Ok(v) -> Ok(VSet(Set.remove v s))
-                | Error err -> Error(atLine line err)
-            | Ok(v) -> Error(atLine line (TypeMismatch(v, tSet (tVar 0u))))
-            | Error err -> Error(atLine line err)
+            (exprElem, exprSet)
+            |> ResultEx.bind2 (eval env) (Result.bind tryGetSet << eval env)
+            |> Result.map (fun (v, s) -> Set.remove v s)
+            |> Result.map VSet
+            |> Result.mapError (atLine line)
         | SetMem(exprElem, exprSet, _, line) ->
-            match eval env exprSet with
-            | Ok(VSet s) ->
-                match eval env exprElem with
-                | Ok(v) -> Ok(VBool(Set.contains v s))
-                | Error err -> Error(atLine line err)
-            | Ok(v) -> Error(atLine line (TypeMismatch(v, tSet (tVar 0u))))
-            | Error err -> Error(atLine line err)
+            (exprElem, exprSet)
+            |> ResultEx.bind2 (eval env) (Result.bind tryGetSet << eval env)
+            |> Result.map (fun (v, s) -> Set.contains v s)
+            |> Result.map VBool
+            |> Result.mapError (atLine line)
         | Filter(t, var, e1, e2, _, line) ->
             if ClassEnum.derivedBy t then
-                match eval env e2 with
-                | Ok(VSet s) ->
-                    let sRes =
-                        (Set.fold
+                eval env e2
+                |> Result.bind (fun v ->
+                    match v with
+                    | VSet s ->
+                        s
+                        |> Set.fold
                             (fun accRes v ->
-                                match accRes with
-                                | Ok sAcc ->
-                                    let env = bind1 var v env in
-
-                                    match eval env e1 with
-                                    | Ok(VBool b) -> Ok(if b then Set.add v sAcc else sAcc)
-                                    | Ok(v) -> Error(TypeMismatch(v, tBool))
-                                    | Error err -> Error err
-                                | Error err -> Error err)
+                                accRes
+                                |> Result.bind (fun sAcc ->
+                                    eval (bind1 var v env) e1
+                                    |> Result.bind tryGetBool
+                                    |> Result.map (fun b -> if b then Set.add v sAcc else sAcc)))
                             (Ok Set.empty)
-                            s) in
-
-                    match sRes with
-                    | Ok s -> Ok(VSet s)
-                    | Error err -> Error(atLine line err)
-                | Ok(VList vs) ->
-                    let vsRes =
+                        |> Result.map VSet
+                    | VList vs ->
                         List.foldBack
                             (fun v accRes ->
-                                match accRes with
-                                | Ok(vsAcc) ->
-                                    let env = bind1 var v env in
-
-                                    match eval env e1 with
-                                    | Ok(VBool b) -> Ok(if b then v :: vsAcc else vsAcc)
-                                    | Ok(v) -> Error(TypeMismatch(v, tBool))
-                                    | Error err -> Error err
-                                | Error err -> Error err)
+                                accRes
+                                |> Result.bind (fun vsAcc ->
+                                    eval (bind1 var v env) e1
+                                    |> Result.bind tryGetBool
+                                    |> Result.map (fun b -> if b then v :: vsAcc else vsAcc)))
                             vs
-                            (Ok([])) in
-
-                    match vsRes with
-                    | Ok vs -> Ok(VList vs)
-                    | Error err -> Error(atLine line err)
-                | Ok(VMap m) ->
-                    let mAcc =
+                            (Ok([]))
+                        |> Result.map VList
+                    | VMap m ->
                         (Map.fold
                             (fun accRes k v ->
-                                match accRes with
-                                | Ok(mAcc) ->
-                                    let env = bind1 var k env in
-
-                                    match eval env e1 with
-                                    | Ok(VBool b) -> Ok(if b then Map.add k v mAcc else mAcc)
-                                    | Ok(v) -> Error(TypeMismatch(v, tBool))
-                                    | Error err -> Error err
-                                | Error err -> Error err)
+                                accRes
+                                |> Result.bind (fun mAcc ->
+                                    eval (bind1 var k env) e1
+                                    |> Result.bind tryGetBool
+                                    |> Result.map (fun b -> if b then Map.add k v mAcc else mAcc)))
                             (Ok(Map.empty))
-                            m) in
-
-                    match mAcc with
-                    | Ok m -> Ok(VMap m)
-                    | Error err -> Error(atLine line err)
-                | Ok(v) -> failwith $"cannot filter: %s{format v}"
-                | Error err -> Error(atLine line err)
+                            m)
+                        |> Result.map VMap
+                    | _ -> failwith $"cannot filter: %s{format v}")
             else
-                Error(atLine line (TypeNotDerived(t, ClassEnum.name)))
+                Error(TypeNotDerived(t, ClassEnum.name))
+            |> Result.mapError (atLine line)
         | Exists(t, var, e1, e2, _, line) ->
             if ClassEnum.derivedBy t then
-                match eval env e2 with
-                | Ok(VSet s) ->
-                    let bRes =
-                        (Set.fold
+                eval env e2
+                |> Result.bind (fun v ->
+                    match v with
+                    | VSet s ->
+                        Set.fold
                             (fun accRes v ->
-                                match accRes with
-                                | Ok bAcc ->
-                                    let env = bind1 var v env in
-
-                                    match eval env e1 with
-                                    | Ok(VBool b) -> Ok(b || bAcc)
-                                    | Ok(v) -> Error(TypeMismatch(v, tBool))
-                                    | Error err -> Error err
-                                | Error err -> Error err)
+                                accRes
+                                |> Result.bind (fun bAcc ->
+                                    eval (bind1 var v env) e1 |> Result.bind tryGetBool |> Result.map ((||) bAcc)))
                             (Ok false)
-                            s) in
-
-                    match bRes with
-                    | Ok b -> Ok(VBool b)
-                    | Error err -> Error(atLine line err)
-                | Ok(VList vs) ->
-                    let bRes =
+                            s
+                    | VList vs ->
                         List.foldBack
-                            (fun v accRes ->
-                                match accRes with
-                                | Ok(bAcc) ->
-                                    let env = bind1 var v env in
-
-                                    match eval env e1 with
-                                    | Ok(VBool b) -> Ok(b || bAcc)
-                                    | Ok(v) -> Error(TypeMismatch(v, tBool))
-                                    | Error err -> Error err
-                                | Error err -> Error err)
+                            (fun v ->
+                                Result.bind (fun bAcc ->
+                                    eval (bind1 var v env) e1 |> Result.bind tryGetBool |> Result.map ((||) bAcc)))
                             vs
-                            (Ok(false)) in
-
-                    match bRes with
-                    | Ok b -> Ok(VBool b)
-                    | Error err -> Error(atLine line err)
-                | Ok(VMap m) ->
-                    let bRes =
+                            (Ok(false))
+                    | VMap m ->
                         Map.fold
                             (fun accRes k _ ->
-                                match accRes with
-                                | Ok(bAcc) ->
-                                    let env = bind1 var k env in
-
-                                    match eval env e1 with
-                                    | Ok(VBool b) -> Ok(b || bAcc)
-                                    | Ok(v) -> Error(TypeMismatch(v, tBool))
-                                    | Error err -> Error err
-                                | Error err -> Error err)
+                                accRes
+                                |> Result.bind (fun bAcc ->
+                                    eval (bind1 var k env) e1 |> Result.bind tryGetBool |> Result.map ((||) bAcc)))
                             (Ok(false))
-                            m in
-
-                    match bRes with
-                    | Ok b -> Ok(VBool b)
-                    | Error err -> Error(atLine line err)
-                | Ok(v) -> failwith $"cannot satisfy exists: %s{format v}"
-                | Error err -> Error(atLine line err)
+                            m
+                    | _ -> failwith $"cannot satisfy Enum: %s{format v}")
+                |> Result.map VBool
             else
-                Error(atLine line (TypeNotDerived(t, ClassEnum.name)))
+                Error(TypeNotDerived(t, ClassEnum.name))
+            |> Result.mapError (atLine line)
         | MapAdd(exprKey, exprVal, exprMap, _, line) ->
             (exprKey, exprVal, exprMap)
             |> ResultEx.bind3 (eval env) (eval env) ((Result.bind tryGetMap) << (eval env))

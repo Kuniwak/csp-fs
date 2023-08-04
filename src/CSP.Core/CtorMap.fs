@@ -4,8 +4,22 @@ open CSP.Core.Ctor
 open CSP.Core.CtorMapError
 open CSP.Core.Type
 open CSP.Core.UnionMap
+open CSP.Core.Util
 
 type CtorMap = CtorMap of Map<Ctor, UnionName>
+    
+let toSeq (cm: CtorMap): (Ctor * UnionName) seq =
+    match cm with
+    | CtorMap cm -> Map.toSeq cm
+    
+let from (um: UnionMap) : Result<CtorMap, CtorMapError> =
+    um
+    |> UnionMap.toSeq
+    |> Seq.collect (fun (un, (_, cm)) -> cm |> Map.keys |> Seq.map (fun ctor -> (ctor, un)))
+    |> MapEx.tryFrom
+    |> Result.map CtorMap
+    |> Result.mapError DuplicatedCtor
+
 
 let tryFind (ctor: Ctor) (cm: CtorMap) : Result<UnionName, CtorMapError> =
     match cm with
@@ -31,5 +45,3 @@ let instantiate (ctor: Ctor) (um: UnionMap) (tm: Map<TVarId, Type>) (cm: CtorMap
 let fold (f: 'State -> Ctor -> UnionName -> 'State) (s: 'State) (cm: CtorMap) : 'State =
     match cm with
     | CtorMap cm -> Map.fold f s cm
-
-let empty: CtorMap = CtorMap Map.empty

@@ -2,6 +2,7 @@ module CSP.Core.Visualization.DotLang
 
 open FSharpPlus
 open CSP.Core
+open CSP.Core.UnionMap
 open CSP.Core.StateSpace
 open CSP.Core.ProcEvalError
 open CSP.Core.Val
@@ -26,6 +27,7 @@ type GraphConfig =
 let graph
     (cfg: GraphConfig)
     (pm: ProcMap<unit>)
+    (um: UnionMap)
     (cm: CtorMap)
     (genv: Env)
     (pn: ProcId)
@@ -34,7 +36,7 @@ let graph
     let mutable ss: (State * int) list = [] in
     let mutable es: (State * Event * State) list = [] in
 
-    namedSpace cfg.NamedConfig cm pm genv
+    namedSpace cfg.NamedConfig um cm pm genv
     |> Result.map (fun ns ->
         bfs
             cfg.SearchConfig
@@ -42,7 +44,7 @@ let graph
                 ss <- (s, List.length es') :: ss
                 es <- (List.map (fun (e, s') -> (s, e, s')) es') @ es)
             (fun s ->
-                match normedTrans cfg.TransConfig pm cm genv ns s with
+                match normedTrans cfg.TransConfig pm cm um genv ns s with
                 | Error(err) -> [ (ErrorEvent, ErrorState(ProcEvalError.format err)) ]
                 | Ok(ts) -> ts)
             (Unwind(pn, vs))
@@ -55,6 +57,7 @@ type DotConfig = { GraphConfig: GraphConfig }
 let dot
     (cfg: DotConfig)
     (pm: ProcMap<unit>)
+    (um: UnionMap)
     (cm: CtorMap)
     (genv: Env)
     (pn: ProcId)
@@ -63,7 +66,7 @@ let dot
     let escape = String.replace "\"" "'" in
     let format = format genv in
 
-    graph cfg.GraphConfig pm cm genv pn vs
+    graph cfg.GraphConfig pm um cm genv pn vs
     |> Result.map (fun (ss, es) ->
         let r1 =
             ss

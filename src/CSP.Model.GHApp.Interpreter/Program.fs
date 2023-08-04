@@ -1,5 +1,6 @@
 ﻿open CSP.Core.CLI
 open CSP.Core.ProcEval
+open CSP.Core.ValShorthand
 open CSP.Model.GHApp
 
 let procEvalCfg: ProcEvalConfig =
@@ -9,4 +10,4 @@ let interpreterCfg: InterpreterConfig =
     { TransConfig = { ProcEvalConfig = procEvalCfg }
       ProcEvalConfig = procEvalCfg }
 
-start interpreterCfg procMap ctorMap genv "GHAuth" []
+start interpreterCfg procMap ctorMap genv "GHStar" [vSet(Set.empty)]

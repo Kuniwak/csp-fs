@@ -6,14 +6,15 @@ open CSP.Core.Env
 open CSP.Core.Proc
 open CSP.Core.ProcEvalError
 open CSP.Core.State
+open CSP.Core.UnionMap
 open CSP.Core.Val
 open CSP.Core.Util
 
 type ProcEvalConfig = { EvalConfig: EvalConfig }
 
-let eval (cfg: ProcEvalConfig) (cm: CtorMap) (env: Env) (p: Proc<unit>) : Result<State, ProcEvalError> =
+let eval (cfg: ProcEvalConfig) (um: UnionMap) (cm: CtorMap) (env: Env) (p: Proc<unit>) : Result<State, ProcEvalError> =
     let exprEval env expr =
-        Result.mapError ExprError (eval cfg.EvalConfig cm env expr)
+        Result.mapError ExprError (eval cfg.EvalConfig um cm env expr)
 
     let getBool v =
         match v with
