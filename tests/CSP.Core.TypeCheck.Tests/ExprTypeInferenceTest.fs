@@ -1,8 +1,8 @@
 module CSP.Core.ExprTypeInferenceTest
 
-open CSP.Core.Util
 open Xunit
 open CSP.Core
+open CSP.Core.Util
 open CSP.Core.Type
 open CSP.Core.Var
 open CSP.Core.Expr
@@ -15,34 +15,58 @@ open CSP.Core.TypeError
 open CSP.Core.TypeInferenceState
 open CSP.Core.ExprTypeInference
 
-type ExprTestCaseOk = { Expr: Expr<unit>; Expected: Type }
+type ExprTestCaseOk =
+    { Expr: Expr<unit>
+      UnionMap: ((TVarId list * UnionName) * (string * Type list) seq) seq
+      Expected: Type }
 
 let exprTestCasesOk: obj[] list =
     [ [| { Expr = litUnit __LINE__
+           UnionMap = []
            Expected = tUnit } |]
       [| { Expr = litTrue __LINE__
+           UnionMap = []
            Expected = tBool } |]
       [| { Expr = litFalse __LINE__
+           UnionMap = []
            Expected = tBool } |]
       [| { Expr = litNat 0u __LINE__
+           UnionMap = []
            Expected = tNat } |]
       [| { Expr = litEmpty (tSet tUnit) __LINE__
+           UnionMap = []
            Expected = tSet tUnit } |]
       [| { Expr = litEmpty (tList tUnit) __LINE__
+           UnionMap = []
            Expected = tList tUnit } |]
       [| { Expr = litEmpty (tMap tBool tUnit) __LINE__
+           UnionMap = []
            Expected = tMap tBool tUnit } |]
       [| { Expr = ctor "Foo" [] __LINE__
-           Expected = tUnion "foo" [ ("Foo", []) ] } |]
+           UnionMap = [ (([], "foo"), [ ("Foo", []) ]) ]
+           Expected = tUnion "foo" [] } |]
+      [| { Expr = ctor "Foo" [ litUnit __LINE__ ] __LINE__
+           UnionMap = [ (([], "foo"), [ ("Foo", [ tUnit ]) ]) ]
+           Expected = tUnion "foo" [] } |]
+      [| { Expr = ctor "Foo" [ litUnit __LINE__ ] __LINE__
+           UnionMap = [ (([ 0u ], "foo"), [ ("Foo", [ TVar 0u ]) ]) ]
+           Expected = tUnion "foo" [ tUnit ] } |]
+      [| { Expr = ctor "Foo" [ litUnit __LINE__ ] __LINE__
+           UnionMap =
+             [ (([ 0u; 1u; 2u ], "foo"), [ ("Foo", [ TVar 0u ]); ("Bar", [ TVar 1u ]); ("Baz", [ TVar 2u ]) ]) ]
+           Expected = tUnion "foo" [ tUnit; TVar 1u; TVar 0u ] } |]
       [| { Expr = ifExpr (litTrue __LINE__) (litUnit __LINE__) (litUnit __LINE__) __LINE__
+           UnionMap = []
            Expected = tUnit } |]
       [| { Expr = ifExpr (litTrue __LINE__) (litTrue __LINE__) (litFalse __LINE__) __LINE__
+           UnionMap = []
            Expected = tBool } |]
       [| { Expr =
              matchExpr
                  (ctor "Some" [ litUnit __LINE__ ] __LINE__)
                  [ (("Some", [ "x" ]), litTrue __LINE__); (("None", []), (litFalse __LINE__)) ]
                  __LINE__
+           UnionMap = []
            Expected = tBool } |]
       [| { Expr =
              matchExpr
@@ -50,109 +74,138 @@ let exprTestCasesOk: obj[] list =
                  [ (("Some", [ "x" ]), ctor "Some" [ varRef "x" __LINE__ ] __LINE__)
                    (("_", [ "x" ]), varRef "x" __LINE__) ]
                  __LINE__
-           Expected = tUnion "option" [ ("Some", [ tUnit ]); ("None", []) ] } |]
+           UnionMap = []
+           Expected = tUnion "option" [ tUnit ] } |]
       [| { Expr =
              matchExpr
                  (ctor "Some" [ litUnit __LINE__ ] __LINE__)
                  [ (("Some", [ "x" ]), ctor "Some" [ varRef "x" __LINE__ ] __LINE__)
                    (("_", [ "x" ]), varRef "x" __LINE__) ]
                  __LINE__
-           Expected = tUnion "option" [ ("Some", [ tUnit ]); ("None", []) ] } |]
+           UnionMap = []
+           Expected = tUnion "option" [ tUnit ] } |]
       [| { Expr =
              matchExpr
                  (ctor "Some" [ litUnit __LINE__ ] __LINE__)
                  [ (("Some", [ "_" ]), litFalse __LINE__); (("_", [ "_" ]), litTrue __LINE__) ]
                  __LINE__
+           UnionMap = []
            Expected = tBool } |]
       [| { Expr = varRef "GLOBAL" __LINE__
+           UnionMap = []
            Expected = tBool } |]
       [| { Expr = eq (tSet tNat) (litEmpty (tSet tNat) __LINE__) (litEmpty (tSet tNat) __LINE__) __LINE__
+           UnionMap = []
            Expected = tBool } |]
       [| { Expr = boolNot (litTrue __LINE__) __LINE__
+           UnionMap = []
            Expected = tBool } |]
       [| { Expr = less (tSet tNat) (litEmpty (tSet tNat) __LINE__) (litEmpty (tSet tNat) __LINE__) __LINE__
+           UnionMap = []
            Expected = tBool } |]
       [| { Expr = plus tUnit (litUnit __LINE__) (litUnit __LINE__) __LINE__
+           UnionMap = []
            Expected = tUnit } |]
       [| { Expr = plus (tSet tNat) (litEmpty (tSet tNat) __LINE__) (litEmpty (tSet tNat) __LINE__) __LINE__
+           UnionMap = []
            Expected = tSet tNat } |]
       [| { Expr = minus (tSet tNat) (litEmpty (tSet tNat) __LINE__) (litEmpty (tSet tNat) __LINE__) __LINE__
+           UnionMap = []
            Expected = tSet tNat } |]
       [| { Expr = minus tUnit (litUnit __LINE__) (litUnit __LINE__) __LINE__
+           UnionMap = []
            Expected = tUnit } |]
       [| { Expr = times (tSet tNat) (litEmpty (tSet tNat) __LINE__) (litEmpty (tSet tNat) __LINE__) __LINE__
+           UnionMap = []
            Expected = tSet tNat } |]
       [| { Expr = size (tList tBool) (listCons (litTrue __LINE__) (litEmpty (tList tBool) __LINE__) __LINE__) __LINE__
+           UnionMap = []
            Expected = tNat } |]
       [| { Expr = size (tSet tNat) (litEmpty (tSet tNat) __LINE__) __LINE__
+           UnionMap = []
            Expected = tNat } |]
       [| { Expr = size (tMap tNat tNat) (litEmpty (tMap tNat tNat) __LINE__) __LINE__
+           UnionMap = []
            Expected = tNat } |]
       [| { Expr = filter (tList tUnit) "x" (litTrue __LINE__) (litEmpty (tList tUnit) __LINE__) __LINE__
+           UnionMap = []
            Expected = tList tUnit } |]
       [| { Expr = filter (tSet tUnit) "x" (litTrue __LINE__) (litEmpty (tSet tUnit) __LINE__) __LINE__
+           UnionMap = []
            Expected = tSet tUnit } |]
       [| { Expr = filter (tList tBool) "x" (varRef "x" __LINE__) (litEmpty (tList tBool) __LINE__) __LINE__
+           UnionMap = []
            Expected = tList tBool } |]
       [| { Expr = exists (tList tUnit) "x" (litTrue __LINE__) (litEmpty (tList tUnit) __LINE__) __LINE__
+           UnionMap = []
            Expected = tBool } |]
       [| { Expr = exists (tList tBool) "x" (varRef "x" __LINE__) (litEmpty (tList tBool) __LINE__) __LINE__
+           UnionMap = []
            Expected = tBool } |]
       [| { Expr = tuple2 (litNat 0u __LINE__) (litTrue __LINE__) __LINE__
+           UnionMap = []
            Expected = tTuple2 tNat tBool } |]
       [| { Expr = tupleFst (tuple2 (litTrue __LINE__) (litNat 0u __LINE__) __LINE__) __LINE__
+           UnionMap = []
            Expected = tBool } |]
       [| { Expr = tupleSnd (tuple2 (litTrue __LINE__) (litNat 0u __LINE__) __LINE__) __LINE__
+           UnionMap = []
            Expected = tNat } |]
       [| { Expr = listCons (litTrue __LINE__) (litEmpty (tList tBool) __LINE__) __LINE__
+           UnionMap = []
            Expected = tList tBool } |]
       [| { Expr = listNth (litEmpty (tList tBool) __LINE__) (litNat 0u __LINE__) __LINE__
+           UnionMap = []
            Expected = tBool } |]
       [| { Expr = setRange (litNat 0u __LINE__) (litNat 0u __LINE__) __LINE__
+           UnionMap = []
            Expected = tSet tNat } |]
       [| { Expr = setInsert (litNat 0u __LINE__) (litEmpty (tSet tNat) __LINE__) __LINE__
+           UnionMap = []
            Expected = tSet tNat } |]
       [| { Expr = setRemove (litNat 0u __LINE__) (litEmpty (tSet tNat) __LINE__) __LINE__
+           UnionMap = []
            Expected = tSet tNat } |]
       [| { Expr = setMem (litNat 0u __LINE__) (litEmpty (tSet tNat) __LINE__) __LINE__
+           UnionMap = []
            Expected = tBool } |]
       [| { Expr = mapAdd (litNat 0u __LINE__) (litUnit __LINE__) (litEmpty (tMap tNat tUnit) __LINE__) __LINE__
+           UnionMap = []
            Expected = tMap tNat tUnit } |]
       [| { Expr = mapFindOpt (litNat 0u __LINE__) (litEmpty (tMap tNat tUnit) __LINE__) __LINE__
-           Expected = tUnion "option" [ ("Some", [ tUnit ]); ("None", []) ] } |]
+           UnionMap = []
+           Expected = tUnion "option" [ tUnit ] } |]
       [| { Expr = univ (tMap tNat tUnit) __LINE__
+           UnionMap = []
            Expected = tSet (tMap tNat tUnit) } |]
       [| { Expr =
              tuple2 (ctor "Some" [ litUnit __LINE__ ] __LINE__) (ctor "Some" [ litTrue __LINE__ ] __LINE__) __LINE__
-           Expected =
-             tTuple2
-                 (tUnion "option" [ ("Some", [ tUnit ]); ("None", []) ])
-                 (tUnion "option" [ ("Some", [ tBool ]); ("None", []) ]) } |]
+           UnionMap = []
+           Expected = tTuple2 (tUnion "option" [ tUnit ]) (tUnion "option" [ tBool ]) } |]
       [| { Expr =
              matchExpr
                  (ctor "Some" [ litTrue __LINE__ ] __LINE__)
                  [ (("Some", [ "x" ]), boolNot (varRef "x" __LINE__) __LINE__)
                    (("None", []), litTrue __LINE__) ]
                  __LINE__
+           UnionMap = []
            Expected = tBool } |] ]
 
 [<Theory>]
 [<MemberData(nameof exprTestCasesOk)>]
 let inferExprOk (tc: ExprTestCaseOk) =
-    let tOption = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ] in
-
-    let tFoo = tUnion "foo" [ ("Foo", []) ] in
-    let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tOption; tFoo ]) in
+    let um = UnionMap.from tc.UnionMap |> ResultEx.get UnionMapError.format in
+    let cm = CtorMap.from um |> ResultEx.get CtorMapError.format in
     let tenv = TypeCstrEnv.from [ ("GLOBAL", tcBool) ] in
 
-    match postProcess (infer cm tenv tc.Expr init) with
+    match postProcess (infer um cm tenv tc.Expr init) with
     | Ok(actual, s) ->
         Assert.True(
             tc.Expected = get actual,
             $"""line %s{line actual}
 
-Expected: %s{Type.format true tc.Expected}
-Actual:   %s{Type.format true (get actual)}
+Expected: %s{Type.format tc.Expected}
+Actual:   %s{Type.format (get actual)}
 Inferred as:
 %s{Expr.format typeAnnotation actual}
 
@@ -177,7 +230,7 @@ type ExprTestCaseError =
 
 let exprTestCasesError: obj[] list =
     [ [| { Expr = ctor "UndefinedCtor" [] __LINE__
-           Expected = NoSuchCtor(Ctor "UndefinedCtor") } |]
+           Expected = CtorMapError(CtorMapError.NoSuchCtor(Ctor "UndefinedCtor")) } |]
       [| { Expr = ctor "Foo" [ (litTrue __LINE__) ] __LINE__
            Expected = AssociatedValuesLenMismatch(Ctor "Foo", Set [ 1; 0 ]) } |]
       [| { Expr = ifExpr (litUnit __LINE__) (litUnit __LINE__) (litFalse __LINE__) __LINE__
@@ -322,13 +375,14 @@ let exprTestCasesError: obj[] list =
 [<Theory>]
 [<MemberData(nameof exprTestCasesError)>]
 let inferExprError (tc: ExprTestCaseError) =
-    let tOption = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ] in
+    let um =
+        UnionMap.from [ (([], "foo"), [ ("Foo", []) ]) ]
+        |> ResultEx.get UnionMapError.format in
 
-    let tFoo = tUnion "foo" [ ("Foo", []) ] in
-    let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tOption; tFoo ]) in
+    let cm = CtorMap.from um |> ResultEx.get CtorMapError.format in
     let tenv = TypeCstrEnv.from [ ("GLOBAL", tcBool) ] in
 
-    match postProcess (infer cm tenv tc.Expr init) with
+    match postProcess (infer um cm tenv tc.Expr init) with
     | Ok(actual, s) ->
         Assert.Fail
             $"""line %s{line actual}

@@ -7,6 +7,7 @@ open CSP.Core.ExprShorthand
 open CSP.Core.Util
 
 let unionMap = UnionMap.builtin
+let ctorMap = CtorMap.from unionMap |> ResultEx.get CtorMapError.format
 
 let procMap =
     from

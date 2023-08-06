@@ -10,6 +10,7 @@ open CSP.Core.Util
 let evs = setRange (litNat 0u __LINE__) (litNat 6u __LINE__) __LINE__
 
 let unionMap = UnionMap.builtin
+let ctorMap = CtorMap.from unionMap |> ResultEx.get CtorMapError.format
 
 let procMap =
     from

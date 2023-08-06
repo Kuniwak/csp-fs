@@ -3,6 +3,7 @@ module CSP.Core.TypeCstrResolution
 open CSP.Core.TypeCstr
 open CSP.Core.TypeError
 open CSP.Core.TypeInferenceState
+open CSP.Core.Util
 
 
 
@@ -20,30 +21,18 @@ let resolve (s: State) (t: TypeCstr) : Result<TypeCstr, TypeError> =
         | TCNat -> Ok TCNat
         | TCUnit -> Ok TCUnit
         | TCTuple(tcL, tcR) ->
-            Result.bind
-                (fun tcL -> Result.map (fun tcR -> TCTuple(tcL, tcR)) (resolve visited tcR))
-                (resolve visited tcL)
-        | TCUnion(un, cm) ->
-            let cmRes =
-                Map.fold
-                    (fun accRes ctor ts ->
-                        let tsRes =
-                            List.foldBack
-                                (fun t -> Result.bind (fun ts -> Result.map (fun t -> t :: ts) (resolve visited t)))
-                                ts
-                                (Ok([]))
-
-                        match accRes, tsRes with
-                        | Ok cm, Ok ts -> Ok(Map.add ctor ts cm)
-                        | Error err, _ -> Error err
-                        | _, Error err -> Error err)
-                    (Ok Map.empty)
-                    cm in
-
-            Result.map (fun cm -> TCUnion(un, cm)) cmRes
-        | TCSet tcV -> Result.map TCSet (resolve visited tcV)
-        | TCList tcV -> Result.map TCList (resolve visited tcV)
+            (tcL, tcR)
+            |> ResultEx.bind2 (resolve visited) (resolve visited)
+            |> Result.map TCTuple
+        | TCUnion(un, tcs) ->
+            tcs
+            |> ResultEx.bindAll (resolve visited)
+            |> Result.map (fun tcs -> TCUnion(un, tcs))
+        | TCSet tcV -> resolve visited tcV |> Result.map TCSet
+        | TCList tcV -> resolve visited tcV |> Result.map TCList
         | TCMap(tcK, tcV) ->
-            Result.bind (fun tcK -> Result.map (fun tcV -> TCMap(tcK, tcV)) (resolve visited tcV)) (resolve visited tcK)
+            (tcK, tcV)
+            |> ResultEx.bind2 (resolve visited) (resolve visited)
+            |> Result.map TCMap
 
     resolve (Set []) t

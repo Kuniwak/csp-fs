@@ -1,20 +1,24 @@
 module CSP.Core.TypeError
 
 open CSP.Core.Ctor
+open CSP.Core.CtorMapError
 open CSP.Core.Expr
 open CSP.Core.LineNum
 open CSP.Core.Proc
 open CSP.Core.TypeCstr
 open CSP.Core.TypeEnvError
+open CSP.Core.UnionMapError
+open CSP.Core.Util
 open CSP.Core.Var
 open CSP.Core.Type
 
 type TypeError =
     | At of TypeError * string
+    | CtorMapError of CtorMapError
+    | UnionMapError of UnionMapError
     | TypeNotDerived of TypeCstr * TypeClassName
     | UnionNameMismatch of UnionName * UnionName
     | TypeMismatch of Set<TypeCstr>
-    | NoSuchCtor of Ctor
     | CtorsMismatch of Set<Ctor> * Set<Ctor>
     | AssociatedValuesLenMismatch of Ctor * Set<int>
     | NoCtors
@@ -24,6 +28,7 @@ type TypeError =
     | TypeEnvError of TypeEnvError
     | NoSuchProcess of ProcId
     | ArgumentsLengthMismatch of ProcId * (Var * Type) list * Expr<unit> list
+    | TypeArgumentsLengthMismatch of Set<TypeCstr list>
 
 let atLine (line: LineNum) (err: TypeError) : TypeError = At(err, $"line %s{line}")
 
@@ -36,13 +41,14 @@ let format (terr: TypeError) : string =
     let rec format terr =
         match terr with
         | At(terr, hint) -> $"%s{format terr}\n\tat %s{hint}"
+        | CtorMapError(err) -> CtorMapError.format err
+        | UnionMapError(err) -> UnionMapError.format err
         | TypeNotDerived(t, tcClassName) -> $"type not derived %s{tcClassName}: %s{TypeCstr.format t}"
         | UnionNameMismatch(un1, un2) -> $"union name mismatch: %s{un1} vs %s{un2}"
         | TypeMismatch(s) -> let s = s |> Seq.map TypeCstr.format |> String.concat " vs " in $"type mismatch: %s{s}"
         | AssociatedValuesLenMismatch(ctor, s) ->
             let s = s |> Seq.map (fun x -> $"%d{x}") |> String.concat " vs " in
             $"length of associated values mismatch: %s{Ctor.format ctor} %s{s}"
-        | NoSuchCtor ctor -> $"no such data constructor: %s{Ctor.format ctor}"
         | CtorsMismatch(s1, s2) ->
             let s1 = String.concat ", " (Seq.map Ctor.format s1) in
             let s2 = String.concat ", " (Seq.map Ctor.format s2) in
@@ -74,10 +80,17 @@ let format (terr: TypeError) : string =
         | ArgumentsLengthMismatch(pn, vars, exprs) ->
             let s1 =
                 vars
-                |> List.map (fun (var, t) -> $" (%s{Var.format var}: {Type.format true t})")
+                |> List.map (fun (var, t) -> $" (%s{Var.format var}: %s{Type.format t})")
                 |> String.concat "" in
 
             let s2 = exprs |> List.map (Expr.format noAnnotation) |> String.concat " " in
             $"arguments length mismatch: (%s{pn}%s{s1}) vs (%s{s2})"
+        | TypeArgumentsLengthMismatch(s) ->
+            let s =
+                s
+                |> Seq.map (fun tcs -> tcs |> Seq.map TypeCstr.format |> String.concat " " |> StringEx.wrapBy "(" ")")
+                |> String.concat " vs " in
+
+            $"type arguments length mismatch: %s{s}"
 
     $"""type error: {format terr}"""

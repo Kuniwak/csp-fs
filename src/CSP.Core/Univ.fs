@@ -35,8 +35,8 @@ let univ (cfg: UnivConfig) (um: UnionMap) (t: Type) : Result<Val list, UnivError
         | TMap(tk, tv) ->
             Result.bind (fun ks -> Result.map (fun vs -> List.map VMap (Univ.ofMap ks vs)) (univ tv)) (univ tk)
 
-        | TUnion(un, tm) ->
-            instantiateCtorMap un tm um
+        | TUnion(un, ts) ->
+            instantiateCtorMap un ts um
             |> Result.mapError UnionMapError
             |> Result.bind (fun cm ->
                 cm

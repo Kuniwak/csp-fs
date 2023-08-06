@@ -7,11 +7,12 @@ open CSP.Core.ExprShorthand
 open CSP.Core.TypeShorthand
 open CSP.Core.Util
 
-let tEvent = tUnion "event" Map.empty
+let tEvent = tUnion "event" []
 
 let unionMap =
     UnionMap.from [ (([], "event"), [ ("a", []) ]) ]
     |> ResultEx.get UnionMapError.format
+let ctorMap = CtorMap.from unionMap |> ResultEx.get CtorMapError.format
 
 let procMap =
     from

@@ -16,12 +16,12 @@ type Type =
     | TSet of Type
     | TList of Type
     | TMap of Type * Type
-    | TUnion of UnionName * Map<TVarId, Type>
+    | TUnion of UnionName * Type list
 
 let format (t: Type) : string =
     let rec format t =
         match t with
-        | TUnit -> "()"
+        | TUnit -> "unit"
         | TVar n -> $"'t%d{n}"
         | TNat _ -> "nat"
         | TBool _ -> "bool"
@@ -30,20 +30,20 @@ let format (t: Type) : string =
         | TList(t) -> $"(%s{format t} list)"
         | TMap(tk, tv) -> $"((%s{format tk}, %s{format tv}) map)"
         | TUnion(n, ts) ->
-            let s = ts |> Map.toSeq |> Seq.map snd |> Seq.map format |> String.concat " "
+            let s = ts |> Seq.map format |> String.concat " "
             $"(%s{n} %s{s})"
 
     format t
 
-let rec instantiate (u: TVarId) (t: Type) (target: Type) : Type =
+let rec bind (u: TVarId) (t: Type) (target: Type) : Type =
     match target with
     | TVar u' when u = u' -> t
     | _ -> target
 
-let instantiateByMap (m: Map<TVarId, Type>) (target: Type) : Type =
-    Map.fold (fun target u t -> instantiate u t target) target m
+let bindByMap (m: Map<TVarId, Type>) (target: Type) : Type =
+    Map.fold (fun target u t -> bind u t target) target m
 
-let instantiateList (u: TVarId) (t: Type) (ts: Type list) : Type list = List.map (instantiate u t) ts
+let bindAll (u: TVarId) (t: Type) (ts: Type list) : Type list = List.map (bind u t) ts
 
-let instantiateListByMap (m: Map<TVarId, Type>) (ts: Type list) : Type list =
-    Map.fold (fun ts u t -> instantiateList u t ts) ts m
+let bindAllByMap (m: Map<TVarId, Type>) (ts: Type list) : Type list =
+    Map.fold (fun ts u t -> bindAll u t ts) ts m

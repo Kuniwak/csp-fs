@@ -1,7 +1,10 @@
 module CSP.Core.TypeCstr
 
 open CSP.Core.Ctor
+open CSP.Core.CtorMap
+open CSP.Core.CtorMapError
 open CSP.Core.Type
+open CSP.Core.UnionMap
 
 type UncertainVarId = UncertainVarId of uint
 type ForAllVarId = ForAllVarId of uint
@@ -15,7 +18,7 @@ type TypeCstr =
     | TCSet of TypeCstr
     | TCList of TypeCstr
     | TCMap of TypeCstr * TypeCstr
-    | TCUnion of UnionName * Map<Ctor, TypeCstr list>
+    | TCUnion of UnionName * TypeCstr list
 
 let rec format (tc: TypeCstr) : string =
     match tc with
@@ -27,13 +30,4 @@ let rec format (tc: TypeCstr) : string =
     | TCSet tc -> $"(%s{format tc} set)"
     | TCList tc -> $"(%s{format tc} list)"
     | TCMap(tcK, tcV) -> $"((%s{format tcK}, %s{format tcV}) map)"
-    | TCUnion(un, cm) ->
-        let s =
-            String.concat
-                "/"
-                (List.map
-                    (fun (ctor, tcs) ->
-                        let s = String.concat ", " (List.map format tcs) in $"%s{Ctor.format ctor} [%s{s}]")
-                    (Map.toList cm))
-
-        $"(%s{un} %s{s})"
+    | TCUnion(un, ts) -> let s = ts |> Seq.map format |> String.concat ", " in $"(%s{un} %s{s})"

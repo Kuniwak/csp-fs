@@ -7,7 +7,6 @@ open CSP.Core.ValShorthand
 open CSP.Core.Proc
 open CSP.Core.State
 open CSP.Core.ProcEval
-open CSP.Core.ProcEvalError
 open CSP.Core.StateSpace
 open CSP.Core.Univ
 open CSP.Model.Examples
@@ -26,13 +25,13 @@ let formatMap (genv: Env) (m: Map<State, (ProcId * Val list) list>) =
         pvss
         |> Seq.map (fun (pn, vs) ->
             let vs = vs |> Seq.map Val.format |> String.concat " "
-            $"""%s{State.format genv s} ⟹ Unwind %s{pn} %s{vs}""")
+            $"""%s{format genv s} ⟹ Unwind %s{pn} %s{vs}""")
         |> String.concat "\n")
     |> String.concat "\n\n"
 
 [<Fact>]
 let lr () =
-    let ns = namedSpace cfg LR.ctorMap LR.procMap LR.genv in
+    let ns = namedSpace cfg LR.unionMap LR.ctorMap LR.procMap LR.genv in
 
     let expected =
         Map
@@ -41,12 +40,12 @@ let lr () =
               (Prefix(vUnion "red" [], Prefix(vUnion "sync" [], Unwind("Right", []))), [ ("Right", []) ]) ]
 
     match ns with
-    | Error(err) -> Assert.Fail(format err)
+    | Error(err) -> Assert.Fail(ProcEvalError.format err)
     | Ok(m) -> Assert.True((m = expected), formatMap LRH.genv m)
 
 [<Fact>]
 let lrh () =
-    let ns = namedSpace cfg LRH.ctorMap LRH.procMap LRH.genv in
+    let ns = namedSpace cfg LRH.unionMap LRH.ctorMap LRH.procMap LRH.genv in
 
     let expected =
         Map
@@ -59,5 +58,5 @@ let lrh () =
               (Prefix(vUnion "red" [], Prefix(vUnion "sync" [], Unwind("Right", []))), [ ("Right", []) ]) ]
 
     match ns with
-    | Error(err) -> Assert.Fail(format err)
+    | Error(err) -> Assert.Fail(ProcEvalError.format err)
     | Ok(m) -> Assert.True((m = expected), formatMap LRH.genv m)

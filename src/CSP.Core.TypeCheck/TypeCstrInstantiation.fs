@@ -10,7 +10,7 @@ let rec instantiate (tc: TypeCstr) : Type.Type =
     | TCBool -> tBool
     | TCNat -> tNat
     | TCTuple(tcL, tcR) -> tTuple2 (instantiate tcL) (instantiate tcR)
-    | TCUnion(un, cm) -> tUnionM un (Map.map (fun _ -> List.map instantiate) cm)
+    | TCUnion(un, tcs) -> tUnion un (tcs |> List.map instantiate)
     | TCSet(tc) -> tSet (instantiate tc)
     | TCList(tc) -> tList (instantiate tc)
     | TCMap(tcK, tcV) -> tMap (instantiate tcK) (instantiate tcV)

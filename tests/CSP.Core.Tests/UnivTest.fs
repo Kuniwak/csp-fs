@@ -1,7 +1,8 @@
 module CSP.Core.Tests.UnivTest
 
-open Xunit
 open CSP.Core
+open CSP.Core.Util
+open Xunit
 open CSP.Core.LineNum
 open CSP.Core.Univ
 open CSP.Core.Val
@@ -17,24 +18,29 @@ let cfg = univConfig natMax listMax
 type TestCase =
     { Config: UnivConfig
       Type: Type
+      UnionMap: ((TVarId list * UnionName) * (string * Type list) seq) seq
       Expected: Set<Val>
       Line: LineNum }
 
 let testCases: obj[] list =
     [ [| { Config = cfg
            Type = tUnit
+           UnionMap = []
            Expected = Set [ vUnit ]
            Line = __LINE__ } |]
       [| { Config = cfg
            Type = tBool
+           UnionMap = []
            Expected = Set [ vBool true; vBool false ]
            Line = __LINE__ } |]
       [| { Config = cfg
            Type = tNat
+           UnionMap = []
            Expected = Set [ vNat 0u; vNat 1u ]
            Line = __LINE__ } |]
       [| { Config = cfg
            Type = tTuple2 tBool tBool
+           UnionMap = []
            Expected =
              Set
                  [ vTuple2 (vBool false) (vBool false)
@@ -43,15 +49,18 @@ let testCases: obj[] list =
                    vTuple2 (vBool true) (vBool true) ]
            Line = __LINE__ } |]
       [| { Config = cfg
-           Type = tUnion "single" [ ("Single", []) ]
+           Type = tUnion "single" []
+           UnionMap = [ (([], "single"), [ ("Single", []) ]) ]
            Expected = Set [ vUnion "Single" [] ]
            Line = __LINE__ } |]
       [| { Config = cfg
-           Type = tUnion "single" [ ("Single", [ tBool ]) ]
+           Type = tUnion "single" []
+           UnionMap = [ (([], "single"), [ ("Single", [ tBool ]) ]) ]
            Expected = Set [ vUnion "Single" [ vBool true ]; vUnion "Single" [ vBool false ] ]
            Line = __LINE__ } |]
       [| { Config = cfg
-           Type = tUnion "single" [ ("Single", [ tBool; tBool ]) ]
+           Type = tUnion "single" []
+           UnionMap = [(([], "single"), [ ("Single", [ tBool; tBool ]) ])] 
            Expected =
              Set
                  [ vUnion "Single" [ vBool false; vBool false ]
@@ -61,6 +70,7 @@ let testCases: obj[] list =
            Line = __LINE__ } |]
       [| { Config = cfg
            Type = tSet tBool
+           UnionMap = [] 
            Expected =
              Set
                  [ vSet []
@@ -70,6 +80,7 @@ let testCases: obj[] list =
            Line = __LINE__ } |]
       [| { Config = cfg
            Type = tSet tBool
+           UnionMap = [] 
            Expected =
              Set
                  [ vSet []
@@ -79,6 +90,7 @@ let testCases: obj[] list =
            Line = __LINE__ } |]
       [| { Config = cfg
            Type = tList tBool
+           UnionMap = [] 
            Expected =
              Set
                  [ vList []
@@ -90,6 +102,7 @@ let testCases: obj[] list =
                    vList [ vBool true; vBool true ] ]
            Line = __LINE__ } |]
       [| { Config = cfg
+           UnionMap = [] 
            Type = tMap tBool tBool
            Expected =
              Set
@@ -107,7 +120,8 @@ let testCases: obj[] list =
 [<Theory>]
 [<MemberData(nameof testCases)>]
 let testUniv (tc: TestCase) : unit =
-    let vRes = univ tc.Config tc.Type in
+    let um = ResultEx.get UnionMapError.format (UnionMap.from tc.UnionMap)
+    let vRes = univ tc.Config um tc.Type in
 
     match vRes with
     | Error(err) ->

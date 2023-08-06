@@ -42,6 +42,16 @@ type Expr<'a> =
     | MapAdd of Expr<'a> * Expr<'a> * Expr<'a> * 'a * LineNum
     | MapFindOpt of Expr<'a> * Expr<'a> * 'a * LineNum
     | Univ of Type * 'a * LineNum
+    
+let tryAnyCtor exprMap =
+    Map.fold
+        (fun acc ctorOpt _ ->
+            match acc with
+            | None -> ctorOpt
+            | Some ctor -> Some ctor)
+        None
+        exprMap in
+
 
 let noAnnotation (s: string) (_: 'a) : string = s
 let typeAnnotation (s: string) (t: Type) : string = $"(%s{s}::%s{Type.format t})"

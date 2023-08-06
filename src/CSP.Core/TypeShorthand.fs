@@ -1,6 +1,5 @@
 module CSP.Core.TypeShorthand
 
-open CSP.Core.Ctor
 open CSP.Core.Type
 
 let tVar n = TVar(n)
@@ -15,6 +14,6 @@ let tMap tK tV = TMap(tK, tV)
 
 let tUnion un cm = TUnion(un, cm)
 
-let tOption t = tUnion "option" (Map [(0u, t)])
+let tOption t = tUnion "option" [ t ]
 
-let tEither tL tR = tUnion "either" (Map [(0u, tL); (1u, tR)])
+let tEither tL tR = tUnion "either" [ tL; tR ]

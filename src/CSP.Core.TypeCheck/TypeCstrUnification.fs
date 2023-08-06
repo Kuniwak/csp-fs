@@ -22,38 +22,24 @@ let unify (s: State) (tc1: TypeCstr) (tc2: TypeCstr) : Result<TypeCstr * State, 
                 Result.bind
                     (fun (tcL, s) -> Result.map (fun (tcR, s) -> (TCTuple(tcL, tcR), s)) (unify s tcR1 tcR2))
                     (unify s tcL1 tcL2)
-            | TCUnion(un1, cm1), TCUnion(un2, cm2) ->
+            | TCUnion(un1, tcs1), TCUnion(un2, tcs2) ->
                 if un1 = un2 then
-                    let ctors1 = Set.ofSeq (Map.keys cm1) in
-                    let ctors2 = Set.ofSeq (Map.keys cm2) in
-                    let ctors = Set.union ctors1 ctors2 in
-
-                    let cmRes =
-                        Set.fold
-                            (fun accRes ctor ->
-                                match accRes with
-                                | Error terr -> Error terr
-                                | Ok(cm, m) ->
-                                    match Map.tryFind ctor cm1, Map.tryFind ctor cm2 with
-                                    | Some tcs1, Some tcs2 ->
-                                        Result.map
-                                            (fun (tcs, m) -> (Map.add ctor tcs cm, m))
-                                            (List.foldBack
-                                                (fun (tc1, tc2) ->
-                                                    Result.bind (fun (tcs, m) ->
-                                                        match unify m tc1 tc2 with
-                                                        | Ok(tc, s) -> Ok(tc :: tcs, s)
-                                                        | Error terr ->
-                                                            Error(At(terr, $"the type list of %s{Ctor.format ctor}"))))
-                                                (List.zip tcs1 tcs2)
-                                                (Ok([], m)))
-                                    | _ -> Error(CtorsMismatch(ctors1, ctors2)))
-                            (Ok(Map.empty, s))
-                            ctors
-
-                    match cmRes with
-                    | Ok(cm, s) -> Ok(TCUnion(un1, cm), s)
-                    | Error terr -> Error terr
+                    if List.length tcs1 = List.length tcs2 then
+                        List.foldBack
+                            (fun (tc1, tc2) tcsRes ->
+                                tcsRes
+                                |> Result.bind (fun (tcs, s) ->
+                                    unify s tc1 tc2 |> Result.map (fun (tc, s) -> (tc :: tcs, s))))
+                            (List.zip tcs1 tcs2)
+                            (Ok([], s))
+                        |> Result.map (fun (tcs, s) -> (TCUnion(un1, tcs), s))
+                    else
+                        Error(
+                            TypeArgumentsLengthMismatch(
+                                Set[tcs1
+                                    tcs2]
+                            )
+                        )
                 else
                     Error(UnionNameMismatch(un1, un2))
             | TCList tcV1, TCList tcV2 ->

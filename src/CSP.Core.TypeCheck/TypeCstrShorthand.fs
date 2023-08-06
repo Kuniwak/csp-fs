@@ -1,17 +1,14 @@
 module CSP.Core.TypeCstrShorthand
 
-open CSP.Core.Ctor
 open CSP.Core.TypeCstr
 
 let tcUncertain n = TCUncertain(UncertainVarId n)
 let tcNat = TCNat
 let tcBool = TCBool
 let tcUnit = TCUnit
-let tcTuple2 t1 t2 = TCTuple(t1, t2)
-let tcTuple3 t1 t2 t3 = TCTuple(t1, TCTuple(t2, t3))
-let tcSet t = TCSet t
-let tcList t = TCList t
-let tcMap tK tV = TCMap(tK, tV)
-
-let tcUnion un cm =
-    TCUnion(un, Map(Seq.map (fun (ctor, ts) -> (Ctor ctor, ts)) cm))
+let tcTuple2 tc1 tc2 = TCTuple(tc1, tc2)
+let tcTuple3 tc1 tc2 tc3 = TCTuple(tc1, TCTuple(tc2, tc3))
+let tcSet tc = TCSet tc
+let tcList tc = TCList tc
+let tcMap tcK tcV = TCMap(tcK, tcV)
+let tcUnion un tcs = TCUnion(un, tcs)

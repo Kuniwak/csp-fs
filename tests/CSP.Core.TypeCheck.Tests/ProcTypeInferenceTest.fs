@@ -57,15 +57,19 @@ let procTestCasesOk: obj[] list =
       [| { Proc = ``if`` (varRef "GLOBAL" __LINE__) (stop __LINE__) (stop __LINE__) __LINE__
            Expected = [ tBool ]
            Line = __LINE__ } |]
-      [| { Proc = ``match`` (ctor "Some" [ litUnit __LINE__ ] __LINE__) [ (("Some", [ "x" ]), stop __LINE__) ] __LINE__
-           Expected = [ tUnion "option" [ ("Some", [ tUnit ]); ("None", []) ] ]
+      [| { Proc =
+             ``match``
+                 (ctor "Some" [ litUnit __LINE__ ] __LINE__)
+                 [ (("Some", [ "x" ]), stop __LINE__); (("None", []), stop __LINE__) ]
+                 __LINE__
+           Expected = [ tUnion "option" [ tUnit ] ]
            Line = __LINE__ } |]
       [| { Proc =
              ``match``
                  (ctor "Some" [ varRef "GLOBAL" __LINE__ ] __LINE__)
-                 [ (("Some", [ "x" ]), stop __LINE__) ]
+                 [ (("Some", [ "x" ]), stop __LINE__); (("None", []), stop __LINE__) ]
                  __LINE__
-           Expected = [ tUnion "option" [ ("Some", [ tBool ]); ("None", []) ] ]
+           Expected = [ tUnion "option" [ tBool ] ]
            Line = __LINE__ } |]
       [| { Proc = interfaceParallel (stop __LINE__) (litEmpty (tSet tUnit) __LINE__) (stop __LINE__) __LINE__
            Expected = [ tSet tUnit ]
@@ -83,16 +87,15 @@ let procTestCasesOk: obj[] list =
 [<Theory>]
 [<MemberData(nameof procTestCasesOk)>]
 let inferProcOk (tc: ProcTestCaseOk) =
-    let tOption = tUnion "option" [ ("Some", [ tVar 0u ]); ("None", []) ] in
-    let tFoo = tUnion "foo" [ ("Foo", []) ] in
-    let cm = ResultEx.get CtorMapError.format (CtorMap.from [ tOption; tFoo ]) in
+    let um = UnionMap.builtin
+    let cm = CtorMap.from um |> ResultEx.get CtorMapError.format in
     let tcenv = TypeCstrEnv.from [ ("GLOBAL", tcBool) ] in
 
     let pm =
         ProcMap.from [ (("Foo", []), stop __LINE__); (("Bar", [ ("x", tUnit) ]), stop __LINE__) ]
         |> ResultEx.get ProcMapError.format
 
-    match postProcess (infer pm cm tcenv tc.Proc init) with
+    match postProcess (infer pm um cm tcenv tc.Proc init) with
     | Ok(p, s) ->
         let sep = ", "
 

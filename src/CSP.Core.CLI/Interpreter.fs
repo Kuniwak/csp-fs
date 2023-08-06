@@ -6,6 +6,7 @@ open FSharpPlus
 open CSP.Core.ProcEval
 open CSP.Core.Proc
 open CSP.Core.CtorMap
+open CSP.Core.UnionMap
 open CSP.Core.Env
 open CSP.Core.ProcMap
 open CSP.Core.State
@@ -34,7 +35,7 @@ let interpreterConfig natMax listLenMax =
     { TransConfig = { ProcEvalConfig = procEvalConfig }
       ProcEvalConfig = procEvalConfig }
 
-let start (cfg: InterpreterConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env) (pn: ProcId) (vs: Val list) =
+let start (cfg: InterpreterConfig) (pm: ProcMap<unit>) (um: UnionMap) (cm: CtorMap) (genv: Env) (pn: ProcId) (vs: Val list) =
     let format = format genv in
 
     let mutable s = Unwind(pn, vs) in
@@ -42,7 +43,7 @@ let start (cfg: InterpreterConfig) (pm: ProcMap<unit>) (cm: CtorMap) (genv: Env)
 
     while true do
         printfn $"state: %s{format s}"
-        let tsRes = trans cfg.TransConfig pm cm genv s
+        let tsRes = trans cfg.TransConfig pm um cm genv s
 
         match tsRes with
         | Ok(ts) ->
