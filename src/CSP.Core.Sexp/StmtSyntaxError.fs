@@ -12,7 +12,7 @@ type StmtSyntaxError =
     | ProcSyntaxError of ProcSyntaxError
     | MapperError of MapperError
     | UnexpectedKeyword of string
-    
+
 let rec format (err: StmtSyntaxError) : string =
     match err with
     | At(err, hint) -> $"%s{format err}\n\tat %s{hint}"

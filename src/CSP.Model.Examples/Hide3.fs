@@ -12,6 +12,7 @@ let tEvent = tUnion "event" []
 let unionMap =
     UnionMap.from [ (([], "event"), [ ("a", []) ]) ]
     |> ResultEx.get UnionMapError.format
+
 let ctorMap = CtorMap.from unionMap |> ResultEx.get CtorMapError.format
 
 let procMap =

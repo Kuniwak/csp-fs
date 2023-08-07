@@ -60,7 +60,7 @@ let testCases: obj[] list =
            Line = __LINE__ } |]
       [| { Config = cfg
            Type = tUnion "single" []
-           UnionMap = [(([], "single"), [ ("Single", [ tBool; tBool ]) ])] 
+           UnionMap = [ (([], "single"), [ ("Single", [ tBool; tBool ]) ]) ]
            Expected =
              Set
                  [ vUnion "Single" [ vBool false; vBool false ]
@@ -70,7 +70,7 @@ let testCases: obj[] list =
            Line = __LINE__ } |]
       [| { Config = cfg
            Type = tSet tBool
-           UnionMap = [] 
+           UnionMap = []
            Expected =
              Set
                  [ vSet []
@@ -80,7 +80,7 @@ let testCases: obj[] list =
            Line = __LINE__ } |]
       [| { Config = cfg
            Type = tSet tBool
-           UnionMap = [] 
+           UnionMap = []
            Expected =
              Set
                  [ vSet []
@@ -90,7 +90,7 @@ let testCases: obj[] list =
            Line = __LINE__ } |]
       [| { Config = cfg
            Type = tList tBool
-           UnionMap = [] 
+           UnionMap = []
            Expected =
              Set
                  [ vList []
@@ -102,7 +102,7 @@ let testCases: obj[] list =
                    vList [ vBool true; vBool true ] ]
            Line = __LINE__ } |]
       [| { Config = cfg
-           UnionMap = [] 
+           UnionMap = []
            Type = tMap tBool tBool
            Expected =
              Set

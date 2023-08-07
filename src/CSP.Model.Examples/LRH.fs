@@ -10,6 +10,7 @@ open CSP.Core.Util
 let unionMap =
     UnionMap.from [ (([], "event"), [ ("blue", []); ("red", []); ("sync", []) ]) ]
     |> ResultEx.get UnionMapError.format
+
 let ctorMap = CtorMap.from unionMap |> ResultEx.get CtorMapError.format
 
 let tEvent = tUnion "event" []

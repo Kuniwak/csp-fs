@@ -214,6 +214,7 @@ let infer
         | Filter(t, var, expr1, expr2, _, line) ->
             if ClassEnum.derivedBy t then
                 let tc, s, _ = generalize t s Map.empty
+
                 let tcElem, s =
                     match tc with
                     | TCSet(tElem) -> (tElem, s)
@@ -238,6 +239,7 @@ let infer
         | Exists(t, var, expr1, expr2, _, line) ->
             if ClassEnum.derivedBy t then
                 let tc, s, _ = generalize t s Map.empty
+
                 let tcElem, s =
                     match tc with
                     | TCSet(tElem) -> (tElem, s)
@@ -262,6 +264,7 @@ let infer
         | Contains(t, exprElem, exprList, _, line) ->
             if ClassEnum.derivedBy t then
                 let tc, s, _ = generalize t s Map.empty
+
                 let tcElem, s =
                     match tc with
                     | TCSet(tElem) -> (tElem, s)
@@ -276,7 +279,7 @@ let infer
                     |> Result.bind (fun (_, s) ->
                         infer s tcenv exprList
                         |> Result.bind (fun (exprList, s) ->
-                            unify s (get exprList) tc 
+                            unify s (get exprList) tc
                             |> Result.map (fun (_, s) -> Contains(t, exprElem, exprList, TCBool, line), s))))
             else
                 let t, _, _ = generalize t s Map.empty in Error(atLine line (TypeNotDerived(t, ClassEnum.name)))

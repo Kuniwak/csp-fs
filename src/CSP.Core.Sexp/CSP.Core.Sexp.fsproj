@@ -6,27 +6,27 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="SyntaxError.fs" />
-        <Compile Include="Sexp.fs" />
-        <Compile Include="SexpParser.fs" />
-        <Compile Include="MapperError.fs" />
-        <Compile Include="Mapper.fs" />
-        <Compile Include="TypeSyntaxError.fs" />
-        <Compile Include="TypeParser.fs" />
-        <Compile Include="ExprSyntaxError.fs" />
-        <Compile Include="ExprParser.fs" />
-        <Compile Include="ProcSyntaxError.fs" />
-        <Compile Include="ProcParser.fs" />
-        <Compile Include="Stmt.fs" />
-        <Compile Include="StmtSyntaxError.fs" />
-        <Compile Include="StmtParser.fs" />
-        <Compile Include="ProgramSyntaxError.fs" />
-        <Compile Include="ProgramParser.fs" />
+        <Compile Include="SyntaxError.fs"/>
+        <Compile Include="Sexp.fs"/>
+        <Compile Include="SexpParser.fs"/>
+        <Compile Include="MapperError.fs"/>
+        <Compile Include="Mapper.fs"/>
+        <Compile Include="TypeSyntaxError.fs"/>
+        <Compile Include="TypeParser.fs"/>
+        <Compile Include="ExprSyntaxError.fs"/>
+        <Compile Include="ExprParser.fs"/>
+        <Compile Include="ProcSyntaxError.fs"/>
+        <Compile Include="ProcParser.fs"/>
+        <Compile Include="Stmt.fs"/>
+        <Compile Include="StmtSyntaxError.fs"/>
+        <Compile Include="StmtParser.fs"/>
+        <Compile Include="ProgramSyntaxError.fs"/>
+        <Compile Include="ProgramParser.fs"/>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\CSP.Core.Util\CSP.Core.Util.fsproj" />
-      <ProjectReference Include="..\CSP.Core\CSP.Core.fsproj" />
+        <ProjectReference Include="..\CSP.Core.Util\CSP.Core.Util.fsproj"/>
+        <ProjectReference Include="..\CSP.Core\CSP.Core.fsproj"/>
     </ItemGroup>
 
 </Project>

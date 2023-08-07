@@ -36,8 +36,7 @@ let format (err: EvalError) : string =
         | ValNotUnion v -> $"value is not an union: %s{Val.format v}"
         | TypeMismatch(v, t) -> $"value {Val.format v} is not a {Type.format t}"
         | ListIndexOutOfRange(vs, n) ->
-            let s = vs |> Seq.map Val.format |> String.concat ", " in
-            $"list index out of range: [%s{s}] at %d{n}"
+            let s = vs |> Seq.map Val.format |> String.concat ", " in $"list index out of range: [%s{s}] at %d{n}"
         | RangeLowerGreaterThanUpper(n1, n2) -> $"lower of range is greater than upper: %d{n1} > %d{n2}"
         | UnivError err -> UnivError.format err
         | EnvError err -> EnvError.format err

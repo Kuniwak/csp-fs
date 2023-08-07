@@ -50,7 +50,8 @@ let tupleSnd expr line = TupleSnd(expr, (), line)
 
 let listCons exprElem exprList line = ListCons(exprElem, exprList, (), line)
 
-let contains t exprElem exprList line = Contains(t, exprElem, exprList, (), line)
+let contains t exprElem exprList line =
+    Contains(t, exprElem, exprList, (), line)
 
 let listNth expr exprIdx line = ListNth(expr, exprIdx, (), line)
 

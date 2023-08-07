@@ -17,7 +17,7 @@ let builtin =
 let toSeq (um: UnionMap) : (UnionName * (TVarId list * Map<Ctor, Type list>)) seq =
     match um with
     | UnionMap um -> Map.toSeq um
-    
+
 let from (xs: ((TVarId list * UnionName) * (string * Type list) list) list) : Result<UnionMap, UnionMapError> =
     xs
     |> Seq.map (fun ((tVars, un), cm) -> (un, (tVars, Map(Seq.map (fun (ctor, ts) -> (Ctor ctor, ts)) cm))))
@@ -58,6 +58,7 @@ let formatEntry (x: UnionName * (TVarId list * Map<Ctor, Type list>)) : string =
     match x with
     | un, (tVars, tsm) ->
         let s1 = tVars |> Seq.map (TVar >> Type.format) |> String.concat " " in
+
         let s2 =
             tsm
             |> Map.toSeq
@@ -66,6 +67,7 @@ let formatEntry (x: UnionName * (TVarId list * Map<Ctor, Type list>)) : string =
             |> String.concat "/" in
 
         $"(%s{s1}) %s{un} (%s{s2})"
-let format (um: UnionMap): string =
+
+let format (um: UnionMap) : string =
     match um with
     | UnionMap um -> um |> Map.toSeq |> Seq.map formatEntry |> String.concat "\n"

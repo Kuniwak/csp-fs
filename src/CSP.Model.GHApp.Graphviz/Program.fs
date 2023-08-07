@@ -1,9 +1,6 @@
-﻿open CSP.Core
-open CSP.Core.ProcEval
+﻿open CSP.Core.ProcEval
 open CSP.Core.Univ
-open CSP.Core.ValShorthand
 open CSP.Core.Visualization.DotLang
-open CSP.Model.GHApp
 
 let univCfg: UnivConfig = { NatMax = 3u; ListLenMax = 2u }
 let procEvalCfg: ProcEvalConfig = { EvalConfig = { UnivConfig = univCfg } }

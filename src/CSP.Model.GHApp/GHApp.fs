@@ -1,13 +1,6 @@
 ﻿module CSP.Model.GHApp
 
-open CSP.Core
-open CSP.Core.Env
-open CSP.Core.ProcShorthand
-open CSP.Core.ExprShorthand
-open CSP.Core.TypeShorthand
-open CSP.Core.Util
-open CSP.Core.ValShorthand
-open CSP.Core.ProcMap
+
 
 // let tEvent =
 //     tUnion

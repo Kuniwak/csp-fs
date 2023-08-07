@@ -34,7 +34,8 @@ let typeCheck (um: UnionMap) (cm: CtorMap) (genv: Env) (pm: ProcMap<unit>) : Typ
                     |> Result.bind (fun s ->
                         let xs, s =
                             List.foldBack
-                                (fun (var, t) (xs, s) -> let tc, s, _ = generalize t s Map.empty in ((var, tc) :: xs, s))
+                                (fun (var, t) (xs, s) ->
+                                    let tc, s, _ = generalize t s Map.empty in ((var, tc) :: xs, s))
                                 vars
                                 ([], s)
 

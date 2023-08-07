@@ -43,7 +43,12 @@ let tryFind (ctor: Ctor) (um: UnionMap) (cm: CtorMap) : Result<UnionName * TVarI
             | None -> Error(NoSuchCtor(ctor))
             | Some(ts) -> Ok(un, tVars, ts)))
 
-let toCtorTypes (ctor: Ctor) (um: UnionMap) (unionTs: Type list) (cm: CtorMap) : Result<UnionName * Type list, CtorMapError> =
+let toCtorTypes
+    (ctor: Ctor)
+    (um: UnionMap)
+    (unionTs: Type list)
+    (cm: CtorMap)
+    : Result<UnionName * Type list, CtorMapError> =
     tryFindOnlyUnionName ctor cm
     |> Result.bind (fun un ->
         UnionMap.tryFind un um

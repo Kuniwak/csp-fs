@@ -23,7 +23,7 @@ let tryUnaryOrMore (ss: Sexp list) : Result<Sexp * Sexp list, MapperError> =
         Error(TooFewArguments(ss))
     else
         match ss with
-        | s::ss -> Ok(s, ss)
+        | s :: ss -> Ok(s, ss)
         | _ -> failwith $"unexpected length: %d{List.length ss}"
 
 let tryBinary (ss: Sexp list) : Result<Sexp * Sexp, MapperError> =
@@ -38,7 +38,7 @@ let tryBinaryOrMore (ss: Sexp list) : Result<Sexp * Sexp * Sexp list, MapperErro
         Error(TooFewArguments(ss))
     else
         match ss with
-        | s1::s2::ss -> Ok(s1, s2, ss)
+        | s1 :: s2 :: ss -> Ok(s1, s2, ss)
         | _ -> failwith $"unexpected length: %d{List.length ss}"
 
 let tryTernary (ss: Sexp list) : Result<Sexp * Sexp * Sexp, MapperError> =

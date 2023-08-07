@@ -132,11 +132,7 @@ let testCasesNg: obj[] list =
            Line = __LINE__ } |]
       [| { Input = "(map nat bool unit)"
            Expected =
-             MapperError(
-                 MapperError.TooMuchArguments(
-                     [ Atom("nat", "1"); Atom("bool", "1"); Atom("unit", "1") ]
-                 )
-             )
+             MapperError(MapperError.TooMuchArguments([ Atom("nat", "1"); Atom("bool", "1"); Atom("unit", "1") ]))
            Line = __LINE__ } |] ]
 
 [<Theory>]

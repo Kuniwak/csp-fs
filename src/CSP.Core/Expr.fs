@@ -41,7 +41,7 @@ type Expr<'a> =
     | MapAdd of Expr<'a> * Expr<'a> * Expr<'a> * 'a * LineNum
     | MapFindOpt of Expr<'a> * Expr<'a> * 'a * LineNum
     | Univ of Type * 'a * LineNum
-    
+
 let tryAnyCtor exprMap =
     Map.fold
         (fun acc ctorOpt _ ->
@@ -49,7 +49,7 @@ let tryAnyCtor exprMap =
             | None -> ctorOpt
             | Some ctor -> Some ctor)
         None
-        exprMap in
+        exprMap
 
 
 let noAnnotation (s: string) (_: 'a) : string = s

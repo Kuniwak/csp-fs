@@ -28,10 +28,7 @@ let dotCfg: DotConfig =
               UnivConfig = univCfg } } }
 
 let dot pm um =
-    um
-    |> CtorMap.from
-    |> ResultEx.get CtorMapError.format
-    |> dot dotCfg pm um
+    um |> CtorMap.from |> ResultEx.get CtorMapError.format |> dot dotCfg pm um
 
 [<Fact>]
 let abSkip () =

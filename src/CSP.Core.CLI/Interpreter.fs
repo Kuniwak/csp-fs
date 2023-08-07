@@ -35,7 +35,15 @@ let interpreterConfig natMax listLenMax =
     { TransConfig = { ProcEvalConfig = procEvalConfig }
       ProcEvalConfig = procEvalConfig }
 
-let start (cfg: InterpreterConfig) (pm: ProcMap<unit>) (um: UnionMap) (cm: CtorMap) (genv: Env) (pn: ProcId) (vs: Val list) =
+let start
+    (cfg: InterpreterConfig)
+    (pm: ProcMap<unit>)
+    (um: UnionMap)
+    (cm: CtorMap)
+    (genv: Env)
+    (pn: ProcId)
+    (vs: Val list)
+    =
     let format = format genv in
 
     let mutable s = Unwind(pn, vs) in

@@ -23,7 +23,12 @@ let trans
     (s: State)
     : Result<(Event * State) list, ProcEvalError> =
     let eval = eval cfg.ProcEvalConfig um cm in
-    let typeCheck t v = if typeCheck um cm t v then Ok(v) else Error(ExprError(TypeMismatch(v, t)))
+
+    let typeCheck t v =
+        if typeCheck um cm t v then
+            Ok(v)
+        else
+            Error(ExprError(TypeMismatch(v, t)))
 
     let rec trans visited s =
         match s with

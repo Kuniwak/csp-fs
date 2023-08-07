@@ -26,13 +26,13 @@ let testCasesOk: obj[] list =
            Expected = Sexps([ Atom("0", "1"); Atom("1", "1"); Atom("2", "1") ], "1")
            Line = __LINE__ } |]
       [| { Input = "((0) 1 2)"
-           Expected = Sexps([ Sexps([Atom("0", "1")], "1"); Atom("1", "1"); Atom("2", "1") ], "1")
+           Expected = Sexps([ Sexps([ Atom("0", "1") ], "1"); Atom("1", "1"); Atom("2", "1") ], "1")
            Line = __LINE__ } |]
       [| { Input = "(0 (1) 2)"
-           Expected = Sexps([ Atom("0", "1"); Sexps([Atom("1", "1")], "1"); Atom("2", "1") ], "1")
+           Expected = Sexps([ Atom("0", "1"); Sexps([ Atom("1", "1") ], "1"); Atom("2", "1") ], "1")
            Line = __LINE__ } |]
       [| { Input = "(0 1 (2))"
-           Expected = Sexps([ Atom("0", "1"); Atom("1", "1"); Sexps([Atom("2", "1")], "1") ], "1")
+           Expected = Sexps([ Atom("0", "1"); Atom("1", "1"); Sexps([ Atom("2", "1") ], "1") ], "1")
            Line = __LINE__ } |]
       [| { Input =
              """(
@@ -79,6 +79,12 @@ let testCasesNg: obj[] list =
            Line = __LINE__ } |]
       [| { Input = ")"
            Expected = EmptyAtom
+           Line = __LINE__ } |]
+      [| { Input = "(1 (0)"
+           Expected = ParensNotClosed
+           Line = __LINE__ } |]
+      [| { Input = "())"
+           Expected = GarbageInTail
            Line = __LINE__ } |] ]
 
 [<Theory>]

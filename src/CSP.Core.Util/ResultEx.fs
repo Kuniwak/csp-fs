@@ -19,7 +19,7 @@ let bind3
     (fst, snd)
     |> bind2 f1 f2
     |> Result.bind (fun (a, c) -> f3 trd |> Result.map (fun g -> (a, c, g)))
-    
+
 let bind4
     (f1: 'a -> Result<'b, 'e>)
     (f2: 'c -> Result<'d, 'e>)

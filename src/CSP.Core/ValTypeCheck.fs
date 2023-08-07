@@ -18,7 +18,10 @@ let typeCheck (um: UnionMap) (cm: CtorMap) (t: Type) (v: Val) : bool =
         | TMap(tK, tV), VMap m -> Map.forall (fun k v -> typeCheck tK k && typeCheck tV v) m
         | TUnion(un, unionTs), VUnion(ctor, vs) ->
             match toCtorTypes ctor um unionTs cm with
-            | Ok(un', ctorTs) -> un = un' && List.length ctorTs = List.length vs && List.forall2 typeCheck ctorTs vs
+            | Ok(un', ctorTs) ->
+                un = un'
+                && List.length ctorTs = List.length vs
+                && List.forall2 typeCheck ctorTs vs
             | Error _ -> false
         | _, _ -> false
 

@@ -1,10 +1,6 @@
 module CSP.Core.TypeCstr
 
-open CSP.Core.Ctor
-open CSP.Core.CtorMap
-open CSP.Core.CtorMapError
 open CSP.Core.Type
-open CSP.Core.UnionMap
 
 type UncertainVarId = UncertainVarId of uint
 type ForAllVarId = ForAllVarId of uint

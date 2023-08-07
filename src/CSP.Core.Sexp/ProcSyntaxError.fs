@@ -8,8 +8,8 @@ type ProcSyntaxError =
     | MapperError of MapperError
     | ExprSyntaxError of ExprSyntaxError
     | UnexpectedKeyword of string
-    
-let rec format (err: ProcSyntaxError): string =
+
+let rec format (err: ProcSyntaxError) : string =
     match err with
     | At(err, hint) -> $"%s{format err}\n\tat %s{hint}"
     | MapperError(err) -> MapperError.format err

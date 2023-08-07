@@ -11,14 +11,8 @@ type MapperError =
 
 let format (err: MapperError) : string =
     match err with
-    | TooFewArguments(ss) ->
-        let s = ss |> Seq.map format |> String.concat " " in
-        $"too few arguments: %s{s}"
-    | TooMuchArguments(ss) ->
-        let s = ss |> Seq.map format |> String.concat " " in
-        $"too much arguments: %s{s}"
+    | TooFewArguments(ss) -> let s = ss |> Seq.map format |> String.concat " " in $"too few arguments: %s{s}"
+    | TooMuchArguments(ss) -> let s = ss |> Seq.map format |> String.concat " " in $"too much arguments: %s{s}"
     | UnexpectedAtom(s) -> $"unexpected atom: %s{s}"
-    | UnexpectedList(ss) ->
-        let s = ss |> Seq.map format |> String.concat " " in
-        $"unexpected list: (%s{s})"
+    | UnexpectedList(ss) -> let s = ss |> Seq.map format |> String.concat " " in $"unexpected list: (%s{s})"
     | UnexpectedEmpty -> "unexpected empty"
