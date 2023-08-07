@@ -11,6 +11,7 @@
         <Compile Include="ListEx.fs"/>
         <Compile Include="MapEx.fs"/>
         <Compile Include="Univ.fs"/>
+        <Compile Include="NatEx.fs" />
         <Compile Include="StringEx.fs"/>
     </ItemGroup>
 

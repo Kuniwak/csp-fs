@@ -17,7 +17,7 @@ open CSP.Core.ExprTypeInference
 
 type ExprTestCaseOk =
     { Expr: Expr<unit>
-      UnionMap: ((TVarId list * UnionName) * (string * Type list) seq) seq
+      UnionMap: ((TVarId list * UnionName) * (string * Type list) list) list
       Expected: Type }
 
 let exprTestCasesOk: obj[] list =

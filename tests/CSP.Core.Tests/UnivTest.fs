@@ -18,7 +18,7 @@ let cfg = univConfig natMax listMax
 type TestCase =
     { Config: UnivConfig
       Type: Type
-      UnionMap: ((TVarId list * UnionName) * (string * Type list) seq) seq
+      UnionMap: ((TVarId list * UnionName) * (string * Type list) list) list
       Expected: Set<Val>
       Line: LineNum }
 

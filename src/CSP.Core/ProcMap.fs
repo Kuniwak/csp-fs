@@ -3,6 +3,7 @@ module CSP.Core.ProcMap
 open CSP.Core.Proc
 open CSP.Core.ProcMapError
 open CSP.Core.Type
+open CSP.Core.Indent
 open CSP.Core.Expr
 open CSP.Core.Util
 open CSP.Core.Var
@@ -48,7 +49,7 @@ let formatEntry (x: ProcId * ((Var * Type) list * Proc<unit>)) : string =
         |> List.map (fun (var, t) -> $"(%s{format var}: %s{Type.format t})")
         |> String.concat " "
 
-    $"%s{pn} %s{vars} = %s{Proc.format noAnnotation p}"
+    $"%s{pn} %s{vars} = %s{oneline (Proc.format noAnnotation p)}"
 
 let format (pm: ProcMap<unit>) : string =
     match pm with

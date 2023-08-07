@@ -5,15 +5,15 @@ open CSP.Core.Util
 
 type Sexp =
     | Atom of string * LineNum
-    | List of Sexp list * LineNum
+    | Sexps of Sexp list * LineNum
     
 let line (sexp: Sexp): LineNum =
     match sexp with
     | Atom(_, line) -> line
-    | List(_, line) -> line
+    | Sexps(_, line) -> line
     
 let rec format (sexp: Sexp): string =
     match sexp with
     | Atom(s, _) -> s
-    | List(ss, _) -> ss |> Seq.map format |> String.concat " " |> StringEx.wrapBy "(" ")"
+    | Sexps(ss, _) -> ss |> Seq.map format |> String.concat " " |> StringEx.wrapBy "(" ")"
 

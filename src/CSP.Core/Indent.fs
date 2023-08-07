@@ -9,5 +9,5 @@ let indentWidth = 4u
 let render (d: IndentDepth) : string =
     String.replicate (int (d * indentWidth)) " "
 
-let onlinePattern = Regex("\n *", RegexOptions.Compiled)
-let oneline (s: string) : string = onlinePattern.Replace(s, " ")
+let onelinePattern = Regex("\n *", RegexOptions.Compiled)
+let oneline (s: string) : string = onelinePattern.Replace(s, " ")

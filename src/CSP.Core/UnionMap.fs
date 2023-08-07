@@ -18,7 +18,7 @@ let toSeq (um: UnionMap) : (UnionName * (TVarId list * Map<Ctor, Type list>)) se
     match um with
     | UnionMap um -> Map.toSeq um
     
-let from (xs: ((TVarId list * UnionName) * (string * Type list) seq) seq) : Result<UnionMap, UnionMapError> =
+let from (xs: ((TVarId list * UnionName) * (string * Type list) list) list) : Result<UnionMap, UnionMapError> =
     xs
     |> Seq.map (fun ((tVars, un), cm) -> (un, (tVars, Map(Seq.map (fun (ctor, ts) -> (Ctor ctor, ts)) cm))))
     |> Seq.append (toSeq builtin)

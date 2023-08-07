@@ -1,6 +1,7 @@
 module CSP.Core.Sexp.SexpParser
 
 open System
+open CSP.Core
 open CSP.Core.Sexp.Sexp
 open CSP.Core.Sexp.SyntaxError
 
@@ -51,24 +52,49 @@ let parseAtom (line: uint) (str: char list) : Result<Sexp * char list * uint, Sy
     if List.isEmpty cs then
         Error(EmptyAtom)
     else
-        let rest, line = skipWhile line isWS rest in Ok(Atom(cs |> Array.ofList |> String, $"%d{line}"), rest, line)
+        let rest', line' = skipWhile line isWS rest in
+        Ok(Atom(cs |> Array.ofList |> String, LineNum.ofNat line), rest', line')
+
 
 let rec parseList (line: uint) (str: char list) : Result<Sexp * char list * uint, SyntaxError> =
     let rec loop xs rest line =
-        match parse line rest with
+        match parseListOrAtom line rest with
         | Error _ ->
             match rest with
             | [] -> Error(ParensNotClosed)
-            | ')' :: rest -> Ok(List(List.rev xs, $"%d{line}"), rest, line)
+            | ')' :: rest ->
+                let rest', line' = skipWhile line isWS rest in Ok(Sexps(List.rev xs, LineNum.ofNat line), rest', line')
             | _ -> failwith $"unexpected token: %s{toString rest}"
         | Ok(atom, rest, line) -> loop (atom :: xs) rest line
 
     match str with
-    | '(' :: rest -> loop [] rest line
+    | '(' :: rest -> let rest, line = skipWhile line isWS rest in loop [] rest line
     | _ -> failwith $"unexpected token: %s{toString str}"
 
-and parse (line: uint) (str: char list) : Result<Sexp * char list * uint, SyntaxError> =
+and parseListOrAtom (line: uint) (str: char list) : Result<Sexp * char list * uint, SyntaxError> =
     match str with
     | [] -> Error(EmptyAtom)
-    | '(' :: _ -> let rest, line = skipWhile line isWS str in parseList line rest
+    | '(' :: _ -> parseList line str
     | _ -> parseAtom line str
+
+let parse (str: string) : Result<Sexp, SyntaxError> =
+    let rest, line = skipWhile 1u isWS (str |> toChars) in
+
+    parseListOrAtom line rest
+    |> Result.bind (fun (sexp, rest, line) ->
+        let rest, _ = skipWhile line isWS rest in if List.isEmpty rest then Ok(sexp) else Error(GarbageInTail))
+
+let parseAll (str: string) : Result<Sexp list, SyntaxError> =
+    let rec parseAll xs rest line =
+        match parseListOrAtom line rest with
+        | Error _ ->
+            let rest, _ = skipWhile line isWS rest in
+
+            if List.isEmpty rest then
+                Ok(List.rev xs)
+            else
+                Error(GarbageInTail)
+        | Ok(atom, rest, line) -> parseAll (atom :: xs) rest line
+
+    let rest, line = skipWhile 1u isWS (str |> toChars) in
+    parseAll [] rest line
