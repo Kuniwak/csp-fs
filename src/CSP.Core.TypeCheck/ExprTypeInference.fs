@@ -213,11 +213,13 @@ let infer
             |> Result.mapError (atLine line)
         | Filter(t, var, expr1, expr2, _, line) ->
             if ClassEnum.derivedBy t then
-                let tcElem, s, _ =
-                    match t with
-                    | TSet(tElem) -> generalize tElem s Map.empty
-                    | TList(tElem) -> generalize tElem s Map.empty
-                    | TMap(tK, _) -> generalize tK s Map.empty
+                let tc, s, _ = generalize t s Map.empty
+                let tcElem, s =
+                    match tc with
+                    | TCSet(tElem) -> (tElem, s)
+                    | TCList(tElem) -> (tElem, s)
+                    | TCMap(tK, _) -> (tK, s)
+                    | TCUncertain _ -> let u, s = newUncertainVarId s in (TCUncertain u, s)
                     | _ -> failwith $"cannot get element type: %s{Type.format t}" in
 
                 let tcenv = bind1 var tcElem tcenv in
@@ -228,8 +230,6 @@ let infer
                     |> Result.bind (fun (_, s) ->
                         infer s tcenv expr2
                         |> Result.bind (fun (expr2, s) ->
-                            let tc, s, _ = generalize t s Map.empty in
-
                             unify s (get expr2) tc
                             |> Result.map (fun (tcFilter, s) -> (Filter(t, var, expr1, expr2, tcFilter, line), s)))))
             else
@@ -237,11 +237,13 @@ let infer
             |> Result.mapError (atLine line)
         | Exists(t, var, expr1, expr2, _, line) ->
             if ClassEnum.derivedBy t then
-                let tcElem, s, _ =
-                    match t with
-                    | TSet(tElem) -> generalize tElem s Map.empty
-                    | TList(tElem) -> generalize tElem s Map.empty
-                    | TMap(tK, _) -> generalize tK s Map.empty
+                let tc, s, _ = generalize t s Map.empty
+                let tcElem, s =
+                    match tc with
+                    | TCSet(tElem) -> (tElem, s)
+                    | TCList(tElem) -> (tElem, s)
+                    | TCMap(tK, _) -> (tK, s)
+                    | TCUncertain _ -> let u, s = newUncertainVarId s in (TCUncertain u, s)
                     | _ -> failwith $"cannot get element type: %s{Type.format t}" in
 
                 let tcenv = bind1 var tcElem tcenv in
@@ -252,11 +254,30 @@ let infer
                     |> Result.bind (fun (_, s) ->
                         infer s tcenv expr2
                         |> Result.bind (fun (expr2, s) ->
-                            let tc2 = get expr2 in
-                            let tc, s, _ = generalize t s Map.empty in
-
-                            unify s tc2 tc
+                            unify s (get expr2) tc
                             |> Result.map (fun (_, s) -> (Exists(t, var, expr1, expr2, TCBool, line), s)))))
+            else
+                let t, _, _ = generalize t s Map.empty in Error(atLine line (TypeNotDerived(t, ClassEnum.name)))
+            |> Result.mapError (atLine line)
+        | Contains(t, exprElem, exprList, _, line) ->
+            if ClassEnum.derivedBy t then
+                let tc, s, _ = generalize t s Map.empty
+                let tcElem, s =
+                    match tc with
+                    | TCSet(tElem) -> (tElem, s)
+                    | TCList(tElem) -> (tElem, s)
+                    | TCMap(tK, _) -> (tK, s)
+                    | TCUncertain _ -> let u, s = newUncertainVarId s in (TCUncertain u, s)
+                    | _ -> failwith $"cannot get element type: %s{Type.format t}" in
+
+                infer s tcenv exprElem
+                |> Result.bind (fun (exprElem, s) ->
+                    unify s (get exprElem) tcElem
+                    |> Result.bind (fun (_, s) ->
+                        infer s tcenv exprList
+                        |> Result.bind (fun (exprList, s) ->
+                            unify s (get exprList) tc 
+                            |> Result.map (fun (_, s) -> Contains(t, exprElem, exprList, TCBool, line), s))))
             else
                 let t, _, _ = generalize t s Map.empty in Error(atLine line (TypeNotDerived(t, ClassEnum.name)))
             |> Result.mapError (atLine line)
@@ -298,15 +319,6 @@ let infer
                     unify s (get exprList) (TCList(get exprElem))
                     |> Result.map (fun (tcList, s) -> (ListCons(exprElem, exprList, tcList, line), s))))
             |> Result.mapError (atLine line)
-        | ListContains(exprElem, exprList, _, line) ->
-            infer s tcenv exprElem
-            |> Result.bind (fun (exprElem, s) ->
-                infer s tcenv exprList
-                |> Result.map (fun (exprList, s) -> (exprElem, exprList, s)))
-            |> Result.bind (fun (exprElem, exprList, s) ->
-                unify s (get exprList) (TCList(get exprElem))
-                |> Result.map (fun (_, s) -> ListCons(exprElem, exprList, TCBool, line), s))
-            |> Result.mapError (atLine line)
         | ListNth(exprList, exprIdx, _, line) ->
             infer s tcenv exprList
             |> Result.bind (fun (exprList, s) ->
@@ -347,14 +359,6 @@ let infer
                 |> Result.bind (fun (exprSet, s) ->
                     unify s (get exprSet) (TCSet(get exprElem))
                     |> Result.map (fun (tcSet, s) -> (SetInsert(exprElem, exprSet, tcSet, line), s))))
-            |> Result.mapError (atLine line)
-        | SetMem(exprElem, exprSet, _, line) ->
-            infer s tcenv exprElem
-            |> Result.bind (fun (exprElem, s) ->
-                infer s tcenv exprSet
-                |> Result.bind (fun (exprSet, s) ->
-                    unify s (get exprSet) (TCSet(get exprElem))
-                    |> Result.map (fun (_, s) -> (SetMem(exprElem, exprSet, TCBool, line), s))))
             |> Result.mapError (atLine line)
         | MapAdd(exprKey, exprVal, exprMap, _, line) ->
             infer s tcenv exprKey

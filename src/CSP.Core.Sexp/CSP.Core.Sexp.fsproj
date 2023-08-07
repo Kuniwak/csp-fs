@@ -7,11 +7,15 @@
 
     <ItemGroup>
         <Compile Include="SyntaxError.fs" />
+        <Compile Include="Sexp.fs" />
+        <Compile Include="SexpParser.fs" />
         <Compile Include="ExprParser.fs" />
-        <Compile Include="Parser.fs" />
+        <Compile Include="TypeParser.fs" />
+        <Compile Include="ProgramParser.fs" />
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\CSP.Core.Util\CSP.Core.Util.fsproj" />
       <ProjectReference Include="..\CSP.Core\CSP.Core.fsproj" />
     </ItemGroup>
 

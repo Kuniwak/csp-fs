@@ -194,11 +194,6 @@ let eval (cfg: EvalConfig) (um: UnionMap) (cm: CtorMap) (env: Env) (expr: Expr<'
             |> ResultEx.bind2 (Result.bind tryGetList << eval env) (eval env)
             |> Result.map (fun (vs, v) -> VList(v :: vs))
             |> Result.mapError (atLine line)
-        | ListContains(exprElem, exprList, _, line) ->
-            (exprList, exprElem)
-            |> ResultEx.bind2 (Result.bind tryGetList << eval env) (eval env)
-            |> Result.map (fun (vs, v) -> VBool(List.contains v vs))
-            |> Result.mapError (atLine line)
         | SetRange(expr1, expr2, _, line) ->
             (expr1, expr2)
             |> ResultEx.bind2 (Result.bind tryGetNat << eval env) (Result.bind tryGetNat << eval env)
@@ -215,12 +210,6 @@ let eval (cfg: EvalConfig) (um: UnionMap) (cm: CtorMap) (env: Env) (expr: Expr<'
             |> ResultEx.bind2 (eval env) (Result.bind tryGetSet << eval env)
             |> Result.map (fun (v, s) -> Set.remove v s)
             |> Result.map VSet
-            |> Result.mapError (atLine line)
-        | SetMem(exprElem, exprSet, _, line) ->
-            (exprElem, exprSet)
-            |> ResultEx.bind2 (eval env) (Result.bind tryGetSet << eval env)
-            |> Result.map (fun (v, s) -> Set.contains v s)
-            |> Result.map VBool
             |> Result.mapError (atLine line)
         | Filter(t, var, e1, e2, _, line) ->
             if ClassEnum.derivedBy t then
@@ -294,6 +283,19 @@ let eval (cfg: EvalConfig) (um: UnionMap) (cm: CtorMap) (env: Env) (expr: Expr<'
                             m
                     | _ -> failwith $"cannot satisfy Enum: %s{format v}")
                 |> Result.map VBool
+            else
+                Error(TypeNotDerived(t, ClassEnum.name))
+            |> Result.mapError (atLine line)
+        | Contains(t, exprElem, exprList, _, line) ->
+            if ClassEnum.derivedBy t then
+                (exprList, exprElem)
+                |> ResultEx.bind2 (eval env) (eval env)
+                |> Result.map (fun (v1, v2) ->
+                    match v2 with
+                    | VSet(s) -> VBool(Set.contains v1 s)
+                    | VList(vs) -> VBool(List.contains v1 vs)
+                    | VMap(m) -> VBool(Map.containsKey v1 m)
+                    | _ -> failwith $"cannot satisfy Enum: %s{format v2}")
             else
                 Error(TypeNotDerived(t, ClassEnum.name))
             |> Result.mapError (atLine line)

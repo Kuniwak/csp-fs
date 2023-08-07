@@ -11,7 +11,7 @@ let zipLongest (xs: 'a seq) (ys: 'b seq) : ('a option * 'b option) seq =
     let ys = expand n ys in
     Seq.zip xs ys
 
-let cmp (fmt: 'a -> string) (xs: 'a list) (ys: 'a list) : string =
+let cmp (fmt: 'a -> string) (xs: 'a seq) (ys: 'a seq) : string =
     let s =
         zipLongest xs ys
         |> Seq.map (fun p ->

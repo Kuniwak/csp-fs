@@ -32,9 +32,9 @@ let formatIds (pm: ProcMap<'a>) : string =
         |> Seq.map (fun (n, (vars, _)) -> let s = String.concat "" (List.map (format << fst) vars) in $"  %s{n}%s{s}")
         |> String.concat "\n"
 
-let toList (pm: ProcMap<'a>) : (ProcId * ((Var * Type) list * Proc<'a>)) list =
+let toSeq (pm: ProcMap<'a>) : (ProcId * ((Var * Type) list * Proc<'a>)) seq =
     match pm with
-    | ProcMap pm -> Map.toList pm
+    | ProcMap pm -> Map.toSeq pm
 
 let procIds (pm: ProcMap<'a>) : Set<ProcId> =
     match pm with

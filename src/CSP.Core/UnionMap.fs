@@ -17,7 +17,7 @@ let builtin =
 let toSeq (um: UnionMap) : (UnionName * (TVarId list * Map<Ctor, Type list>)) seq =
     match um with
     | UnionMap um -> Map.toSeq um
-
+    
 let from (xs: ((TVarId list * UnionName) * (string * Type list) seq) seq) : Result<UnionMap, UnionMapError> =
     xs
     |> Seq.map (fun ((tVars, un), cm) -> (un, (tVars, Map(Seq.map (fun (ctor, ts) -> (Ctor ctor, ts)) cm))))
@@ -39,7 +39,7 @@ let tryFindAssocLen (un: UnionName) (ctor: Ctor) (um: UnionMap) : Result<int, Un
         match Map.tryFind ctor cm with
         | None -> Error(NoSuchCtor(un, ctor))
         | Some(ts) -> Ok(List.length ts))
-    
+
 let instantiateCtorMap (un: UnionName) (ts: Type list) (um: UnionMap) : Result<Map<Ctor, Type list>, UnionMapError> =
     tryFind un um
     |> Result.bind (fun (tVars, cm) ->
@@ -53,3 +53,19 @@ let instantiateCtorMap (un: UnionName) (ts: Type list) (um: UnionMap) : Result<M
 let fold (f: 'State -> UnionName -> TVarId list * Map<Ctor, Type list> -> 'State) (s: 'State) (um: UnionMap) : 'State =
     match um with
     | UnionMap um -> Map.fold f s um
+
+let formatEntry (x: UnionName * (TVarId list * Map<Ctor, Type list>)) : string =
+    match x with
+    | un, (tVars, tsm) ->
+        let s1 = tVars |> Seq.map (TVar >> Type.format) |> String.concat " " in
+        let s2 =
+            tsm
+            |> Map.toSeq
+            |> Seq.map (fun (ctor, ts) ->
+                let s = ts |> Seq.map Type.format |> String.concat " " in $"%s{Ctor.format ctor} %s{s}")
+            |> String.concat "/" in
+
+        $"(%s{s1}) %s{un} (%s{s2})"
+let format (um: UnionMap): string =
+    match um with
+    | UnionMap um -> um |> Map.toSeq |> Seq.map formatEntry |> String.concat "\n"

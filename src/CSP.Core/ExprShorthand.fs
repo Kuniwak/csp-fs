@@ -50,8 +50,7 @@ let tupleSnd expr line = TupleSnd(expr, (), line)
 
 let listCons exprElem exprList line = ListCons(exprElem, exprList, (), line)
 
-let listContains exprElem exprList line =
-    ListContains(exprElem, exprList, (), line)
+let contains t exprElem exprList line = Contains(t, exprElem, exprList, (), line)
 
 let listNth expr exprIdx line = ListNth(expr, exprIdx, (), line)
 
@@ -60,8 +59,6 @@ let setRange exprLower exprUpper line =
 
 let setInsert exprElem exprSet line = SetInsert(exprElem, exprSet, (), line)
 let setRemove exprElem exprSet line = SetRemove(exprElem, exprSet, (), line)
-
-let setMem exprElem exprSet line = SetMem(exprElem, exprSet, (), line)
 
 let mapAdd exprKey exprVal exprMap line =
     MapAdd(exprKey, exprVal, exprMap, (), line)
