@@ -42,7 +42,28 @@ let testCasesOk: obj[] list =
 )
 """
            Expected = Sexps([ Atom("0", "2"); Atom("1", "3"); Atom("2", "4") ], "5")
-           Line = __LINE__ } |] ]
+           Line = __LINE__ } |]
+      [| { Input =
+             """
+" comment
+(0 1 2)
+"""
+           Expected = Sexps([ Atom("0", "3"); Atom("1", "3"); Atom("2", "3") ], "3")
+           Line = __LINE__ } |]
+      [| { Input =
+             """
+(0 1 2) " comment
+"""
+           Expected = Sexps([ Atom("0", "2"); Atom("1", "2"); Atom("2", "2") ], "2")
+           Line = __LINE__ } |]
+      [| { Input =
+             """
+(0 1 2) " ()comment
+"""
+           Expected = Sexps([ Atom("0", "2"); Atom("1", "2"); Atom("2", "2") ], "2")
+           Line = __LINE__ } |]
+      
+       ]
 
 [<Theory>]
 [<MemberData(nameof testCasesOk)>]
@@ -84,7 +105,7 @@ let testCasesNg: obj[] list =
            Expected = ParensNotClosed
            Line = __LINE__ } |]
       [| { Input = "())"
-           Expected = GarbageInTail
+           Expected = GarbageInTail(")")
            Line = __LINE__ } |] ]
 
 [<Theory>]
