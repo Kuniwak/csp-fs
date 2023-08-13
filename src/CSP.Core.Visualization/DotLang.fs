@@ -5,7 +5,6 @@ open CSP.Core
 open CSP.Core.UnionMap
 open CSP.Core.StateSpace
 open CSP.Core.ProcEvalError
-open CSP.Core.Val
 open CSP.Core.Indent
 open CSP.Core.CtorMap
 open CSP.Core.Proc
@@ -30,43 +29,41 @@ let graph
     (um: UnionMap)
     (cm: CtorMap)
     (genv: Env)
-    (pn: ProcId)
-    (vs: Val list)
+    (p: Proc<unit>)
     : Result<(State * int) list * (State * Event * State) list, ProcEvalError> =
-    let mutable ss: (State * int) list = [] in
-    let mutable es: (State * Event * State) list = [] in
+    eval cfg.ProcEvalConfig um cm genv p
+    |> Result.bind (fun s ->
+        let mutable ss: (State * int) list = [] in
+        let mutable es: (State * Event * State) list = [] in
 
-    namedSpace cfg.NamedConfig um cm pm genv
-    |> Result.map (fun ns ->
-        bfs
-            cfg.SearchConfig
-            (fun s es' ->
-                ss <- (s, List.length es') :: ss
-                es <- (List.map (fun (e, s') -> (s, e, s')) es') @ es)
-            (fun s ->
-                match normedTrans cfg.TransConfig pm cm um genv ns s with
-                | Error(err) -> [ (ErrorEvent, ErrorState(ProcEvalError.format err)) ]
-                | Ok(ts) -> ts)
-            (Unwind(pn, vs))
+        namedSpace cfg.NamedConfig um cm pm genv
+        |> Result.map (fun ns ->
+            bfs
+                cfg.SearchConfig
+                (fun s es' ->
+                    ss <- (s, List.length es') :: ss
+                    es <- (List.map (fun (e, s') -> (s, e, s')) es') @ es)
+                (fun s ->
+                    match normedTrans cfg.TransConfig pm cm um genv ns s with
+                    | Error(err) -> [ (ErrorEvent, ErrorState(ProcEvalError.format err)) ]
+                    | Ok(ts) -> ts)
+                s
 
-        (ss, es))
+            (ss, es)))
 
-
-type DotConfig = { GraphConfig: GraphConfig }
 
 let dot
-    (cfg: DotConfig)
+    (cfg: GraphConfig)
     (pm: ProcMap<unit>)
     (um: UnionMap)
     (cm: CtorMap)
     (genv: Env)
-    (pn: ProcId)
-    (vs: Val list)
+    (p: Proc<unit>)
     : Result<string, ProcEvalError> =
     let escape = String.replace "\"" "'" in
     let format = format genv in
 
-    graph cfg.GraphConfig pm um cm genv pn vs
+    graph cfg pm um cm genv p
     |> Result.map (fun (ss, es) ->
         let r1 =
             ss

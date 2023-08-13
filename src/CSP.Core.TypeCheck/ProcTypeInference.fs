@@ -169,14 +169,14 @@ let infer
     procInfer tcenv p s
 
 let resolve (s: State) (p: Proc<TypeCstr>) : Result<Proc<TypeCstr>, TypeError> =
-    let p = map (resolve s >> Result.map Expr.get) p in
+    let p = Proc.map (resolve s >> Result.map Expr.get) p in
 
-    match error p with
+    match Proc.error p with
     | Some(terr) -> Error(terr)
-    | None -> Ok(map (Expr.get >> ResultEx.get format) p)
+    | None -> Ok(Proc.map (Expr.get >> ResultEx.get format) p)
 
 let instantiate (p: Proc<TypeCstr>) : Proc<Type> =
-    map (Expr.get >> TypeCstrInstantiation.instantiate) p
+    Proc.map (Expr.get >> TypeCstrInstantiation.instantiate) p
 
 let postProcess (res: Result<Proc<TypeCstr> * State, TypeError>) : Result<Proc<Type> * State, TypeError> =
     res

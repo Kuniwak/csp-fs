@@ -22,7 +22,8 @@
         <Compile Include="ValueTypeInference.fs"/>
         <Compile Include="ExprTypeInference.fs"/>
         <Compile Include="ProcTypeInference.fs"/>
-        <Compile Include="TypeCheck.fs"/>
+        <Compile Include="ProcMapTypeInference.fs" />
+        <Compile Include="TypeChecker.fs" />
     </ItemGroup>
 
     <ItemGroup>

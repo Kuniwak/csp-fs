@@ -55,15 +55,15 @@ let parse (sexp: Sexp) : Result<Stmt, StmtSyntaxError> =
             |> Result.bind (ResultEx.bind3 tryAtom parseVarDecls parseProc)
             |> Result.map (fun (pn, varDecls, p) -> ProcDecl((pn, varDecls), p))
             |> Result.mapError (atLine line)
-        | Atom("init", line) :: ss ->
-            tryBinary ss
-            |> Result.bind (ResultEx.bind2 tryAtom parseExprs)
-            |> Result.map Init
-            |> Result.mapError (atLine line)
         | Atom("type", line) :: ss ->
             tryBinaryOrMore ss
             |> Result.bind (ResultEx.bind3 parseTVars tryAtom (ResultEx.bindAll parseCtor))
             |> Result.map (fun (tVars, un, ctorDecls) -> UnionDecl((tVars, un), ctorDecls))
+            |> Result.mapError (atLine line)
+        | Atom("global", line) :: ss ->
+            tryBinary ss
+            |> Result.bind (ResultEx.bind2 tryAtom parseExpr)
+            |> Result.map GlobalVarDecl
             |> Result.mapError (atLine line)
         | Atom(str, line) :: _ -> Error(UnexpectedKeyword(str)) |> Result.mapError (atLine line)
         | Sexps(ss, line) :: _ ->

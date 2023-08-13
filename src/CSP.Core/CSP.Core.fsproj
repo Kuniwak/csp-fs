@@ -36,6 +36,8 @@
         <Compile Include="EvalError.fs"/>
         <Compile Include="ValTypeCheck.fs"/>
         <Compile Include="Eval.fs"/>
+        <Compile Include="GlobalEnvError.fs" />
+        <Compile Include="GlobalEnv.fs" />
         <Compile Include="Proc.fs"/>
         <Compile Include="ProcShorthand.fs"/>
         <Compile Include="State.fs"/>

@@ -8,7 +8,7 @@ open CSP.Core.Type
 type Stmt =
     | ProcDecl of ((string * (string * Type) list) * Proc<unit>)
     | UnionDecl of ((TVarId list * UnionName) * (string * Type list) list)
-    | Init of (string * Expr<unit> list)
+    | GlobalVarDecl of (string * Expr<unit>)
 
 let format (stmt: Stmt) : string =
     match stmt with
@@ -28,6 +28,5 @@ let format (stmt: Stmt) : string =
             |> String.concat " " in
 
         $"(type (%s{s1}) %s{un} %s{s2})"
-    | Init(s, exprs) ->
-        let s' = exprs |> Seq.map (Expr.format noAnnotation) |> String.concat " "
-        $"(init %s{s} %s{s'})"
+    | GlobalVarDecl(var, expr) ->
+        $"(global {var} {Expr.format noAnnotation expr})"

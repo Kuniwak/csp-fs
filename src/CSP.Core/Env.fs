@@ -31,9 +31,13 @@ let bind1Opt (varOpt: Var option) (v: Val) (env: Env) : Env =
 let bindAllOpts (xs: (Var option * Val) seq) (env: Env) : Env =
     Seq.fold (fun env (varOpt, v) -> bind1Opt varOpt v env) env xs
 
-let declared (env: Env) : Var list =
+let declaredVars (env: Env) : Var list =
     match env with
     | Env env -> Seq.toList (Map.keys env)
+    
+let declared (var: Var) (env: Env): bool =
+    match env with
+    | Env env -> Map.containsKey var env
 
 let valOf (var: Var) (env: Env) : Result<Val, EnvError> =
     match env with

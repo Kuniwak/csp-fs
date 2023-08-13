@@ -1,9 +1,9 @@
 module CSP.Core.Search
 
-type SearchConfig = { NodeMax: int }
+type SearchConfig = { NodeMax: uint }
 
 let searchConfig n = { NodeMax = n }
-type typeToGetMaxValue = int32
+type typeToGetMaxValue = uint32
 let searchCfgUnlimited = { NodeMax = typeToGetMaxValue.MaxValue }
 
 let search
@@ -18,7 +18,7 @@ let search
         match ns with
         | [] -> ()
         | n :: ns' ->
-            if Set.count visited < cfg.NodeMax && not (Set.contains n visited) then
+            if Checked.uint32(Set.count visited) < cfg.NodeMax && not (Set.contains n visited) then
                 let es = next n in
                 visit n es
                 search (joinQueue es ns') (Set.add n visited)

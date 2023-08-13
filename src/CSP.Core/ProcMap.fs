@@ -1,11 +1,11 @@
 module CSP.Core.ProcMap
 
-open CSP.Core.Proc
-open CSP.Core.ProcMapError
+open CSP.Core.Util
 open CSP.Core.Type
 open CSP.Core.Indent
 open CSP.Core.Expr
-open CSP.Core.Util
+open CSP.Core.Proc
+open CSP.Core.ProcMapError
 open CSP.Core.Var
 
 type ProcMap<'a> = ProcMap of Map<ProcId, (Var * Type) list * Proc<'a>>
@@ -24,6 +24,10 @@ let fold folder s pm =
 let tryFind pn pm =
     match pm with
     | ProcMap pm -> Map.tryFind pn pm
+
+let map (f: Expr<'a> -> 'b) (pm: ProcMap<'a>): ProcMap<'b> =
+    match pm with
+    | ProcMap pm -> ProcMap(Map.map (fun _ (varDecls, p) -> (varDecls, map f p)) pm)
 
 let formatIds (pm: ProcMap<'a>) : string =
     match pm with
@@ -54,3 +58,6 @@ let formatEntry (x: ProcId * ((Var * Type) list * Proc<unit>)) : string =
 let format (pm: ProcMap<unit>) : string =
     match pm with
     | ProcMap pm -> pm |> Map.toSeq |> Seq.map formatEntry |> String.concat "\n\n"
+
+let error (pm: ProcMap<Result<'a, 'b>>): 'b option =
+    fold (fun acc _ (_, p) -> match acc with None -> error p | Some(err) -> Some(err)) None pm
