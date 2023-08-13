@@ -7,7 +7,7 @@ open CSP.Core.ExprShorthand
 open CSP.Core.Util
 
 let unionMap = UnionMap.builtin
-let ctorMap = CtorMap.from unionMap |> ResultEx.get CtorMapError.format
+let ctorMap = CtorMap.from unionMap |> ResultEx.getValue CtorMapError.format
 
 let procMap =
     from
@@ -16,6 +16,6 @@ let procMap =
                (prefix (litNat 1u __LINE__) (unwind "P" [] __LINE__) __LINE__)
                (prefix (litNat 2u __LINE__) (unwind "P" [] __LINE__) __LINE__)
                __LINE__) ]
-    |> ResultEx.get ProcMapError.format
+    |> ResultEx.getValue ProcMapError.format
 
 let genv = Env.empty

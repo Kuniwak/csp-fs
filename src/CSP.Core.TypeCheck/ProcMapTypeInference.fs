@@ -43,7 +43,7 @@ let resolve (s: State) (pm: ProcMap<TypeCstr>) : Result<ProcMap<TypeCstr>, TypeE
 
     match error pm with
     | Some(terr) -> Error(terr)
-    | None -> Ok(map (Expr.get >> ResultEx.get TypeError.format) pm)
+    | None -> Ok(map (Expr.get >> ResultEx.getValue TypeError.format) pm)
 
 let instantiate (pm: ProcMap<TypeCstr>) : ProcMap<Type> =
     map (ExprTypeInference.instantiate >> Expr.get) pm

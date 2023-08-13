@@ -88,12 +88,12 @@ let procTestCasesOk: obj[] list =
 [<MemberData(nameof procTestCasesOk)>]
 let inferProcOk (tc: ProcTestCaseOk) =
     let um = UnionMap.builtin
-    let cm = CtorMap.from um |> ResultEx.get CtorMapError.format in
+    let cm = CtorMap.from um |> ResultEx.getValue CtorMapError.format in
     let tcenv = TypeCstrEnv.from [ ("GLOBAL", tcBool) ] in
 
     let pm =
         ProcMap.from [ (("Foo", []), stop __LINE__); (("Bar", [ ("x", tUnit) ]), stop __LINE__) ]
-        |> ResultEx.get ProcMapError.format
+        |> ResultEx.getValue ProcMapError.format
 
     match postProcess (infer pm um cm tcenv tc.Proc init) with
     | Ok(p, s) ->

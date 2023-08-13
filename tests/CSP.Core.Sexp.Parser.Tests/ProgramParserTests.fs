@@ -57,7 +57,7 @@ Error: %s{ProgramSyntaxError.format err}
 """
             )
         | Ok(actualProcMap, actualUnionMap, actualInit) ->
-            let expectedUnionMap = from tc.ExpectedUnionMap |> ResultEx.get UnionMapError.format
+            let expectedUnionMap = from tc.ExpectedUnionMap |> ResultEx.getValue UnionMapError.format
 
             Assert.True(
                 (expectedUnionMap = actualUnionMap),

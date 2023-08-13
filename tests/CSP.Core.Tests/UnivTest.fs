@@ -120,7 +120,7 @@ let testCases: obj[] list =
 [<Theory>]
 [<MemberData(nameof testCases)>]
 let testUniv (tc: TestCase) : unit =
-    let um = ResultEx.get UnionMapError.format (UnionMap.from tc.UnionMap)
+    let um = ResultEx.getValue UnionMapError.format (UnionMap.from tc.UnionMap)
     let vRes = univ tc.Config um tc.Type in
 
     match vRes with

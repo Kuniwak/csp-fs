@@ -140,7 +140,7 @@ let testCases: obj[] list =
 [<Theory>]
 [<MemberData(nameof testCases)>]
 let parseTest (tc: TestCase) =
-    let sexp = SexpParser.parse tc.Input |> ResultEx.get SyntaxError.format
+    let sexp = SexpParser.parse tc.Input |> ResultEx.getValue SyntaxError.format
 
     match parse sexp with
     | Error(err) ->

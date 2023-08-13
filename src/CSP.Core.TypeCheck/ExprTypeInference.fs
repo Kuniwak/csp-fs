@@ -395,7 +395,7 @@ let resolve (s: State) (expr: Expr<TypeCstr>) : Result<Expr<TypeCstr>, TypeError
 
     match error expr with
     | Some(terr) -> Error(terr)
-    | None -> Ok(map (fun expr -> ResultEx.get format (get expr)) expr)
+    | None -> Ok(map (fun expr -> ResultEx.getValue format (get expr)) expr)
 
 let instantiate (expr: Expr<TypeCstr>) : Expr<Type> = map (get >> instantiate) expr
 

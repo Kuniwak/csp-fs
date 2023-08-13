@@ -71,7 +71,7 @@ let testCasesOk: obj[] list =
 [<Theory>]
 [<MemberData(nameof testCasesOk)>]
 let ok (tc: TestCaseOk) =
-    let sexp = SexpParser.parse tc.Input |> ResultEx.get SyntaxError.format
+    let sexp = SexpParser.parse tc.Input |> ResultEx.getValue SyntaxError.format
 
     match parse sexp with
     | Error(err) ->
@@ -138,7 +138,7 @@ let testCasesNg: obj[] list =
 [<Theory>]
 [<MemberData(nameof testCasesNg)>]
 let ng (tc: TestCaseNg) =
-    let sexp = SexpParser.parse tc.Input |> ResultEx.get SyntaxError.format
+    let sexp = SexpParser.parse tc.Input |> ResultEx.getValue SyntaxError.format
 
     match parse sexp with
     | Ok(t) ->

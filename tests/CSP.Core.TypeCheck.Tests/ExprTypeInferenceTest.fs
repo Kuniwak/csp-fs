@@ -200,8 +200,8 @@ let exprTestCasesOk: obj[] list =
 [<Theory>]
 [<MemberData(nameof exprTestCasesOk)>]
 let inferExprOk (tc: ExprTestCaseOk) =
-    let um = UnionMap.from tc.UnionMap |> ResultEx.get UnionMapError.format in
-    let cm = CtorMap.from um |> ResultEx.get CtorMapError.format in
+    let um = UnionMap.from tc.UnionMap |> ResultEx.getValue UnionMapError.format in
+    let cm = CtorMap.from um |> ResultEx.getValue CtorMapError.format in
     let tenv = TypeCstrEnv.from [ ("GLOBAL", tcBool) ] in
 
     match postProcess (infer um cm tenv tc.Expr init) with
@@ -385,9 +385,9 @@ let exprTestCasesError: obj[] list =
 let inferExprError (tc: ExprTestCaseError) =
     let um =
         UnionMap.from [ (([], "foo"), [ ("Foo", []) ]) ]
-        |> ResultEx.get UnionMapError.format in
+        |> ResultEx.getValue UnionMapError.format in
 
-    let cm = CtorMap.from um |> ResultEx.get CtorMapError.format in
+    let cm = CtorMap.from um |> ResultEx.getValue CtorMapError.format in
     let tenv = TypeCstrEnv.from [ ("GLOBAL", tcBool) ] in
 
     match postProcess (infer um cm tenv tc.Expr init) with

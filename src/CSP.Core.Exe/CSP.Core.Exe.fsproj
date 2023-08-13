@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <Version>0.2.0.0</Version>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="Usage.fs" />
+        <Compile Include="Validate.fs" />
+        <Compile Include="Run.fs" />
+        <Compile Include="Dot.fs" />
+        <Compile Include="Version.fs" />
+        <Compile Include="Program.fs"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\CSP.Core.CLI\CSP.Core.CLI.fsproj" />
+      <ProjectReference Include="..\CSP.Core.Interpreter\CSP.Core.Interpreter.fsproj" />
+      <ProjectReference Include="..\CSP.Core.Sexp\CSP.Core.Sexp.fsproj" />
+      <ProjectReference Include="..\CSP.Core.TypeCheck\CSP.Core.TypeCheck.fsproj" />
+      <ProjectReference Include="..\CSP.Core.Visualization\CSP.Core.Visualization.fsproj" />
+    </ItemGroup>
+
+</Project>

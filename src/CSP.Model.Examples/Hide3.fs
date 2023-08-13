@@ -11,9 +11,9 @@ let tEvent = tUnion "event" []
 
 let unionMap =
     UnionMap.from [ (([], "event"), [ ("a", []) ]) ]
-    |> ResultEx.get UnionMapError.format
+    |> ResultEx.getValue UnionMapError.format
 
-let ctorMap = CtorMap.from unionMap |> ResultEx.get CtorMapError.format
+let ctorMap = CtorMap.from unionMap |> ResultEx.getValue CtorMapError.format
 
 let procMap =
     from
@@ -22,6 +22,6 @@ let procMap =
               (prefix (ctor "a" [] __LINE__) (skip __LINE__) __LINE__)
               (setInsert (ctor "a" [] __LINE__) (litEmpty (tSet tEvent) __LINE__) __LINE__)
               __LINE__ ]
-    |> ResultEx.get ProcMapError.format
+    |> ResultEx.getValue ProcMapError.format
 
 let genv = Env.empty

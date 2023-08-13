@@ -173,7 +173,7 @@ let resolve (s: State) (p: Proc<TypeCstr>) : Result<Proc<TypeCstr>, TypeError> =
 
     match Proc.error p with
     | Some(terr) -> Error(terr)
-    | None -> Ok(Proc.map (Expr.get >> ResultEx.get format) p)
+    | None -> Ok(Proc.map (Expr.get >> ResultEx.getValue format) p)
 
 let instantiate (p: Proc<TypeCstr>) : Proc<Type> =
     Proc.map (Expr.get >> TypeCstrInstantiation.instantiate) p

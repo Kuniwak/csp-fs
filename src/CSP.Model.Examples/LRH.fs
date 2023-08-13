@@ -9,9 +9,9 @@ open CSP.Core.Util
 
 let unionMap =
     UnionMap.from [ (([], "event"), [ ("blue", []); ("red", []); ("sync", []) ]) ]
-    |> ResultEx.get UnionMapError.format
+    |> ResultEx.getValue UnionMapError.format
 
-let ctorMap = CtorMap.from unionMap |> ResultEx.get CtorMapError.format
+let ctorMap = CtorMap.from unionMap |> ResultEx.getValue CtorMapError.format
 
 let tEvent = tUnion "event" []
 
@@ -36,7 +36,7 @@ let procMap =
                (ctor "red" [] __LINE__)
                (prefix (ctor "sync" [] __LINE__) (unwind "Right" [] __LINE__) __LINE__)
                __LINE__) ]
-    |> ResultEx.get ProcMapError.format
+    |> ResultEx.getValue ProcMapError.format
 
 
 let genv = Env.empty
