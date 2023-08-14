@@ -1,6 +1,7 @@
 module CSP.Core.Exe.Dot
 
 open System.IO
+open CSP.Core
 open CSP.Core.Eval
 open CSP.Core.ProcEval
 open CSP.Core.Univ
@@ -73,7 +74,8 @@ let parseOpts (args: string list) : Result<Opts, string> =
 
 let dot (r: TextReader) (cfg: DotConfig) (p: string) (stdout: TextWriter) : Result<unit, string> =
     validate cfg.EvalConfig r p
-    |> Result.map (fun (pm, um, cm, genv, p) -> stdout.WriteLine(dot cfg.GraphConfig pm um cm genv p))
+    |> Result.bind (fun (pm, um, cm, genv, p) -> dot cfg.GraphConfig pm um cm genv p |> Result.mapError ProcEvalError.format)
+    |> Result.map (fun dot -> stdout.WriteLine(dot))
 
 let dotCLI (stdout: TextWriter) (stderr: TextWriter) (args: string list) : int =
     parseOpts args

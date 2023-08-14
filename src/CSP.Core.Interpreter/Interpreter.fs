@@ -73,7 +73,7 @@ let start
                     let i = int (String.trimWhiteSpaces (String.drop 1 cmd)) in
 
                     match List.tryItem i ts with
-                    | None -> stdout.WriteLine $"index out of range: {i}"
+                    | None -> stdout.WriteLine $"index out of range: %d{i}"
                     | Some(ev, s') ->
                         s <- s'
                         hist <- (s, ev) :: hist
@@ -81,13 +81,13 @@ let start
                     let i = int (String.trimWhiteSpaces (String.drop 1 cmd)) in
 
                     match List.tryItem i hist with
-                    | None -> stdout.WriteLine $"index out of range: {i}"
+                    | None -> stdout.WriteLine $"index out of range: %d{i}"
                     | Some(s', _) -> s <- s'
-                | Some 'h' -> Seq.iteri (fun i (s', ev) -> stdout.WriteLine $"  b {i}: {format s'} -> {Event.format ev}") hist
+                | Some 'h' -> Seq.iteri (fun i (s', ev) -> stdout.WriteLine $"  b %d{i}: %s{format s'} -> %s{Event.format ev}") hist
                 | Some 'q' -> exit 0
                 | _ -> stdout.WriteLine $"%s{usage}"
             | Error(err) ->
-                stdout.WriteLine $"error: {ProcEvalError.format err}"
+                stdout.WriteLine $"error: %s{ProcEvalError.format err}"
                 stdout.WriteLine ""
                 printf "> "
 
@@ -99,8 +99,8 @@ let start
                     let i = int (String.trimWhiteSpaces (String.drop 1 cmd)) in
 
                     match List.tryItem i hist with
-                    | None -> stdout.WriteLine $"index out of range: {i}"
+                    | None -> stdout.WriteLine $"index out of range: %d{i}"
                     | Some(s', _) -> s <- s'
-                | Some 'h' -> Seq.iteri (fun i (s', ev) -> stdout.WriteLine $"  b {i}: {format s'} -> {Event.format ev}") hist
+                | Some 'h' -> Seq.iteri (fun i (s', ev) -> stdout.WriteLine $"  b %d{i}: %s{format s'} -> %s{Event.format ev}") hist
                 | Some 'q' -> exit 0
                 | _ -> stdout.WriteLine $"%s{usage}"
