@@ -32,8 +32,7 @@ let parseTVar (sexp: Sexp) : Result<TVarId, StmtSyntaxError> =
     tryAtom sexp
     |> Result.bind (TypeParser.parseTVar >> Result.mapError TypeSyntaxError)
 
-let parseTVars (sexp: Sexp) : Result<TVarId list, StmtSyntaxError> =
-    trySexps sexp |> Result.bind (ResultEx.bindAll parseTVar)
+let parseTVars (ss: Sexp list) : Result<TVarId list, StmtSyntaxError> = ss |> ResultEx.bindAll parseTVar
 
 let parseExprs (s: Sexp) : Result<Expr<unit> list, StmtSyntaxError> =
     trySexps s |> Result.bind (ResultEx.bindAll parseExpr)
@@ -56,8 +55,19 @@ let parse (sexp: Sexp) : Result<Stmt, StmtSyntaxError> =
             |> Result.map (fun (pn, varDecls, p) -> ProcDecl((pn, varDecls), p))
             |> Result.mapError (atLine line)
         | Atom("type", line) :: ss ->
-            tryBinaryOrMore ss
-            |> Result.bind (ResultEx.bind3 parseTVars tryAtom (ResultEx.bindAll parseCtor))
+            tryUnaryOrMore ss
+            |> Result.bind (fun (tVarsOrName, rest) ->
+                match tVarsOrName with
+                | Atom(un, _) ->
+                    rest
+                    |> ResultEx.bindAll parseCtor
+                    |> Result.map (fun ctorDecls -> ([], un, ctorDecls))
+                | Sexps(ss, _) ->
+                    parseTVars ss
+                    |> Result.bind (fun tVars ->
+                        tryUnaryOrMore rest
+                        |> Result.bind (ResultEx.bind2 tryAtom (ResultEx.bindAll parseCtor))
+                        |> Result.map (fun (un, ctorDecls) -> (tVars, un, ctorDecls))))
             |> Result.map (fun (tVars, un, ctorDecls) -> UnionDecl((tVars, un), ctorDecls))
             |> Result.mapError (atLine line)
         | Atom("global", line) :: ss ->

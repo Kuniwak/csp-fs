@@ -4,7 +4,7 @@ open Xunit
 open CSP.Core.Search
 
 let mapNext (m: Map<'n, ('e * 'n) list>) (n: 'n) : ('e * 'n) list = Map.find n m
-let searchCfg: SearchConfig = { NodeMax = 100 }
+let searchCfg: SearchConfig = { NodeMax = 100u }
 let dfs = dfs searchCfg
 let bfs = bfs searchCfg
 

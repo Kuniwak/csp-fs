@@ -13,6 +13,10 @@ F# による CSP インタプリタ
 
 ### インタプリタの利用
 
+```
+(type event a b c d)
+```
+
 ```f#
 open CSP.Core
 open CSP.Core.ProcMap

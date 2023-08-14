@@ -67,3 +67,7 @@ let toCtorTypes
 let fold (f: 'State -> Ctor -> UnionName -> 'State) (s: 'State) (cm: CtorMap) : 'State =
     match cm with
     | CtorMap cm -> Map.fold f s cm
+
+let formatEntry (x: Ctor * UnionName) : string =
+    match x with
+    | ctor, un -> $"%s{Ctor.format ctor}: %s{un}"

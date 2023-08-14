@@ -22,6 +22,10 @@ let toEnv (cfg: EvalConfig) (um: UnionMap) (cm: CtorMap) (genv: GlobalEnv) : Res
         |> ResultEx.bindAll (fun (var, expr) -> eval expr |> Result.map (fun v -> (var, v)))
         |> Result.map (fun xs -> bindAll xs empty)
 
+let toSeq (genv: GlobalEnv) : (Var * Expr<Unit>) seq =
+    match genv with
+    | GlobalEnv genv -> Map.toSeq genv
+
 let declared (var: Var) (genv: GlobalEnv) : bool =
     match genv with
     | GlobalEnv(genv) -> Map.containsKey var genv
@@ -46,3 +50,6 @@ let from (xs: (string * Expr<unit>) list) : Result<GlobalEnv, GlobalEnvError> =
                 else
                     Ok(bind var expr genv)))
         (Ok(empty))
+
+let formatEntry (x: Var * Expr<unit>) : string =
+    $"%s{Var.format (fst x)}: %s{Expr.format noAnnotation (snd x)}"

@@ -9,7 +9,8 @@ open CSP.Core.ProcEval
 open CSP.Core.Trans
 open CSP.Core.Search
 open CSP.Core.Eval
-open CSP.Core.ValShorthand
+open CSP.Core.ExprShorthand
+open CSP.Core.ProcShorthand
 open CSP.Core.ProcEvalError
 open CSP.Core.Univ
 open CSP.Core.Visualization.DotLang
@@ -18,21 +19,23 @@ let univCfg: UnivConfig = { NatMax = 5u; ListLenMax = 3u }
 
 let procEvalCfg: ProcEvalConfig = { EvalConfig = { UnivConfig = univCfg } }
 
-let dotCfg: DotConfig =
-    { GraphConfig =
-        { TransConfig = { ProcEvalConfig = procEvalCfg }
-          ProcEvalConfig = procEvalCfg
-          SearchConfig = { NodeMax = 1000 }
-          NamedConfig =
-            { ProcEvalConfig = procEvalCfg
-              UnivConfig = univCfg } } }
+let graphCfg: GraphConfig =
+    { TransConfig = { ProcEvalConfig = procEvalCfg }
+      ProcEvalConfig = procEvalCfg
+      SearchConfig = { NodeMax = 1000u }
+      NamedConfig =
+        { ProcEvalConfig = procEvalCfg
+          UnivConfig = univCfg } }
 
 let dot pm um =
-    um |> CtorMap.from |> ResultEx.getValue CtorMapError.format |> dot dotCfg pm um
+    um
+    |> CtorMap.from
+    |> ResultEx.getValue CtorMapError.format
+    |> dot graphCfg pm um
 
 [<Fact>]
 let abSkip () =
-    match dot ABSkip.procMap ABSkip.unionMap ABSkip.genv "ABSkip" [] with
+    match dot ABSkip.procMap ABSkip.unionMap ABSkip.genv (unwind "ABSkip" [] __LINE__) with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
         Assert.True(
@@ -50,7 +53,7 @@ let abSkip () =
 
 [<Fact>]
 let parABC () =
-    match dot ParABC.procMap ParABC.unionMap ParABC.genv "P" [] with
+    match dot ParABC.procMap ParABC.unionMap ParABC.genv (unwind "P" [] __LINE__) with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
@@ -155,7 +158,7 @@ let parABC () =
 
 [<Fact>]
 let rand2 () =
-    match dot Rand2.procMap Rand2.unionMap Rand2.genv "P" [] with
+    match dot Rand2.procMap Rand2.unionMap Rand2.genv (unwind "P" [] __LINE__) with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
         Assert.True(
@@ -175,7 +178,7 @@ let rand2 () =
 
 [<Fact>]
 let abs () =
-    match dot ABS.procMap ABS.unionMap ABS.genv "ABS" [] with
+    match dot ABS.procMap ABS.unionMap ABS.genv (unwind "ABS" [] __LINE__) with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
         Assert.True(
@@ -199,7 +202,7 @@ let abs () =
 
 [<Fact>]
 let lr () =
-    match dot LR.procMap LR.unionMap LR.genv "LR" [] with
+    match dot LR.procMap LR.unionMap LR.genv (unwind "LR" [] __LINE__) with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
@@ -222,7 +225,7 @@ let lr () =
 
 [<Fact>]
 let coinToss () =
-    match dot CoinToss.procMap CoinToss.unionMap CoinToss.genv "CoinToss" [] with
+    match dot CoinToss.procMap CoinToss.unionMap CoinToss.genv (unwind "CoinToss" [] __LINE__) with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
@@ -249,7 +252,7 @@ let coinToss () =
 
 [<Fact>]
 let lrh () =
-    match dot LRH.procMap LRH.unionMap LRH.genv "LRH" [] with
+    match dot LRH.procMap LRH.unionMap LRH.genv (unwind "LRH" [] __LINE__) with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
@@ -272,7 +275,7 @@ let lrh () =
 
 [<Fact>]
 let hide3 () =
-    match dot Hide3.procMap Hide3.unionMap Hide3.genv "P" [] with
+    match dot Hide3.procMap Hide3.unionMap Hide3.genv (unwind "P" [] __LINE__) with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
@@ -291,7 +294,7 @@ let hide3 () =
 
 [<Fact>]
 let count () =
-    match dot Count.procMap Count.unionMap Count.genv "COUNT" [ vNat 0u ] with
+    match dot Count.procMap Count.unionMap Count.genv (unwind "COUNT" [ litNat 0u __LINE__ ] __LINE__) with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
@@ -327,7 +330,7 @@ let count () =
 
 [<Fact>]
 let roVarSys1 () =
-    match dot ROVarSys1.procMap ROVarSys1.unionMap ROVarSys1.genv "ROVarSys1" [] with
+    match dot ROVarSys1.procMap ROVarSys1.unionMap ROVarSys1.genv (unwind "ROVarSys1" [] __LINE__) with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
@@ -344,7 +347,7 @@ let roVarSys1 () =
 
 [<Fact>]
 let roVarSys2 () =
-    match dot ROVarSys2.procMap ROVarSys2.unionMap ROVarSys2.genv "ROVarSys2" [] with
+    match dot ROVarSys2.procMap ROVarSys2.unionMap ROVarSys2.genv (unwind "ROVarSys2" [] __LINE__) with
     | Error(err) -> Assert.Fail(format err)
     | Ok(actual) ->
 
