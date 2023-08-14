@@ -49,17 +49,28 @@ To run interpreter, use `csp run`:
 ```console
 $ csp run ./examples/ParABC.sexp '(unwind P)'
 state: P
-  c 0: D -> SKIP
+  c 0: A -> ((SKIP ⟦{}⟧ (B → SKIP)) ⟦{}⟧ (C → SKIP))
+  c 1: B -> (((A → SKIP) ⟦{}⟧ SKIP) ⟦{}⟧ (C → SKIP))
+  c 2: C -> (((A → SKIP) ⟦{}⟧ (B → SKIP)) ⟦{}⟧ SKIP)
 
 > c0
-state: SKIP
-  c 0: ✓ -> Ω
+state: ((SKIP ⟦{}⟧ (B → SKIP)) ⟦{}⟧ (C → SKIP))
+  c 0: τ -> ((Ω ⟦{}⟧ (B → SKIP)) ⟦{}⟧ (C → SKIP))
+  c 1: B -> ((SKIP ⟦{}⟧ SKIP) ⟦{}⟧ (C → SKIP))
+  c 2: C -> ((SKIP ⟦{}⟧ (B → SKIP)) ⟦{}⟧ SKIP)
 
-> c0
-state: Ω
+> c1
+state: ((SKIP ⟦{}⟧ SKIP) ⟦{}⟧ (C → SKIP))
+  c 0: τ -> ((Ω ⟦{}⟧ SKIP) ⟦{}⟧ (C → SKIP))
+  c 1: τ -> ((SKIP ⟦{}⟧ Ω) ⟦{}⟧ (C → SKIP))
+  c 2: C -> ((SKIP ⟦{}⟧ SKIP) ⟦{}⟧ SKIP)
 
-> q
-$ 
+> c2
+
+...
+
+> quit
+$
 ```
 
 To visualize, use `csp dot`:
