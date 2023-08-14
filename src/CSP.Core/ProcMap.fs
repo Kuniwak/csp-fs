@@ -45,7 +45,7 @@ let procIds (pm: ProcMap<'a>) : Set<ProcId> =
     match pm with
     | ProcMap m -> Map.fold (fun keys key _ -> Set.add key keys) Set.empty m
 
-let formatEntry (x: ProcId * ((Var * Type) list * Proc<unit>)) : string =
+let formatEntry (annotation: string -> 'a -> string) (x: ProcId * ((Var * Type) list * Proc<'a>)) : string =
     let pn, (vars, p) = x in
 
     let vars =
@@ -53,11 +53,11 @@ let formatEntry (x: ProcId * ((Var * Type) list * Proc<unit>)) : string =
         |> List.map (fun (var, t) -> $"(%s{format var}: %s{Type.format t})")
         |> String.concat " "
 
-    $"%s{pn} %s{vars} = %s{oneline (Proc.format noAnnotation p)}"
+    $"%s{pn} %s{vars} = %s{oneline (Proc.format annotation p)}"
 
-let format (pm: ProcMap<unit>) : string =
+let format (annotation: string -> 'a -> string) (pm: ProcMap<'a>) : string =
     match pm with
-    | ProcMap pm -> pm |> Map.toSeq |> Seq.map formatEntry |> String.concat "\n\n"
+    | ProcMap pm -> pm |> Map.toSeq |> Seq.map (formatEntry annotation) |> String.concat "\n\n"
 
 let error (pm: ProcMap<Result<'a, 'b>>): 'b option =
     fold (fun acc _ (_, p) -> match acc with None -> error p | Some(err) -> Some(err)) None pm

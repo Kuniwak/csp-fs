@@ -1,29 +1,23 @@
 module CSP.Core.State
 
-open CSP.Core.Env
-open CSP.Core.Expr
-open CSP.Core.Proc
 open CSP.Core.Util
+open CSP.Core.Proc
 open CSP.Core.Val
-open CSP.Core.Var
 
-type State<'a> =
+type State<'a when 'a : comparison> =
     | Unwind of ProcId * Val list
     | Stop
     | Skip
     | Prefix of Val * State<'a>
-    | PrefixRecv of Set<Val> * Env * Var * Proc<'a>
     | IntCh of State<'a> * State<'a>
     | ExtCh of State<'a> * State<'a>
-    | Seq of State * State<'a>
-    | InterfaceParallel of State * Set<Val> * State
-    | Hide of State * Set<Val>
+    | Seq of State<'a> * State<'a>
+    | InterfaceParallel of State<'a> * Set<Val> * State<'a>
+    | Hide of State<'a> * Set<Val>
     | Omega
     | ErrorState of string
 
-let format (genv: Env) (s: State) : string =
-    let formatEnv = Env.format genv in
-
+let format (s: State<'a>) : string =
     let rec format s =
         match s with
         | Unwind(pn, vs) ->
@@ -36,15 +30,6 @@ let format (genv: Env) (s: State) : string =
         | Stop -> "STOP"
         | Skip -> "SKIP"
         | Prefix(v, s) -> $"(%s{Val.format v} → {format s})"
-        | PrefixRecv(vs, env, var, p) ->
-            let s1 =
-                vs
-                |> Set.toSeq
-                |> Seq.map Val.format
-                |> String.concat ", "
-                |> StringEx.wrapBy "{" "}"
-
-            $"(%s{s1} ? %s{Var.format var} %s{Proc.format noAnnotation p} env=%s{formatEnv env})"
         | IntCh(s1, s2) -> $"({format s1} ⨅ {format s2})"
         | ExtCh(s1, s2) -> $"({format s1} □ {format s2})"
         | Seq(s1, s2) -> $"({format s1} ; {format s2})"

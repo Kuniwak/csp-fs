@@ -2,6 +2,7 @@
 open CSP.Core.Exe.Version
 open CSP.Core.Exe.Run
 open CSP.Core.Exe.Dot
+open CSP.Core.Exe.TypeInfer
 
 module Program =
     [<EntryPoint>]
@@ -21,6 +22,7 @@ module Program =
                 0
             | "run" :: args -> runCLI stdin stdout stderr args
             | "dot" :: args -> dotCLI stdout stderr args
+            | "type" :: args -> typeInferCLI stdout stderr args
             | unknown :: _ ->
                 stderr.WriteLine($"error: no such command: %s{unknown}")
                 stderr.WriteLine(usage)

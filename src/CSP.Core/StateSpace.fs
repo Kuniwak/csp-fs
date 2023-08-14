@@ -14,7 +14,7 @@ open CSP.Core.Univ
 open CSP.Core.Val
 open CSP.Core.Util
 
-type NamedSpace = Map<State, (ProcId * Val list) list>
+type NamedSpace<'a when 'a: comparison> = Map<State<'a>, (ProcId * Val list) list>
 
 type NamedSpaceConfig =
     { UnivConfig: UnivConfig
@@ -24,9 +24,9 @@ let namedSpace
     (cfg: NamedSpaceConfig)
     (um: UnionMap)
     (cm: CtorMap)
-    (pm: ProcMap<unit>)
+    (pm: ProcMap<'a>)
     (genv: Env)
-    : Result<NamedSpace, ProcEvalError> =
+    : Result<NamedSpace<'a>, ProcEvalError> =
     let univ = univ cfg.UnivConfig um in
     let eval = eval cfg.ProcEvalConfig um cm in
 
@@ -53,13 +53,13 @@ let namedSpace
 
 let normedTrans
     (cfg: TransConfig)
-    (pm: ProcMap<unit>)
+    (pm: ProcMap<'a>)
     (cm: CtorMap)
     (um: UnionMap)
     (genv: Env)
-    (ns: Map<State, (ProcId * Val list) list>)
-    (s: State)
-    : Result<(Event * State) list, ProcEvalError> =
+    (ns: Map<State<'a>, (ProcId * Val list) list>)
+    (s: State<'a>)
+    : Result<(Event * State<'a>) list, ProcEvalError> =
     trans cfg pm um cm genv s
     |> Result.map (
         List.map (fun (ev, s) ->

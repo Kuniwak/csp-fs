@@ -12,7 +12,13 @@ open CSP.Core.Util
 
 type ProcEvalConfig = { EvalConfig: EvalConfig }
 
-let eval (cfg: ProcEvalConfig) (um: UnionMap) (cm: CtorMap) (env: Env) (p: Proc<'a>) : Result<State, ProcEvalError> =
+let eval
+    (cfg: ProcEvalConfig)
+    (um: UnionMap)
+    (cm: CtorMap)
+    (env: Env)
+    (p: Proc<'a>)
+    : Result<State<'a>, ProcEvalError> =
     let exprEval env expr =
         Result.mapError ExprError (eval cfg.EvalConfig um cm env expr)
 
@@ -49,7 +55,14 @@ let eval (cfg: ProcEvalConfig) (um: UnionMap) (cm: CtorMap) (env: Env) (p: Proc<
             expr
             |> exprEval env
             |> Result.bind getSet
-            |> Result.map (fun vs -> PrefixRecv(vs, env, var, p))
+            |> Result.bind (
+                Set.fold
+                    (fun pAccRes v ->
+                        pAccRes
+                        |> Result.bind (fun pAcc ->
+                            eval (bind1 var v env) p |> Result.map (fun p -> ExtCh(pAcc, Prefix(v, p)))))
+                    (Ok(Stop))
+            )
         | Proc.IntCh(p1, p2, _) -> (p1, p2) |> ResultEx.bind2 (eval env) (eval env) |> Result.map IntCh
         | Proc.ExtCh(p1, p2, _) -> (p1, p2) |> ResultEx.bind2 (eval env) (eval env) |> Result.map ExtCh
         | Proc.Seq(p1, p2, _) -> (p1, p2) |> ResultEx.bind2 (eval env) (eval env) |> Result.map Seq

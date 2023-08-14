@@ -1,7 +1,6 @@
 module CSP.Core.Tests.StateSpaceTest
 
 open CSP.Core
-open CSP.Core.Env
 open CSP.Core.Val
 open CSP.Core.ValShorthand
 open CSP.Core.Proc
@@ -18,14 +17,14 @@ let cfg: NamedSpaceConfig =
     { UnivConfig = univCfg
       ProcEvalConfig = { EvalConfig = { UnivConfig = univCfg } } }
 
-let formatMap (genv: Env) (m: Map<State, (ProcId * Val list) list>) =
+let formatMap (m: Map<State<'a>, (ProcId * Val list) list>) =
     m
     |> Map.toSeq
     |> Seq.map (fun (s, pvss) ->
         pvss
         |> Seq.map (fun (pn, vs) ->
             let vs = vs |> Seq.map Val.format |> String.concat " "
-            $"""%s{format genv s} ⟹ Unwind %s{pn} %s{vs}""")
+            $"""%s{format s} ⟹ Unwind %s{pn} %s{vs}""")
         |> String.concat "\n")
     |> String.concat "\n\n"
 
@@ -41,7 +40,7 @@ let lr () =
 
     match ns with
     | Error(err) -> Assert.Fail(ProcEvalError.format err)
-    | Ok(m) -> Assert.True((m = expected), formatMap LRH.genv m)
+    | Ok(m) -> Assert.True((m = expected), formatMap m)
 
 [<Fact>]
 let lrh () =
@@ -59,4 +58,4 @@ let lrh () =
 
     match ns with
     | Error(err) -> Assert.Fail(ProcEvalError.format err)
-    | Ok(m) -> Assert.True((m = expected), formatMap LRH.genv m)
+    | Ok(m) -> Assert.True((m = expected), formatMap m)

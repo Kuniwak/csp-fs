@@ -101,7 +101,7 @@ Error: %s{ProgramSyntaxError.format err}
             (expectedProcMap = actualProcMap),
             $"""line %s{tc.Line}
 
-%s{cmp ProcMap.formatEntry (ProcMap.toSeq expectedProcMap) (ProcMap.toSeq actualProcMap)}
+%s{cmp (ProcMap.formatEntry noAnnotation) (ProcMap.toSeq expectedProcMap) (ProcMap.toSeq actualProcMap)}
 """
         )
 

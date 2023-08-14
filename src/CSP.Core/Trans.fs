@@ -16,12 +16,12 @@ type TransConfig = { ProcEvalConfig: ProcEvalConfig }
 
 let trans
     (cfg: TransConfig)
-    (pm: ProcMap<unit>)
+    (pm: ProcMap<'a>)
     (um: UnionMap)
     (cm: CtorMap)
     (genv: Env)
-    (s: State)
-    : Result<(Event * State) list, ProcEvalError> =
+    (s: State<'a>)
+    : Result<(Event * State<'a>) list, ProcEvalError> =
     let eval = eval cfg.ProcEvalConfig um cm in
 
     let typeCheck t v =
@@ -30,7 +30,7 @@ let trans
         else
             Error(ExprError(TypeMismatch(v, t)))
 
-    let rec trans visited s =
+    let rec trans visited (s: State<'a>) =
         match s with
         | Unwind(pn, vs) ->
             if Set.contains (pn, vs) visited then
@@ -54,10 +54,6 @@ let trans
 
         | Skip -> Ok [ (Tick, Omega) ] // Skip
         | Prefix(v, s) -> Ok [ (Vis v, s) ] // Prefix
-        | PrefixRecv(vs, env, var, p) ->
-            ResultEx.bindAll
-                (fun v -> let env = bind1 var v env in p |> eval env |> Result.map (fun s -> (Vis v, s)))
-                (Set.toSeq vs)
         | IntCh(s1, s2) ->
             Ok
                 [ (Tau, s1) // IntCh1

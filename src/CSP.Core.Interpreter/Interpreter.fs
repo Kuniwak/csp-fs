@@ -46,7 +46,6 @@ let start
     (stdin: TextReader)
     (stdout: TextWriter)
     =
-    let format = format genv in
     match eval cfg.ProcEvalConfig um cm genv p with
     | Error(err) -> 
         stdout.WriteLine $"error: {ProcEvalError.format err}"

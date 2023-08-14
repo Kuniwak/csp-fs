@@ -25,16 +25,16 @@ type GraphConfig =
 
 let graph
     (cfg: GraphConfig)
-    (pm: ProcMap<unit>)
+    (pm: ProcMap<'a>)
     (um: UnionMap)
     (cm: CtorMap)
     (genv: Env)
-    (p: Proc<unit>)
-    : Result<(State * int) list * (State * Event * State) list, ProcEvalError> =
+    (p: Proc<'a>)
+    : Result<(State<'a> * int) list * (State<'a> * Event * State<'a>) list, ProcEvalError> =
     eval cfg.ProcEvalConfig um cm genv p
     |> Result.bind (fun s ->
-        let mutable ss: (State * int) list = [] in
-        let mutable es: (State * Event * State) list = [] in
+        let mutable ss: (State<'a> * int) list = [] in
+        let mutable es: (State<'a> * Event * State<'a>) list = [] in
 
         namedSpace cfg.NamedConfig um cm pm genv
         |> Result.map (fun ns ->
@@ -54,14 +54,13 @@ let graph
 
 let dot
     (cfg: GraphConfig)
-    (pm: ProcMap<unit>)
+    (pm: ProcMap<'a>)
     (um: UnionMap)
     (cm: CtorMap)
     (genv: Env)
-    (p: Proc<unit>)
+    (p: Proc<'a>)
     : Result<string, ProcEvalError> =
     let escape = String.replace "\"" "'" in
-    let format = format genv in
 
     graph cfg pm um cm genv p
     |> Result.map (fun (ss, es) ->

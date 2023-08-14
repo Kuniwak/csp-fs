@@ -9,15 +9,14 @@ open CSP.Core.CtorMap
 open CSP.Core.ProcMap
 open CSP.Core.Env
 open CSP.Core.Proc
-open CSP.Core.TypeChecker
 open CSP.Core.Sexp
 open CSP.Core.Sexp.ProgramParser
 
 let validate
     (cfg: EvalConfig)
-    (r: StreamReader)
+    (r: TextReader)
     (p: string)
-    : Result<ProcMap<Type> * UnionMap * CtorMap * Env * Proc<Type>, string> =
+    : Result<ProcMap<unit> * UnionMap * CtorMap * Env * Proc<unit>, string> =
     let code = r.ReadToEnd() in
 
     parse code
@@ -28,7 +27,15 @@ let validate
         |> Result.bind (fun genv ->
             parseInit p
             |> Result.mapError ProgramSyntaxError.format
-            |> Result.bind (fun p ->
-                typeCheck um cm genv pm p
-                |> Result.mapError TypeError.format
-                |> Result.map (fun  (pm, p)  -> (pm, um, cm, genv, p)))))
+            |> Result.map (fun p -> (pm, um, cm, genv, p))))
+
+let typeCheck
+    (x: ProcMap<unit> * UnionMap * CtorMap * Env * Proc<unit>)
+    : Result<ProcMap<Type> * UnionMap * CtorMap * Env * Proc<Type>, string> =
+    let pm, um, cm, env, p = x in
+
+    TypeChecker.typeEnv um cm env TypeInferenceState.init
+    |> Result.bind (fun (tcenv, s) -> TypeChecker.infer um cm tcenv pm p s)
+    |> Result.bind TypeChecker.postProcess
+    |> Result.mapError TypeError.format
+    |> Result.map (fun (pm, p) -> (pm, um, cm, env, p))

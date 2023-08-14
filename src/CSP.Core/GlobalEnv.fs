@@ -22,9 +22,14 @@ let toEnv (cfg: EvalConfig) (um: UnionMap) (cm: CtorMap) (genv: GlobalEnv) : Res
         |> ResultEx.bindAll (fun (var, expr) -> eval expr |> Result.map (fun v -> (var, v)))
         |> Result.map (fun xs -> bindAll xs empty)
 
-let toSeq (genv: GlobalEnv) : (Var * Expr<Unit>) seq =
+let toSeq (genv: GlobalEnv) : (Var * Expr<unit>) seq =
     match genv with
     | GlobalEnv genv -> Map.toSeq genv
+
+let fold (f: 'State -> Var -> Expr<unit> -> 'State) (s: 'State) (genv: GlobalEnv) =
+    match genv with
+    | GlobalEnv genv -> Map.fold f s genv
+
 
 let declared (var: Var) (genv: GlobalEnv) : bool =
     match genv with
