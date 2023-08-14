@@ -1,8 +1,7 @@
 module CSP.Core.Exe.Usage
 
-let usage = """
-usage: csp run <file> <proc> <expr>*
-usage: csp dot [<file>|--stdin] <proc> <expr>*
+let usage = """usage: csp run <file> <proc>
+usage: csp dot <file> <proc>
 usage: csp version
 usage: csp help
 
@@ -13,8 +12,6 @@ COMMANDS
     help      show this message
 
 OPTIONS
-    --stdin   Input from stdin
-    <file>    Input from the file
-    <proc>    Process name to run or visualize
-    <expr>    Parameters for the process
+    <file>    input from the file
+    <proc>    process expression to run or visualize
 """

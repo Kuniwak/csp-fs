@@ -19,7 +19,7 @@ type Opts =
     | Opts of uint * uint * uint * string list
 
 let parseOpts (args: string list) : Result<Opts, string> =
-    parseArgs (Map [ ("nat-max", OTInt); ("list-max", OTInt); ("help", OTBool); ("h", OTBool) ]) args
+    parseArgs (Map [ ("nat-max", OTNat); ("list-max", OTNat); ("help", OTBool); ("h", OTBool) ]) args
     |> Result.map (fun opts ->
         let helpNeeded =
             opts |> List.contains (Opt("h", OVBool(true)))
@@ -67,6 +67,7 @@ let parseOpts (args: string list) : Result<Opts, string> =
                         | Arg(arg) -> arg :: acc
                         | _ -> acc)
                     []
+                |> List.rev
 
             Opts(natMax, listMax, nodeMax, args))
 

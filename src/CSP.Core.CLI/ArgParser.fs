@@ -5,7 +5,7 @@ open FSharpPlus
 
 type OptType =
     | OTBool
-    | OTInt
+    | OTNat
 
 type OptVal =
     | OVBool of bool
@@ -24,19 +24,19 @@ let parseArg (optDefs: Map<string, OptType>) (args: string list) : Result<Opt * 
 
             match Map.tryFind argName optDefs with
             | Some(OTBool) -> Ok(Opt(argName, OVBool(true)), args)
-            | Some(OTInt) ->
-                match List.tryHead args with
-                | Some(argValue) ->
+            | Some(OTNat) ->
+                match args with
+                | [] -> Error($"associated value needed for %s{arg}")
+                | argValue :: args ->
                     let mutable i = 0u in
 
                     if UInt32.TryParse(argValue, &i) then
-                        Ok(Opt(argName, OVNat(i)), List.drop 1 args)
+                        Ok(Opt(argName, OVNat(i)), args)
                     else
                         Error($"not integer for %s{arg}: %s{argValue}")
-                | None -> Error($"associated value needed for %s{arg}")
             | None -> Error($"unexpected argument: %s{arg}")
         else
-            Ok(Arg(arg), List.drop 1 args)
+            Ok(Arg(arg), args)
 
 let parseArgs (optDefs: Map<string, OptType>) (args: string list) : Result<Opt list, string> =
     let parseArg = parseArg optDefs in
@@ -47,6 +47,5 @@ let parseArgs (optDefs: Map<string, OptType>) (args: string list) : Result<Opt l
         | _ ->
             parseArg args
             |> Result.bind (fun (opt, rest) -> parseArgs rest |> Result.map (fun opts -> opt :: opts))
-            |> Result.map List.rev
 
     parseArgs args
