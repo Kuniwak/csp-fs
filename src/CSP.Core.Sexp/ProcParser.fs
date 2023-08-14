@@ -56,17 +56,17 @@ and parse (sexp: Sexp) : Result<Proc<unit>, ProcSyntaxError> =
     | Sexps(Atom("in", line) :: ss, _) ->
         tryBinaryOrMore ss
         |> Result.bind (ResultEx.bind3 parse parse (ResultEx.bindAll parse))
-        |> Result.map (fun (p1, p2, ps) -> List.fold (fun pAcc p -> intCh p pAcc line) (intCh p2 p1 line) ps)
+        |> Result.map (fun (p1, p2, ps) -> List.fold (fun pAcc p -> intCh pAcc p line) (intCh p1 p2 line) ps)
         |> Result.mapError (atLine line)
     | Sexps(Atom("ex", line) :: ss, _) ->
         tryBinaryOrMore ss
         |> Result.bind (ResultEx.bind3 parse parse (ResultEx.bindAll parse))
-        |> Result.map (fun (p1, p2, ps) -> List.fold (fun pAcc p -> extCh p pAcc line) (extCh p2 p1 line) ps)
+        |> Result.map (fun (p1, p2, ps) -> List.fold (fun pAcc p -> extCh pAcc p line) (extCh p1 p2 line) ps)
         |> Result.mapError (atLine line)
     | Sexps(Atom("seq", line) :: ss, _) ->
         tryBinaryOrMore ss
         |> Result.bind (ResultEx.bind3 parse parse (ResultEx.bindAll parse))
-        |> Result.map (fun (p1, p2, ps) -> List.fold (fun pAcc p -> seq p pAcc line) (seq p2 p1 line) ps)
+        |> Result.map (fun (p1, p2, ps) -> List.fold (fun pAcc p -> seq pAcc p line) (seq p1 p2 line) ps)
         |> Result.mapError (atLine line)
     | Sexps(Atom("if", line) :: ss, _) ->
         tryTernary ss
@@ -91,7 +91,7 @@ and parse (sexp: Sexp) : Result<Proc<unit>, ProcSyntaxError> =
     | Sexps(Atom("interleave", line) :: ss, _) ->
         tryBinaryOrMore ss
         |> Result.bind (ResultEx.bind3 parse parse (ResultEx.bindAll parse))
-        |> Result.map (fun (p1, p2, ps) -> List.fold (fun pAcc p -> interleave p pAcc line) (interleave p2 p1 line) ps)
+        |> Result.map (fun (p1, p2, ps) -> List.fold (fun pAcc p -> interleave pAcc p line) (interleave p1 p2 line) ps)
         |> Result.mapError (atLine line)
     | Sexps(Atom("hide", line) :: ss, _) ->
         tryBinary ss
