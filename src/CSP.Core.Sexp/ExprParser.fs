@@ -21,10 +21,14 @@ let tryTernary = tryTernary >> Result.mapError MapperError
 let parseType = TypeParser.parse >> Result.mapError TypeSyntaxError
 
 let parseCtorOrVarRef line str =
-    if Char.IsAsciiLetterUpper(Seq.head str) then
-        Ok(ctor str [] line)
-    else
-        Ok(varRef str line)
+    let c = Seq.head str in
+    if Char.IsAsciiLetter c then
+        if Char.IsAsciiLetterUpper c then
+            Ok(ctor str [] line)
+        else
+            Ok(varRef str line)
+     else
+         Error(UnexpectedIdentifier(str))
 
 let rec parseTypeWith2Exprs ss =
     tryTernary ss

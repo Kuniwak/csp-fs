@@ -18,7 +18,7 @@ let format (stmt: Stmt) : string =
             |> Seq.map (fun (var, t) -> $"(%s{var} %s{format t})")
             |> String.concat " " in
 
-        $"(def %s{pn} (%s{s}) %s{Proc.format noAnnotation p})"
+        $"(proc %s{pn} (%s{s}) %s{Proc.format noAnnotation p})"
     | UnionDecl((tVars, un), ctorDecls) ->
         let s1 = tVars |> Seq.map (TVar >> format) |> String.concat " " in
 
@@ -29,4 +29,4 @@ let format (stmt: Stmt) : string =
 
         $"(type (%s{s1}) %s{un} %s{s2})"
     | GlobalVarDecl(var, expr) ->
-        $"(global {var} {Expr.format noAnnotation expr})"
+        $"(const {var} {Expr.format noAnnotation expr})"

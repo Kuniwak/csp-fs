@@ -8,60 +8,33 @@ F# による CSP インタプリタ
 
 
 
-使い方
-------
+構文
+----
+
+次のPEG文法で表すS式スタイルの構文をサポートしています：
+
+```peg
+Comment ← '"' [^\n]* '\n'
+WS ← [\t\r\n ]
+Trivia ← (WS / Comment)+
+
+Atom ← [^)\t\r\n ]+ Trivia?
+List ←'(' Trivia? (List / Atom)* ')' Trivia?
+
+File ← Trivia? (List / Atom)
+```
+
+この構文のトップレベルで許されているデータは次の通りです：
+
+TBD
 
 ### インタプリタの利用
 
-```
-(type event a b c d)
-```
+```lisp
+(type event A B C D)
 
-```f#
-open CSP.Core
-open CSP.Core.ProcMap
-open CSP.Core.ProcShorthand
-open CSP.Core.ExprShorthand
-open CSP.Core.TypeShorthand
-open CSP.Core.Util
-open CSP.Core.CLI
-open CSP.Core.ProcEval
-
-// 代数的データ型を宣言しておく。
-let tEvent = tUnion "event" [ ("a", []); ("b", []); ("c", []); ("d", []) ]
-
-// 値コンストラクタのテーブルを作成しておく。
-let ctorMap = ResultEx.get CtorMapError.format (CtorMap.from [ tEvent ])
-
-// プロセスを宣言する。
-let procMap =
-    ResultEx.get
-        ProcMapError.format
-        (from
-            [ (("ParABC", []),
-               interleave
-                   (prefix (ctor "a" [] __LINE__) (skip __LINE__) __LINE__)
-                   (interleave
-                       (prefix (ctor "b" [] __LINE__) (skip __LINE__) __LINE__)
-                       (prefix (ctor "c" [] __LINE__) (skip __LINE__) __LINE__)
-                       __LINE__)
-                   __LINE__)
-              (("P", []),
-               seq (unwind "ParABC" [] __LINE__) (prefix (ctor "d" [] __LINE__) (skip __LINE__) __LINE__) __LINE__) ])
-
-// グローバルに参照できる定数を格納した環境を用意する。
-let genv = Env.empty
-
-// 各種設定をする。
-let procEvalCfg: ProcEvalConfig =
-    { EvalConfig = { UnivConfig = { NatMax = 3u; ListLenMax = 2u } } }
-
-let interpreterCfg: InterpreterConfig =
-    { TransConfig = { ProcEvalConfig = procEvalCfg }
-      ProcEvalConfig = procEvalCfg }
-
-// インタプリタを起動する。
-start interpreterCfg procMap ctorMap genv "ParABC" []
+(proc ParABC () (interleave (prefix A skip) (interleave (prefix B skip) (prefix C skip))))
+(proc P () (seq (unwind ParABC ()) (prefix D skip)))
 ```
 
 

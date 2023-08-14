@@ -9,6 +9,7 @@ type ExprSyntaxError =
     | TypeSyntaxError of TypeSyntaxError
     | MapperError of MapperError
     | TooFewTypeArguments of Sexp list
+    | UnexpectedIdentifier of string
     | ExpectedCtor
     | ExpectedExpr
 
@@ -19,5 +20,6 @@ let rec format (err: ExprSyntaxError) : string =
     | TooFewTypeArguments(ts) ->
         let s = ts |> Seq.map Sexp.format |> String.concat " " in $"too few type arguments: %s{s}"
     | MapperError(err) -> MapperError.format err
+    | UnexpectedIdentifier(s) -> $"identifier must start with ASCII letter: %s{s}"
     | ExpectedCtor -> "expected a constructor"
     | ExpectedExpr -> "expected an expression"

@@ -16,13 +16,13 @@ type TestCase =
       Line: LineNum }
 
 let testCases: obj[] list =
-    [ [| { Input = "(def P () stop)"
+    [ [| { Input = "(proc P () stop)"
            Expected = ProcDecl(("P", []), stop "1")
            Line = __LINE__ } |]
-      [| { Input = "(def P ((x nat)) stop)"
+      [| { Input = "(proc P ((x nat)) stop)"
            Expected = ProcDecl(("P", [ ("x", tNat) ]), stop "1")
            Line = __LINE__ } |]
-      [| { Input = "(def P ((x nat) (y nat)) stop)"
+      [| { Input = "(proc P ((x nat) (y nat)) stop)"
            Expected = ProcDecl(("P", [ ("x", tNat); ("y", tNat) ]), stop "1")
            Line = __LINE__ } |]
       [| { Input = "(type event A)"
@@ -52,7 +52,7 @@ let testCases: obj[] list =
       [| { Input = "(type ('0 '1) event (A '0) (B '1))"
            Expected = UnionDecl(([0u; 1u], "event"), [ ("A", [ tVar 0u ]); ("B", [ tVar 1u ]) ])
            Line = __LINE__ } |]
-      [| { Input = "(global x 0)"
+      [| { Input = "(const x 0)"
            Expected = GlobalVarDecl("x", litNat 0u "1")
            Line = __LINE__ } |]
        ]

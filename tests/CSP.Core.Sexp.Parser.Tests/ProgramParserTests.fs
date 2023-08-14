@@ -27,7 +27,7 @@ type TestCase =
 let testCases: obj[] list =
     [ [| { Input =
              """
-(def P () stop)
+(proc P () stop)
 """
            ExpectedProcMap = [ (("P", []), stop "2") ]
            ExpectedUnionMap = []
@@ -38,7 +38,7 @@ let testCases: obj[] list =
              """
 (type event A)
 
-(def P () (prefix A stop))
+(proc P () (prefix A stop))
 """
            ExpectedProcMap = [ (("P", []), (prefix (ctor "A" [] "4") (stop "4")) "4") ]
            ExpectedUnionMap = [ (([], "event"), [ ("A", []) ]) ]
@@ -47,9 +47,9 @@ let testCases: obj[] list =
            Line = __LINE__ } |]
       [| { Input =
              """
-(global x 0)
+(const x 0)
 
-(def P () (prefix x stop))
+(proc P () (prefix x stop))
 """
            ExpectedProcMap = [ (("P", []), (prefix (varRef "x" "4") (stop "4")) "4") ]
            ExpectedUnionMap = []

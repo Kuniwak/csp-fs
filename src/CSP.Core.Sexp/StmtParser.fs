@@ -49,7 +49,7 @@ let parse (sexp: Sexp) : Result<Stmt, StmtSyntaxError> =
     |> Result.bind (fun ss ->
         match ss with
         | [] -> Error(MapperError(MapperError.UnexpectedEmpty))
-        | Atom("def", line) :: ss ->
+        | Atom("proc", line) :: ss ->
             tryTernary ss
             |> Result.bind (ResultEx.bind3 tryAtom parseVarDecls parseProc)
             |> Result.map (fun (pn, varDecls, p) -> ProcDecl((pn, varDecls), p))
@@ -70,7 +70,7 @@ let parse (sexp: Sexp) : Result<Stmt, StmtSyntaxError> =
                         |> Result.map (fun (un, ctorDecls) -> (tVars, un, ctorDecls))))
             |> Result.map (fun (tVars, un, ctorDecls) -> UnionDecl((tVars, un), ctorDecls))
             |> Result.mapError (atLine line)
-        | Atom("global", line) :: ss ->
+        | Atom("const", line) :: ss ->
             tryBinary ss
             |> Result.bind (ResultEx.bind2 tryAtom parseExpr)
             |> Result.map GlobalVarDecl
