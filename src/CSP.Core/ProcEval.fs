@@ -12,7 +12,7 @@ open CSP.Core.Util
 
 type ProcEvalConfig = { EvalConfig: EvalConfig }
 
-let eval (cfg: ProcEvalConfig) (um: UnionMap) (cm: CtorMap) (env: Env) (p: Proc<unit>) : Result<State, ProcEvalError> =
+let eval (cfg: ProcEvalConfig) (um: UnionMap) (cm: CtorMap) (env: Env) (p: Proc<'a>) : Result<State, ProcEvalError> =
     let exprEval env expr =
         Result.mapError ExprError (eval cfg.EvalConfig um cm env expr)
 
@@ -31,7 +31,7 @@ let eval (cfg: ProcEvalConfig) (um: UnionMap) (cm: CtorMap) (env: Env) (p: Proc<
         | VUnion(ctor, vs) -> Ok(ctor, vs)
         | _ -> Error(ValNotUnion(v))
 
-    let rec eval env p =
+    let rec eval env (p: Proc<'a>) =
         match p with
         | Proc.Unwind(pn, exprs, _) ->
             exprs

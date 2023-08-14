@@ -38,11 +38,11 @@ let interpreterConfig natMax listLenMax =
 
 let start
     (cfg: InterpreterConfig)
-    (pm: ProcMap<unit>)
+    (pm: ProcMap<'a>)
     (um: UnionMap)
     (cm: CtorMap)
     (genv: Env)
-    (p: Proc<unit>)
+    (p: Proc<'a>)
     (stdin: TextReader)
     (stdout: TextWriter)
     =

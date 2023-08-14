@@ -89,9 +89,9 @@ and parse (sexp: Sexp) : Result<Proc<unit>, ProcSyntaxError> =
         |> Result.map (fun (p1, expr, p2) -> interfaceParallel p1 expr p2 line)
         |> Result.mapError (atLine line)
     | Sexps(Atom("interleave", line) :: ss, _) ->
-        tryBinary ss
-        |> Result.bind (ResultEx.bind2 parse parse)
-        |> Result.map (fun (p1, p2) -> interleave p1 p2 line)
+        tryBinaryOrMore ss
+        |> Result.bind (ResultEx.bind3 parse parse (ResultEx.bindAll parse))
+        |> Result.map (fun (p1, p2, ps) -> List.fold (fun pAcc p -> interleave p pAcc line) (interleave p2 p1 line) ps)
         |> Result.mapError (atLine line)
     | Sexps(Atom("hide", line) :: ss, _) ->
         tryBinary ss

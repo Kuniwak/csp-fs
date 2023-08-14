@@ -47,8 +47,3 @@ let resolve (s: State) (pm: ProcMap<TypeCstr>) : Result<ProcMap<TypeCstr>, TypeE
 
 let instantiate (pm: ProcMap<TypeCstr>) : ProcMap<Type> =
     map (ExprTypeInference.instantiate >> Expr.get) pm
-
-let postProcess (res: Result<ProcMap<TypeCstr> * State, TypeError>) : Result<ProcMap<Type> * State, TypeError> =
-    res
-    |> Result.bind (fun (pm, s) -> resolve s pm |> Result.map (fun p -> (p, s)))
-    |> Result.map (fun (p, s) -> (instantiate p, s))

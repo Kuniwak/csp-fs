@@ -3,6 +3,7 @@ module CSP.Core.Exe.Validate
 open System.IO
 open CSP.Core
 open CSP.Core.Eval
+open CSP.Core.Type
 open CSP.Core.UnionMap
 open CSP.Core.CtorMap
 open CSP.Core.ProcMap
@@ -14,9 +15,9 @@ open CSP.Core.Sexp.ProgramParser
 
 let validate
     (cfg: EvalConfig)
-    (r: TextReader)
+    (r: StreamReader)
     (p: string)
-    : Result<ProcMap<unit> * UnionMap * CtorMap * Env * Proc<unit>, string> =
+    : Result<ProcMap<Type> * UnionMap * CtorMap * Env * Proc<Type>, string> =
     let code = r.ReadToEnd() in
 
     parse code
@@ -30,4 +31,4 @@ let validate
             |> Result.bind (fun p ->
                 typeCheck um cm genv pm p
                 |> Result.mapError TypeError.format
-                |> Result.map (fun _ -> (pm, um, cm, genv, p)))))
+                |> Result.map (fun  (pm, p)  -> (pm, um, cm, genv, p)))))

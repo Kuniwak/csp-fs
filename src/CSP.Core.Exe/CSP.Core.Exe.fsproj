@@ -11,6 +11,7 @@
         <Compile Include="Validate.fs" />
         <Compile Include="Run.fs" />
         <Compile Include="Dot.fs" />
+        <Compile Include="TypeInfer.fs" />
         <Compile Include="Version.fs" />
         <Compile Include="Program.fs"/>
     </ItemGroup>

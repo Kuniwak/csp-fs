@@ -30,20 +30,40 @@ TBD
 
 ### インタプリタの利用
 
-```lisp
+次のようにモデル `ParABC.sexp` を定義します：
+
+``sexp
 (type event A B C D)
 
 (proc ParABC () 
     (interleave
         (prefix A skip)
-        (interleave
-            (prefix B skip)
-            (prefix C skip))))
+        (prefix B skip)
+        (prefix C skip)))
 (proc P ()
     (seq
-        (unwind ParABC ())
+        (unwind ParABC)
         (prefix D skip)))
 ```
+
+```console
+$ csp run ./examples/ParABC.sexp '(unwind P)'
+state: P
+  c 0: D -> SKIP
+
+> c0
+state: SKIP
+  c 0: ✓ -> Ω
+
+> c0
+state: Ω
+
+> q
+$ 
+```
+
+```console
+```}
 
 
 ### 状態遷移図の出力

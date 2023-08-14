@@ -398,7 +398,3 @@ let resolve (s: State) (expr: Expr<TypeCstr>) : Result<Expr<TypeCstr>, TypeError
     | None -> Ok(map (fun expr -> ResultEx.getValue format (get expr)) expr)
 
 let instantiate (expr: Expr<TypeCstr>) : Expr<Type> = map (get >> instantiate) expr
-
-let postProcess (res: Result<Expr<TypeCstr> * State, TypeError>) : Result<Expr<Type> * State, TypeError> =
-    res
-    |> Result.bind (fun (expr, s) -> resolve s expr |> Result.map (fun expr -> (instantiate expr, s)))

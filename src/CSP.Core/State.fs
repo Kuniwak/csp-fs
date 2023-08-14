@@ -7,15 +7,15 @@ open CSP.Core.Util
 open CSP.Core.Val
 open CSP.Core.Var
 
-type State =
+type State<'a> =
     | Unwind of ProcId * Val list
     | Stop
     | Skip
-    | Prefix of Val * State
-    | PrefixRecv of Set<Val> * Env * Var * Proc<unit>
-    | IntCh of State * State
-    | ExtCh of State * State
-    | Seq of State * State
+    | Prefix of Val * State<'a>
+    | PrefixRecv of Set<Val> * Env * Var * Proc<'a>
+    | IntCh of State<'a> * State<'a>
+    | ExtCh of State<'a> * State<'a>
+    | Seq of State * State<'a>
     | InterfaceParallel of State * Set<Val> * State
     | Hide of State * Set<Val>
     | Omega

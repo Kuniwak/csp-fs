@@ -177,8 +177,3 @@ let resolve (s: State) (p: Proc<TypeCstr>) : Result<Proc<TypeCstr>, TypeError> =
 
 let instantiate (p: Proc<TypeCstr>) : Proc<Type> =
     Proc.map (Expr.get >> TypeCstrInstantiation.instantiate) p
-
-let postProcess (res: Result<Proc<TypeCstr> * State, TypeError>) : Result<Proc<Type> * State, TypeError> =
-    res
-    |> Result.bind (fun (p, s) -> resolve s p |> Result.map (fun p -> (p, s)))
-    |> Result.map (fun (p, s) -> (instantiate p, s))
