@@ -81,7 +81,7 @@ let dotCLI (stdout: TextWriter) (stderr: TextWriter) (args: string list) : int =
     parseOpts args
     |> Result.bind (fun opts ->
         match opts with
-        | HelpNeeded -> Error("help needed")
+        | HelpNeeded -> Error($"help needed\n\n%s{usage}")
         | Opts(natMax, listMax, nodeMax, args) ->
             let univCfg: UnivConfig =
                 { NatMax = natMax
@@ -101,14 +101,14 @@ let dotCLI (stdout: TextWriter) (stderr: TextWriter) (args: string list) : int =
                   EvalConfig = evalCfg }
 
             if List.length args < 2 then
-                let s = args |> String.concat ", " in Error($"too few arguments: [%s{s}]")
+                let s = args |> String.concat ", " in Error($"too few arguments: [%s{s}]\n\n%s{usage}")
             else if List.length args > 2 then
-                let s = args |> String.concat ", " in Error($"too much arguments: [%s{s}]")
+                let s = args |> String.concat ", " in Error($"too much arguments: [%s{s}]\n\n%s{usage}")
             else
                 match args with
                 | file :: [ p ] -> use r = new StreamReader(file) in dot r cfg p stdout
                 | _ -> failwith "unreachable")
     |> Result.map (fun _ -> 0)
     |> Result.defaultWith (fun err ->
-        stderr.WriteLine($"error: %s{err}\n\n%s{usage}")
+        stderr.WriteLine($"error: %s{err}")
         1)

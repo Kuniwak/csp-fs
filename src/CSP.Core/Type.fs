@@ -25,13 +25,16 @@ let format (t: Type) : string =
         | TVar n -> $"'t%d{n}"
         | TNat _ -> "nat"
         | TBool _ -> "bool"
-        | TTuple(tL, tR) -> $"(%s{format tL}, %s{format tR})"
-        | TSet(t) -> $"(%s{format t} set)"
-        | TList(t) -> $"(%s{format t} list)"
-        | TMap(tk, tv) -> $"((%s{format tk}, %s{format tv}) map)"
+        | TTuple(tL, tR) -> $"(tuple %s{format tL} %s{format tR})"
+        | TSet(t) -> $"(set %s{format t})"
+        | TList(t) -> $"(list %s{format t})"
+        | TMap(tk, tv) -> $"(map %s{format tk} %s{format tv})"
         | TUnion(n, ts) ->
-            let s = ts |> Seq.map format |> String.concat " "
-            $"(%s{n} %s{s})"
+            if List.length ts = 0 then
+                $"%s{n}"
+            else
+                let s = ts |> Seq.map format |> String.concat " "
+                $"(%s{n} %s{s})"
 
     format t
 

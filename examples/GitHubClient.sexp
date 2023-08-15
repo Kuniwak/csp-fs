@@ -32,9 +32,9 @@
 
 
 (const patRel (add Pat1 User1 (empty (map pat user))))
-(const page1 (cons repo1 (cons repo2 (empty (list repo)))))
-(const page2 (cons repo3 (empty list repo)))
-(const noPage (empty list repo))
+(const page1 (cons Repo1 (cons Repo2 (empty (list repo)))))
+(const page2 (cons Repo3 (empty (list repo))))
+(const noPage (empty (list repo)))
 
 
 (proc GHAuth ()
@@ -44,10 +44,10 @@
   (in (unwind GHAuthWillFail) (unwind GHAuthWillResp p)))
 
 (proc GHAuthWillFail ()
-  (prefix ChAuthResError (unwind GHAuth))
+  (prefix ChAuthResError (unwind GHAuth)))
 
 (proc GHAuthWillResp ((p pat))
-  (prefix (ChAuthResOk (findOpt p patRel)) (unwind GHAuth))
+  (prefix (ChAuthResOk (findOpt p patRel)) (unwind GHAuth)))
 
 (proc GHSearch ()
   (prefixRecv (univ chSearchReq) ch (match ch (ChSearchReq q i (unwind GHSearchRecv q i)))))
@@ -62,10 +62,10 @@
   (prefix
     (match q
       (Query1 
-        match i
+       (match i
         (Page1 (ChSearchResOk page1 true))
         (Page2 (ChSearchResOk page2 false))
-        (Page3 (ChSearchResOk noPage false)))
+        (Page3 (ChSearchResOk noPage false))))
       (Query2 (ChSearchResOk noPage false))
       (QueryEmpty (ChSearchResOk noPage false)))
     (unwind GHSearch)))

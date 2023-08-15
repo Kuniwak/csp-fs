@@ -19,11 +19,15 @@ type TypeCstr =
 let rec format (tc: TypeCstr) : string =
     match tc with
     | TCUncertain(UncertainVarId id) -> $"?t%d{id}"
-    | TCUnit -> "()"
+    | TCUnit -> "unit"
     | TCNat -> "nat"
     | TCBool -> "bool"
-    | TCTuple(tcL, tcR) -> $"(%s{format tcL}, %s{format tcR})"
-    | TCSet tc -> $"(%s{format tc} set)"
-    | TCList tc -> $"(%s{format tc} list)"
-    | TCMap(tcK, tcV) -> $"((%s{format tcK}, %s{format tcV}) map)"
-    | TCUnion(un, ts) -> let s = ts |> Seq.map format |> String.concat ", " in $"(%s{un} %s{s})"
+    | TCTuple(tcL, tcR) -> $"(tuple %s{format tcL} %s{format tcR})"
+    | TCSet tc -> $"(set %s{format tc})"
+    | TCList tc -> $"(list %s{format tc})"
+    | TCMap(tcK, tcV) -> $"(map %s{format tcK} %s{format tcV})"
+    | TCUnion(un, ts) ->
+        if List.length ts = 0 then
+            un
+        else
+            let s = ts |> Seq.map format |> String.concat " " in $"(%s{un} %s{s})"
