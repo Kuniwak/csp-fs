@@ -288,7 +288,7 @@ let eval (cfg: EvalConfig) (um: UnionMap) (cm: CtorMap) (env: Env) (expr: Expr<'
             |> Result.mapError (atLine line)
         | Contains(t, exprElem, exprList, _, line) ->
             if ClassEnum.derivedBy t then
-                (exprList, exprElem)
+                (exprElem, exprList)
                 |> ResultEx.bind2 (eval env) (eval env)
                 |> Result.map (fun (v1, v2) ->
                     match v2 with

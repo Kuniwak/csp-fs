@@ -30,7 +30,7 @@ type TypeError =
     | ArgumentsLengthMismatch of ProcId * (Var * Type) list * Expr<unit> list
     | TypeArgumentsLengthMismatch of Set<TypeCstr list>
 
-let atLine (line: LineNum) (err: TypeError) : TypeError = At(err, $"line %s{line}")
+let atLine (syntax: string) (line: LineNum) (err: TypeError) : TypeError = At(err, $"%s{syntax} line %s{line}")
 
 let rec unwrapTypeError (terr: TypeError) : TypeError =
     match terr with

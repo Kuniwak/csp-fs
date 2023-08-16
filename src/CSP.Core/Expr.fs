@@ -62,11 +62,11 @@ let format (fmt: string -> 'a -> string) (expr: Expr<'a>) : string =
         let indent3 = indent + 3u in
 
         match expr with
-        | LitUnit(x, _) -> fmt "()" x
+        | LitUnit(x, _) -> fmt "unit" x
         | LitTrue(x, _) -> fmt "true" x
         | LitFalse(x, _) -> fmt "false" x
         | LitNat(n, x, _) -> fmt $"%d{n}" x
-        | LitEmpty(t, x, _) -> fmt $"%s{Type.format t}.empty" x
+        | LitEmpty(t, x, _) -> fmt $"(empty %s{Type.format t})" x
         | Union(ctor, exprs, x, _) ->
             match List.length exprs with
             | 0 -> fmt (Ctor.format ctor) x

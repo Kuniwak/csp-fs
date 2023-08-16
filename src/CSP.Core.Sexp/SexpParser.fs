@@ -60,7 +60,7 @@ let skipTrivia (line: uint) (str: char list) : char list * uint =
             if inComment then
                 (true, c <> '\n')
             else
-                let isCommentStart = c = '"' in (isWS c || isCommentStart, isCommentStart))
+                let isCommentStart = c = ';' in (isWS c || isCommentStart, isCommentStart))
         false
         str
 

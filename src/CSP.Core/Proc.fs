@@ -48,27 +48,33 @@ let format (annotation: string -> 'a -> string) (p0: Proc<'a>) : string =
     let rec format p =
         match p with
         | Unwind(n, exprs, _) ->
-            let s = String.concat "" (List.map (fun expr -> $" %s{formatExpr expr}") exprs)
-            $"(%s{n}%s{s})"
-        | Stop _ -> "STOP"
-        | Skip _ -> "SKIP"
-        | Prefix(expr, p', _) -> $"({formatExpr expr} -> {format p'})"
-        | PrefixRecv(expr, var, p', _) -> $"({formatExpr expr}?{var} -> {format p'})"
-        | IntCh(p1, p2, _) -> $"({format p1} ⨅ {format p2})"
-        | ExtCh(p1, p2, _) -> $"({format p1} □ {format p2})"
-        | Seq(p1, p2, _) -> $"({format p1} ; {format p2})"
-        | If(expr, p1, p2, _) -> $"(if {formatExpr expr} then {format p1} else {format p2})"
+            if List.length exprs = 0 then
+                $"(unwind %s{n})"
+            else
+                let s = exprs |> Seq.map formatExpr |> String.concat " "
+                $"(unwind %s{n} %s{s})"
+        | Stop _ -> "stop"
+        | Skip _ -> "skip"
+        | Prefix(expr, p', _) -> $"(prefix %s{formatExpr expr} %s{format p'})"
+        | PrefixRecv(expr, var, p', _) -> $"(prefixRecv %s{formatExpr expr} %s{Var.format var} %s{format p'})"
+        | IntCh(p1, p2, _) -> $"(in %s{format p1} %s{format p2})"
+        | ExtCh(p1, p2, _) -> $"(ex %s{format p1} %s{format p2})"
+        | Seq(p1, p2, _) -> $"(seq %s{format p1} %s{format p2})"
+        | If(expr, p1, p2, _) -> $"(if %s{formatExpr expr} %s{format p1} %s{format p2})"
         | Match(expr, cs, _) ->
-            let sep = " | " in
+            let s =
+                cs
+                |> Map.toSeq
+                |> Seq.map (fun (ctorOpt, (varsOpt, p')) ->
+                    let s = varsOpt |> Seq.map Var.formatOpt |> String.concat " " in
+                    $"(%s{formatOpt ctorOpt} %s{s} %s{format p'})")
+                |> String.concat " "
 
-            let cs' =
-                List.map (fun (ctorOpt, (varOpts, p')) -> $"{ctorOpt} {varOpts} -> {format p'}") (Map.toList cs)
-
-            $"(match {formatExpr expr} with {String.concat sep cs'})"
-        | InterfaceParallel(p1, expr, p2, _) -> $"({format p1} ⟦{formatExpr expr}⟧ {format p2})"
-        | Interleave(p1, p2, _) -> $"({format p1} ||| {format p2})"
-        | Hide(p, expr, _) -> $"({format p} \\\\ {formatExpr expr})"
-        | Guard(e, p, _) -> $"({formatExpr e}&{format p})"
+            $"(match %s{formatExpr expr} %s{s})"
+        | InterfaceParallel(p1, expr, p2, _) -> $"(para %s{format p1} %s{formatExpr expr} %s{format p2})"
+        | Interleave(p1, p2, _) -> $"(interleave %s{format p1} %s{format p2})"
+        | Hide(p, expr, _) -> $"(hide %s{format p} %s{formatExpr expr})"
+        | Guard(e, p, _) -> $"(guard %s{formatExpr e} %s{format p})"
 
     format p0
 

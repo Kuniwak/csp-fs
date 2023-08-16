@@ -34,7 +34,7 @@ let infer
                 let tc, s, _ = generalize t s Map.empty in Ok(LitEmpty(t, tc, line), s)
             else
                 let tc, _, _ = generalize t s Map.empty in Error(TypeNotDerived(tc, ClassEmpty.name))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "empty" line)
         | Union(ctor, exprs, _, line) ->
             List.foldBack
                 (fun expr accRes ->
@@ -45,7 +45,7 @@ let infer
             |> Result.bind (fun (exprs, s) ->
                 generalizeUnion um cm ctor (List.map get exprs) s
                 |> Result.map (fun (tc, s) -> (Union(ctor, exprs, tc, line), s)))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "ctor" line)
         | If(exprCond, exprThen, exprElse, _, line) ->
             infer s tcenv exprCond
             |> Result.bind (fun (exprCond, s) ->
@@ -57,7 +57,7 @@ let infer
                         |> Result.bind (fun (exprElse, s) ->
                             unify s (get exprThen) (get exprElse)
                             |> Result.map (fun (t, s) -> (If(exprCond, exprThen, exprElse, t, line), s))))))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "if" line)
         | Match(exprUnion, exprMap, _, line) ->
             exhaustivenessCheck um cm exprMap
             |> Result.bind (fun (un, tVars, tsm) ->
@@ -113,12 +113,12 @@ let infer
                                                 (tc, Map.add ctorOpt (varOpts, expr) exprMap, s)))))
                                 (Ok(TCUncertain u, Map.empty, s)))
                         |> Result.map (fun (tc, exprMap, s) -> (Match(exprUnion, exprMap, tc, line), s)))))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "match" line)
         | VarRef(var, _, line) ->
             TypeCstrEnv.tryFind var tcenv
             |> Result.mapError TypeEnvError
             |> Result.map (fun tc -> (VarRef(var, tc, line), s))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "varRef" line)
         | Eq(t, expr1, expr2, _, line) ->
             if ClassEq.derivedBy um t then
                 infer s tcenv expr1
@@ -133,13 +133,13 @@ let infer
                             |> Result.map (fun (_, s) -> (Eq(t, expr1, expr2, TCBool, line), s)))))
             else
                 let tc, _, _ = generalize t s Map.empty in Error(TypeNotDerived(tc, ClassEq.name))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "eq" line)
         | BoolNot(expr, _, line) ->
             infer s tcenv expr
             |> Result.bind (fun (expr, s) ->
                 unify s (get expr) TCBool
                 |> Result.map (fun (t, s) -> (BoolNot(expr, t, line), s)))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "not" line)
         | Less(t, expr1, expr2, _, line) ->
             if ClassOrd.derivedBy t then
                 infer s tcenv expr1
@@ -154,7 +154,7 @@ let infer
                             |> Result.map (fun (_, s) -> (Less(t, expr1, expr2, TCBool, line), s)))))
             else
                 let tc, _, _ = generalize t s Map.empty in Error(TypeNotDerived(tc, ClassOrd.name))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "less" line)
         | Plus(t, expr1, expr2, _, line) ->
             if ClassPlus.derivedBy t then
                 infer s tcenv expr1
@@ -169,7 +169,7 @@ let infer
                             |> Result.map (fun (tcPlus, s) -> (Plus(t, expr1, expr2, tcPlus, line), s)))))
             else
                 let t, _, _ = generalize t s Map.empty in Error(TypeNotDerived(t, ClassPlus.name))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "plus" line)
         | Minus(t, expr1, expr2, _, line) ->
             if ClassMinus.derivedBy t then
                 infer s tcenv expr1
@@ -184,7 +184,7 @@ let infer
                             |> Result.map (fun (tcMinus, s) -> (Minus(t, expr1, expr2, tcMinus, line), s)))))
             else
                 let t, _, _ = generalize t s Map.empty in Error(TypeNotDerived(t, ClassMinus.name))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "minus" line)
         | Times(t, expr1, expr2, _, line) ->
             if ClassTimes.derivedBy t then
                 infer s tcenv expr1
@@ -199,7 +199,7 @@ let infer
                             |> Result.map (fun (tcTimes, s) -> (Times(t, expr1, expr2, tcTimes, line), s)))))
             else
                 let t, _, _ = generalize t s Map.empty in Error(TypeNotDerived(t, ClassTimes.name))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "times" line)
         | Size(t, expr, _, line) ->
             if ClassSize.derivedBy t then
                 infer s tcenv expr
@@ -210,7 +210,7 @@ let infer
                     |> Result.map (fun (_, s) -> (Size(t, expr, TCNat, line), s)))
             else
                 let t, _, _ = generalize t s Map.empty in Error(TypeNotDerived(t, ClassSize.name))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "size" line)
         | Filter(t, var, expr1, expr2, _, line) ->
             if ClassEnum.derivedBy t then
                 let tc, s, _ = generalize t s Map.empty
@@ -234,8 +234,8 @@ let infer
                             unify s (get expr2) tc
                             |> Result.map (fun (tcFilter, s) -> (Filter(t, var, expr1, expr2, tcFilter, line), s)))))
             else
-                let t, _, _ = generalize t s Map.empty in Error(atLine line (TypeNotDerived(t, ClassEnum.name)))
-            |> Result.mapError (atLine line)
+                let t, _, _ = generalize t s Map.empty in Error(TypeNotDerived(t, ClassEnum.name))
+            |> Result.mapError (atLine "filter" line)
         | Exists(t, var, expr1, expr2, _, line) ->
             if ClassEnum.derivedBy t then
                 let tc, s, _ = generalize t s Map.empty
@@ -259,8 +259,8 @@ let infer
                             unify s (get expr2) tc
                             |> Result.map (fun (_, s) -> (Exists(t, var, expr1, expr2, TCBool, line), s)))))
             else
-                let t, _, _ = generalize t s Map.empty in Error(atLine line (TypeNotDerived(t, ClassEnum.name)))
-            |> Result.mapError (atLine line)
+                let t, _, _ = generalize t s Map.empty in Error(TypeNotDerived(t, ClassEnum.name))
+            |> Result.mapError (atLine "exists" line)
         | Contains(t, exprElem, exprList, _, line) ->
             if ClassEnum.derivedBy t then
                 let tc, s, _ = generalize t s Map.empty
@@ -282,14 +282,14 @@ let infer
                             unify s (get exprList) tc
                             |> Result.map (fun (_, s) -> Contains(t, exprElem, exprList, TCBool, line), s))))
             else
-                let t, _, _ = generalize t s Map.empty in Error(atLine line (TypeNotDerived(t, ClassEnum.name)))
-            |> Result.mapError (atLine line)
+                let t, _, _ = generalize t s Map.empty in Error(TypeNotDerived(t, ClassEnum.name))
+            |> Result.mapError (atLine "contains" line)
         | Tuple(expr1, expr2, _, line) ->
             infer s tcenv expr1
             |> Result.bind (fun (expr1, s) ->
                 infer s tcenv expr2
                 |> Result.map (fun (expr2, s) -> (Tuple(expr1, expr2, TCTuple(get expr1, get expr2), line), s)))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "tuple" line)
         | TupleFst(exprTuple, _, line) ->
             infer s tcenv exprTuple
             |> Result.bind (fun (exprTuple, s) ->
@@ -301,7 +301,7 @@ let infer
                     match tc with
                     | TCTuple(tcL, _) -> (TupleFst(exprTuple, tcL, line), s)
                     | _ -> failwith $"unification between TTuple and any must return TTuple, but come: %A{tc}"))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "fst" line)
         | TupleSnd(exprTuple, _, line) ->
             infer s tcenv exprTuple
             |> Result.bind (fun (exprTuple, s) ->
@@ -313,7 +313,7 @@ let infer
                     match tc with
                     | TCTuple(_, tcR) -> (TupleSnd(exprTuple, tcR, line), s)
                     | _ -> failwith $"unification between TTuple and any must return TTuple, but come: %A{tc}"))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "snd" line)
         | ListCons(exprElem, exprList, _, line) ->
             infer s tcenv exprElem
             |> Result.bind (fun (exprElem, s) ->
@@ -321,7 +321,7 @@ let infer
                 |> Result.bind (fun (exprList, s) ->
                     unify s (get exprList) (TCList(get exprElem))
                     |> Result.map (fun (tcList, s) -> (ListCons(exprElem, exprList, tcList, line), s))))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "cons" line)
         | ListNth(exprList, exprIdx, _, line) ->
             infer s tcenv exprList
             |> Result.bind (fun (exprList, s) ->
@@ -336,7 +336,7 @@ let infer
                             unify s (get exprIdx) TCNat
                             |> Result.map (fun (_, s) -> (ListNth(exprList, exprIdx, tcElem, line), s)))
                     | _ -> failwith $"unification between TList and any must return TList, but come: %A{tc}"))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "nth" line)
         | SetRange(exprLower, exprUpper, _, line) ->
             infer s tcenv exprLower
             |> Result.bind (fun (exprLower, s) ->
@@ -346,7 +346,7 @@ let infer
                     |> Result.bind (fun (exprUpper, s) ->
                         unify s (get exprUpper) TCNat
                         |> Result.bind (fun (_, s) -> Ok(ListNth(exprLower, exprUpper, TCSet(TCNat), line), s)))))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "range" line)
         | SetInsert(exprElem, exprSet, _, line) ->
             infer s tcenv exprElem
             |> Result.bind (fun (exprElem, s) ->
@@ -354,7 +354,7 @@ let infer
                 |> Result.bind (fun (exprSet, s) ->
                     unify s (get exprSet) (TCSet(get exprElem))
                     |> Result.map (fun (tcSet, s) -> (SetInsert(exprElem, exprSet, tcSet, line), s))))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "insert" line)
         | SetRemove(exprElem, exprSet, _, line) ->
             infer s tcenv exprElem
             |> Result.bind (fun (exprElem, s) ->
@@ -362,7 +362,7 @@ let infer
                 |> Result.bind (fun (exprSet, s) ->
                     unify s (get exprSet) (TCSet(get exprElem))
                     |> Result.map (fun (tcSet, s) -> (SetInsert(exprElem, exprSet, tcSet, line), s))))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "remove" line)
         | MapAdd(exprKey, exprVal, exprMap, _, line) ->
             infer s tcenv exprKey
             |> Result.bind (fun (exprKey, s) ->
@@ -372,7 +372,7 @@ let infer
                     |> Result.bind (fun (exprMap, s) ->
                         unify s (get exprMap) (TCMap(get exprKey, get exprVal))
                         |> Result.map (fun (tcMap, s) -> (MapAdd(exprKey, exprVal, exprMap, tcMap, line), s)))))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "add" line)
         | MapFindOpt(exprKey, exprMap, _, line) ->
             infer s tcenv exprKey
             |> Result.bind (fun (exprKey, s) ->
@@ -385,7 +385,7 @@ let infer
                         match tc with
                         | TCMap(_, tcVal) -> (MapFindOpt(exprKey, exprMap, TCUnion("option", [ tcVal ]), line), s)
                         | _ -> failwith $"unification between TMap and any must return TMap, but come: %A{tc}")))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "findOpt" line)
         | Univ(t, _, line) -> let tc, s, _ = generalize t s Map.empty in Ok(Univ(t, TCSet tc, line), s)
 
     infer s0 tcenv expr

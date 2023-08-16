@@ -49,14 +49,14 @@ let infer
                 else
                     Error(ArgumentsLengthMismatch(pn, vars, exprs)))
             |> Option.defaultValue (Error(NoSuchProcess(pn)))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "unwind" line)
         | Stop(line) -> Ok(Stop(line), s)
         | Skip(line) -> Ok(Skip(line), s)
         | Prefix(expr, p, line) ->
             exprInfer tcenv expr s
             |> Result.bind (fun (expr, s) ->
                 procInfer tcenv p s |> Result.map (fun (p, s) -> (Prefix(expr, p, line), s)))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "prefix" line)
         | PrefixRecv(exprSet, var, p, line) ->
             exprInfer tcenv exprSet s
             |> Result.bind (fun (exprSet, s) ->
@@ -71,26 +71,26 @@ let infer
                         procInfer tcenv p s
                         |> Result.map (fun (p, s) -> (PrefixRecv(exprSet, var, p, line), s))
                     | _ -> failwith $"unification between TSet and any must return TSet, but come: %A{tcSet}"))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "prefixRecv" line)
         | IntCh(p1, p2, line) ->
             procInfer tcenv p1 s
             |> Result.bind (fun (p1, s) -> procInfer tcenv p2 s |> Result.map (fun (p2, s) -> (IntCh(p1, p2, line), s)))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "intCh" line)
         | ExtCh(p1, p2, line) ->
             procInfer tcenv p1 s
             |> Result.bind (fun (p1, s) -> procInfer tcenv p2 s |> Result.map (fun (p2, s) -> (ExtCh(p1, p2, line), s)))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "extCh" line)
         | Seq(p1, p2, line) ->
             procInfer tcenv p1 s
             |> Result.bind (fun (p1, s) -> procInfer tcenv p2 s |> Result.map (fun (p2, s) -> (Seq(p1, p2, line), s)))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "seq" line)
         | If(expr, p1, p2, line) ->
             exprInfer tcenv expr s
             |> Result.bind (fun (expr, s) ->
                 procInfer tcenv p1 s
                 |> Result.bind (fun (p1, s) ->
                     procInfer tcenv p2 s |> Result.map (fun (p2, s) -> (If(expr, p1, p2, line), s))))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "if" line)
         | Match(exprUnion, procMap, line) ->
             exhaustivenessCheck um cm procMap
             |> Result.bind (fun (un, tVars, tsm) ->
@@ -141,7 +141,7 @@ let infer
                                         |> Result.map (fun (p, s) -> (Map.add ctorOpt (varOpts, p) procMap, s))))
                                 (Ok(Map.empty, s)))
                         |> Result.map (fun (procMap, s) -> (Match(exprUnion, procMap, line), s)))))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "match" line)
         | InterfaceParallel(p1, expr, p2, line) ->
             exprInfer tcenv expr s
             |> Result.bind (fun (expr, s) ->
@@ -149,22 +149,22 @@ let infer
                 |> Result.bind (fun (p1, s) ->
                     procInfer tcenv p2 s
                     |> Result.map (fun (p2, s) -> (InterfaceParallel(p1, expr, p2, line), s))))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "interfaceParallel" line)
         | Interleave(p1, p2, line) ->
             procInfer tcenv p1 s
             |> Result.bind (fun (p1, s) ->
                 procInfer tcenv p2 s
                 |> Result.map (fun (p2, s) -> (Interleave(p1, p2, line), s)))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "interleave" line)
         | Hide(p, expr, line) ->
             exprInfer tcenv expr s
             |> Result.bind (fun (expr, s) -> procInfer tcenv p s |> Result.map (fun (p, s) -> Hide(p, expr, line), s))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "hide" line)
         | Guard(expr, p, line) ->
             exprInfer tcenv expr s
             |> Result.bind (fun (expr, s) ->
                 procInfer tcenv p s |> Result.map (fun (p, s) -> (Guard(expr, p, line), s)))
-            |> Result.mapError (atLine line)
+            |> Result.mapError (atLine "guard" line)
 
     procInfer tcenv p s
 

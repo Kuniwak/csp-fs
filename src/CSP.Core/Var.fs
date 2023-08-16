@@ -7,6 +7,6 @@ let format (var: Var) : string =
     | Var var -> var
 
 let formatOpt (varOpt: Var option) : string =
-    match varOpt with
-    | Some(var) -> format var
-    | None -> "_"
+    varOpt
+    |> Option.map format
+    |> Option.defaultValue "_"

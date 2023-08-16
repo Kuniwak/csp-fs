@@ -45,22 +45,31 @@ let testCasesOk: obj[] list =
            Line = __LINE__ } |]
       [| { Input =
              """
-" comment
+; comment
 (0 1 2)
 """
            Expected = Sexps([ Atom("0", "3"); Atom("1", "3"); Atom("2", "3") ], "3")
            Line = __LINE__ } |]
       [| { Input =
              """
-(0 1 2) " comment
+(0 1 2) ; comment
 """
            Expected = Sexps([ Atom("0", "2"); Atom("1", "2"); Atom("2", "2") ], "2")
            Line = __LINE__ } |]
       [| { Input =
              """
-(0 1 2) " ()comment
+(0 1 2) ; ()comment
 """
            Expected = Sexps([ Atom("0", "2"); Atom("1", "2"); Atom("2", "2") ], "2")
+           Line = __LINE__ } |]
+      [| { Input =
+             """
+(0
+    ; comment
+    1
+    2)
+"""
+           Expected = Sexps([ Atom("0", "2"); Atom("1", "4"); Atom("2", "5") ], "5")
            Line = __LINE__ } |]
       
        ]
