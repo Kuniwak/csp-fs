@@ -100,13 +100,13 @@ File ← Trivia? (List / Atom)
 
 Program must have the following data at the top level:
 
-| Data                                 | Description                                                          |
-|:-------------------------------------|:---------------------------------------------------------------------|
-| `(proc <procName> (<var>*) <proc>)`  | Process declaration                                                  |
-| `(type <typeName> (<ctor> <type>)+)` | [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) declaration |
-| `(const <varName> <expr>)`           | Constant declaration                                                 |
+| Data                                 | Description                                                                                         |
+|:-------------------------------------|:----------------------------------------------------------------------------------------------------|
+| `(proc <procName> (<var>*) <proc>)`  | Process declaration                                                                                 |
+| `(type <typeName> (<ctor> <type>)+)` | [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) declaration (recursion is not allowed yet) |
+| `(const <varName> <expr>)`           | Constant declaration                                                                                |
 
-At least one process declaration needed.
+At least one process declaration is needed.
 
 
 
@@ -193,6 +193,18 @@ At least one process declaration needed.
 ### Data constructors
 
 `<ctor>` is `[A-Z][^ \t\r\n()]*`.
+
+
+
+### Variable
+
+`<var>` is `[a-z][^ \t\r\n()]*`.
+
+
+
+### TODOs
+
+* Refinement checking
 
 
 
