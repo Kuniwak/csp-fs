@@ -7,9 +7,9 @@ let name: TypeClassName = "Plus"
 
 let rec derivedBy (t: Type) : bool =
     match t with
-    | TUnit _ -> true
+    | TUnit -> true
     | TTuple(tL, tR) -> derivedBy tL && derivedBy tR
-    | TNat _ -> true
+    | TNat -> true
     | TSet _ -> true
     | _ -> false
 

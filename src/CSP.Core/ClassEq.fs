@@ -9,9 +9,9 @@ let name: TypeClassName = "Eq"
 let derivedBy (um: UnionMap) (t: Type) : bool =
     let rec derivedBy t =
         match t with
-        | TUnit _ -> true
-        | TNat _ -> true
-        | TBool _ -> true
+        | TUnit -> true
+        | TNat -> true
+        | TBool -> true
         | TTuple(tL, tR) -> derivedBy tL && derivedBy tR
         | TSet(t) -> derivedBy t
         | TList(t) -> derivedBy t

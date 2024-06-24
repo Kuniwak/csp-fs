@@ -7,8 +7,8 @@ let name: TypeClassName = "Ord"
 
 let rec derivedBy (t: Type) : bool =
     match t with
-    | TUnit _ -> true
-    | TNat _ -> true
+    | TUnit -> true
+    | TNat -> true
     | TTuple(tL, tR) -> derivedBy tL && derivedBy tR
     | TSet _ -> true
     | _ -> false

@@ -11,15 +11,15 @@ open CSP.Core.UnionMap
 
 let rec generalize (t: Type) (s: State) m : TypeCstr * State * Map<TVarId, UncertainVarId> =
     match t with
-    | TUnit _ -> (TCUnit, s, m)
+    | TUnit -> (TCUnit, s, m)
     | TVar(n) ->
         match Map.tryFind n m with
         | Some n' -> (TCUncertain n', s, m)
         | None ->
             let n', s = newUncertainVarId s
             (TCUncertain n', s, Map.add n n' m)
-    | TBool _ -> (TCBool, s, m)
-    | TNat _ -> (TCNat, s, m)
+    | TBool -> (TCBool, s, m)
+    | TNat -> (TCNat, s, m)
     | TTuple(tL, tR) ->
         let tcL, s, m = generalize tL s m in
         let tcR, s, m = generalize tR s m in

@@ -9,9 +9,9 @@ let typeCheck (um: UnionMap) (cm: CtorMap) (t: Type) (v: Val) : bool =
     let rec typeCheck t v =
         match t, v with
         | TVar _, _ -> true
-        | TUnit _, VUnit -> true
-        | TNat _, VNat _ -> true
-        | TBool _, VBool _ -> true
+        | TUnit, VUnit -> true
+        | TNat, VNat _ -> true
+        | TBool, VBool _ -> true
         | TTuple(tL, tR), VTuple(vL, vR) -> typeCheck tL vL && typeCheck tR vR
         | TSet(tElem), VSet s -> Set.forall (typeCheck tElem) s
         | TList(tElem), VList vs -> List.forall (typeCheck tElem) vs

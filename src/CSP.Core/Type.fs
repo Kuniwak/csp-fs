@@ -23,8 +23,8 @@ let format (t: Type) : string =
         match t with
         | TUnit -> "unit"
         | TVar n -> $"'t%d{n}"
-        | TNat _ -> "nat"
-        | TBool _ -> "bool"
+        | TNat -> "nat"
+        | TBool -> "bool"
         | TTuple(tL, tR) -> $"(tuple %s{format tL} %s{format tR})"
         | TSet(t) -> $"(set %s{format t})"
         | TList(t) -> $"(list %s{format t})"

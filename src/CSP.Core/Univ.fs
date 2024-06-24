@@ -16,10 +16,10 @@ let univConfig natMax listLenMax : UnivConfig =
 let univ (cfg: UnivConfig) (um: UnionMap) (t: Type) : Result<Val list, UnivError> =
     let rec univ t =
         match t with
-        | TUnit _ -> Ok([ VUnit ])
+        | TUnit -> Ok([ VUnit ])
         | TVar _ -> Error(UnivTVarIsNotAllowed)
-        | TNat _ -> Ok(List.map VNat (Range.ofList 0u cfg.NatMax))
-        | TBool _ -> Ok([ VBool false; VBool true ])
+        | TNat -> Ok(List.map VNat (Range.ofList 0u cfg.NatMax))
+        | TBool -> Ok([ VBool false; VBool true ])
         | TTuple(tL, tR) ->
             tL
             |> univ
