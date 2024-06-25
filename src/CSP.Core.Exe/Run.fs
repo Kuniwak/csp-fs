@@ -70,7 +70,10 @@ let runCLI (stdin: TextReader) (stdout: TextWriter) (stderr: TextWriter) (args: 
             let evalCfg =
                 { UnivConfig =
                     { NatMax = natMax
-                      ListLenMax = listMax } }
+                      ListLenMax = listMax }
+                  PlusConfig =
+                      { NatMax = natMax
+                        ListLenMax = listMax }}
 
             let procEvalCfg = { EvalConfig = evalCfg }
 

@@ -12,10 +12,11 @@ open CSP.Model.Examples
 open Xunit
 
 let univCfg: UnivConfig = { NatMax = 2u; ListLenMax = 2u }
+let plusCfg: ClassPlus.PlusConfig = { NatMax = 2u; ListLenMax = 2u }
 
 let cfg: NamedSpaceConfig =
     { UnivConfig = univCfg
-      ProcEvalConfig = { EvalConfig = { UnivConfig = univCfg } } }
+      ProcEvalConfig = { EvalConfig = { UnivConfig = univCfg; PlusConfig = plusCfg } } }
 
 let formatMap (m: Map<State<'a>, (ProcId * Val list) list>) =
     m

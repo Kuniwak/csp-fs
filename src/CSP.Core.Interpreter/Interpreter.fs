@@ -1,6 +1,7 @@
 ﻿module CSP.Core
 
 open System.IO
+open CSP.Core.ClassPlus
 open FSharpPlus
 open CSP.Core
 open CSP.Core.Eval
@@ -31,7 +32,10 @@ let interpreterConfig natMax listLenMax =
         { EvalConfig =
             { UnivConfig =
                 { NatMax = natMax
-                  ListLenMax = listLenMax } } }
+                  ListLenMax = listLenMax }
+              PlusConfig =
+                 { NatMax = natMax
+                   ListLenMax = listLenMax }}}
 
     { TransConfig = { ProcEvalConfig = procEvalConfig }
       ProcEvalConfig = procEvalConfig }

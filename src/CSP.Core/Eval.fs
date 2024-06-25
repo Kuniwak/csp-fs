@@ -13,8 +13,8 @@ open CSP.Core.Val
 open CSP.Core.TypeShorthand
 open CSP.Core.ValTypeCheck
 
-type EvalConfig = { UnivConfig: UnivConfig }
-let evalConfig cfg = { UnivConfig = cfg }
+type EvalConfig = { UnivConfig: UnivConfig; PlusConfig: ClassPlus.PlusConfig }
+let evalConfig univCfg plusCfg = { UnivConfig = univCfg; PlusConfig = plusCfg }
 
 let eval (cfg: EvalConfig) (um: UnionMap) (cm: CtorMap) (env: Env) (expr: Expr<'a>) : Result<Val, EvalError> =
     let univ = univ cfg.UnivConfig um in
@@ -151,7 +151,7 @@ let eval (cfg: EvalConfig) (um: UnionMap) (cm: CtorMap) (env: Env) (expr: Expr<'
             if ClassPlus.derivedBy t then
                 (expr1, expr2)
                 |> ResultEx.bind2 (Result.bind (typeCheck t) << eval env) (Result.bind (typeCheck t) << eval env)
-                |> Result.map (fun (v1, v2) -> ClassPlus.plus v1 v2)
+                |> Result.map (fun (v1, v2) -> ClassPlus.plus cfg.PlusConfig v1 v2)
             else
                 Error(TypeNotDerived(t, ClassPlus.name))
             |> Result.mapError (atLine line)

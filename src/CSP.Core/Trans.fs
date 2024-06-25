@@ -14,6 +14,11 @@ open CSP.Core.Util
 
 type TransConfig = { ProcEvalConfig: ProcEvalConfig }
 
+let rec flattenIntCh (s: State<'a>): State<'a> list =
+    match s with
+    | IntCh (s1, s2) -> flattenIntCh s1 @ flattenIntCh s2
+    | _ -> [ s ]
+
 let trans
     (cfg: TransConfig)
     (pm: ProcMap<'a>)
@@ -55,9 +60,7 @@ let trans
         | Skip -> Ok [ (Tick, Omega) ] // Skip
         | Prefix(v, s) -> Ok [ (Vis v, s) ] // Prefix
         | IntCh(s1, s2) ->
-            Ok
-                [ (Tau, s1) // IntCh1
-                  (Tau, s2) ] // IntCh2
+            Ok (((flattenIntCh s1) @ (flattenIntCh s2)) |> List.map (fun s' -> (Tau, s'))) // IntCh1, IntCh2
         | ExtCh(s1, s2) ->
             let ts1 s1 =
                 trans visited s1

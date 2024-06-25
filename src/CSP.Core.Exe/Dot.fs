@@ -86,8 +86,11 @@ let dotCLI (stdout: TextWriter) (stderr: TextWriter) (args: string list) : int =
             let univCfg: UnivConfig =
                 { NatMax = natMax
                   ListLenMax = listMax }
+            let plusCfg: ClassPlus.PlusConfig =
+                { NatMax = natMax
+                  ListLenMax = listMax }
 
-            let evalCfg: EvalConfig = { UnivConfig = univCfg }
+            let evalCfg: EvalConfig = { UnivConfig = univCfg; PlusConfig = plusCfg }
             let procEvalCfg: ProcEvalConfig = { EvalConfig = evalCfg }
 
             let cfg: DotConfig =

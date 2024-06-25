@@ -16,8 +16,9 @@ open CSP.Core.Univ
 open CSP.Core.Visualization.DotLang
 
 let univCfg: UnivConfig = { NatMax = 5u; ListLenMax = 3u }
+let plusCfg: ClassPlus.PlusConfig = { NatMax = 5u; ListLenMax = 3u }
 
-let procEvalCfg: ProcEvalConfig = { EvalConfig = { UnivConfig = univCfg } }
+let procEvalCfg: ProcEvalConfig = { EvalConfig = { UnivConfig = univCfg; PlusConfig = plusCfg } }
 
 let graphCfg: GraphConfig =
     { TransConfig = { ProcEvalConfig = procEvalCfg }
